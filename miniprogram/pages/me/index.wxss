@@ -1,0 +1,28 @@
+.me {
+  padding: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.me-name {
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.me-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.mt {
+  margin-top: 18rpx;
+}
+
+.mb {
+  margin-bottom: 14rpx;
+}
+

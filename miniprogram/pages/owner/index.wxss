@@ -1,0 +1,36 @@
+.mt {
+  margin-top: 18rpx;
+}
+
+.stat-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.stat {
+  flex: 1;
+  padding: 18rpx;
+}
+
+.stat-num {
+  font-weight: 900;
+  font-size: 34rpx;
+}
+
+.stat-txt {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+}
+
+.add {
+  width: 84rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 28rpx 0;
+}
+

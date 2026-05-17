@@ -1,0 +1,54 @@
+<view class="page">
+  <seg-tabs tabs="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
+
+  <view wx:if="{{tab==='info'}}" class="card mt">
+    <view class="card-hd">岩馆信息</view>
+    <view class="card-bd">
+      <input class="input mb" placeholder="岩馆名（比如：飞岩岩馆）" placeholder-class="ph" value="{{form.name}}" bindinput="onName" />
+      <input class="input mb" placeholder="城市（比如：上海）" placeholder-class="ph" value="{{form.city}}" bindinput="onCity" />
+      <input class="input mb" placeholder="地址（比如：XX 路 XX 号）" placeholder-class="ph" value="{{form.address}}" bindinput="onAddress" />
+      <view class="btn btn-primary" bindtap="saveGym">{{gymId?'保存岩馆':'创建岩馆'}}</view>
+      <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+    </view>
+  </view>
+
+  <view wx:if="{{tab==='cycle'}}" class="card mt">
+    <view class="card-hd">当前周期</view>
+    <view class="card-bd">
+      <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
+      <picker mode="date" value="{{cycleForm.startDate}}" bindchange="onCycleStart">
+        <view class="input mb date-picker">{{cycleForm.startDate}}</view>
+      </picker>
+      <view class="row mb">
+        <input class="input flex" placeholder="抱石等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
+        <view class="btn btn-warn tpl-btn" bindtap="onPickBoulderTemplate">抱石模板</view>
+      </view>
+      <view class="row mb">
+        <input class="input flex" placeholder="难度等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
+        <view class="btn btn-warn tpl-btn" bindtap="onPickDifficultyTemplate">难度模板</view>
+      </view>
+      <view class="btn btn-primary" bindtap="saveCycle">保存周期</view>
+      <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+    </view>
+  </view>
+
+  <view wx:if="{{tab==='routes'}}" class="card mt">
+    <view class="card-hd">线路录入</view>
+    <view class="card-bd">
+      <seg-tabs tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
+      <view class="rows">
+        <view wx:for="{{routeRows}}" wx:key="grade" class="route-row">
+          <view class="route-grade">{{item.grade}}</view>
+          <input class="input route-input" type="number" value="{{item.count}}" data-grade="{{item.grade}}" bindinput="onRouteCount" />
+        </view>
+      </view>
+      <view class="row mt2">
+        <input class="input flex" placeholder="自定义等级（如 V0-V1）" placeholder-class="ph" value="{{customGrade}}" bindinput="onCustomGrade" />
+        <view class="btn btn-warn add-btn" bindtap="addGrade">添加</view>
+      </view>
+      <view class="btn btn-primary mt2" bindtap="saveRoutes">更新线路</view>
+      <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+    </view>
+  </view>
+</view>
+

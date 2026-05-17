@@ -1,0 +1,30 @@
+.pg {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 18rpx;
+}
+
+.pg-btn {
+  flex: 1;
+  height: 72rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.pg-btn--disabled {
+  opacity: 0.4;
+}
+
+.pg-mid {
+  width: 160rpx;
+  text-align: center;
+  color: rgba(231, 233, 243, 0.7);
+  font-weight: 700;
+}
+

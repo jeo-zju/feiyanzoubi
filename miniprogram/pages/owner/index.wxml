@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">我的岩馆</view>
+    <view class="card-bd">
+      <view class="muted">你管理 {{summary.gymCount}} 家岩馆</view>
+      <view class="stat-row">
+        <view class="stat card">
+          <view class="stat-num">{{summary.boulderLines}}</view>
+          <view class="muted stat-txt">抱石线路</view>
+        </view>
+        <view class="stat card">
+          <view class="stat-num">{{summary.diffLines}}</view>
+          <view class="muted stat-txt">难度线路</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd row">
+      <view>岩馆列表</view>
+      <view class="add btn btn-ghost" bindtap="onAdd">+</view>
+    </view>
+    <view class="card-bd">
+      <gym-card wx:for="{{gyms}}" wx:key="_id" gym="{{item}}" bind:tap="onTapGym" />
+      <view wx:if="{{!gyms.length && !loading}}" class="empty muted">暂无岩馆</view>
+      <paginator
+        wx:if="{{gyms.length}}"
+        page="{{page}}"
+        hasPrev="{{page>1}}"
+        hasNext="{{hasNext}}"
+        bind:prev="onPrev"
+        bind:next="onNext"
+      />
+    </view>
+  </view>
+</view>
+

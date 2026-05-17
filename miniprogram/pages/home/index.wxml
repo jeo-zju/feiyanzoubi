@@ -1,0 +1,26 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">今天打算爬哪家馆？</view>
+    <view class="card-bd">
+      <view class="search-row">
+        <input class="input" placeholder="城市" placeholder-class="ph" value="{{city}}" bindinput="onCityInput" />
+        <input class="input" placeholder="岩馆名" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
+        <view class="btn btn-warn search-btn" bindtap="onSearch">搜索</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="list">
+    <gym-card wx:for="{{gyms}}" wx:key="_id" gym="{{item}}" bind:tap="onTapGym" />
+    <view wx:if="{{!gyms.length && !loading}}" class="empty muted">暂无岩馆</view>
+    <paginator
+      wx:if="{{gyms.length}}"
+      page="{{page}}"
+      hasPrev="{{page>1}}"
+      hasNext="{{hasNext}}"
+      bind:prev="onPrev"
+      bind:next="onNext"
+    />
+  </view>
+</view>
+

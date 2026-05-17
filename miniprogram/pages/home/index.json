@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "gym-card": "../../components/gymCard/index",
+    "paginator": "../../components/paginator/index"
+  }
+}
+

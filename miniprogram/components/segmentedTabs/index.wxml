@@ -1,0 +1,12 @@
+<view class="seg">
+  <view
+    class="seg-item {{value===item.key?'seg-item--active':''}}"
+    wx:for="{{tabs}}"
+    wx:key="key"
+    data-key="{{item.key}}"
+    bindtap="onTap"
+  >
+    {{item.label}}
+  </view>
+</view>
+

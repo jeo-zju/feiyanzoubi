@@ -1,0 +1,32 @@
+.gc {
+  padding: 20rpx 20rpx 18rpx;
+  background: linear-gradient(135deg, rgba(143, 123, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(242, 193, 78, 0.08) 100%);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18rpx 42rpx rgba(0, 0, 0, 0.28);
+}
+
+.gc-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.gc-title {
+  font-size: 34rpx;
+  font-weight: 800;
+  letter-spacing: 0.5rpx;
+}
+
+.gc-sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+}
+
+.gc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+

@@ -1,0 +1,15 @@
+<view class="gc card" bindtap="onTap">
+  <view class="gc-hd">
+    <view class="gc-title">{{gym.name}}</view>
+    <view wx:if="{{gym.city}}" class="tag">{{gym.city}}</view>
+  </view>
+  <view class="gc-sub muted">{{gym.address}}</view>
+  <view class="gc-tags">
+    <view wx:if="{{gym.cycleLabel}}" class="tag">{{gym.cycleLabel}}</view>
+    <view wx:if="{{gym.visitLabel}}" class="tag">{{gym.visitLabel}}</view>
+    <view wx:if="{{gym.boulderLabel}}" class="tag">抱石 {{gym.boulderLabel}}</view>
+    <view wx:if="{{gym.diffLabel}}" class="tag">难度 {{gym.diffLabel}}</view>
+    <view wx:if="{{gym.lastVisitLabel}}" class="tag tag-warn">{{gym.lastVisitLabel}}</view>
+  </view>
+</view>
+

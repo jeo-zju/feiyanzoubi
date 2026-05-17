@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "seg-tabs": "../../components/segmentedTabs/index",
+    "stepper-row": "../../components/stepperRow/index"
+  },
+  "navigationBarTitleText": "岩馆管理"
+}
+

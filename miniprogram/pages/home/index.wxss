@@ -1,0 +1,31 @@
+.search-row {
+  display: flex;
+  gap: 14rpx;
+  align-items: center;
+}
+
+.search-row .input {
+  flex: 1;
+}
+
+.search-btn {
+  width: 140rpx;
+  height: 76rpx;
+}
+
+.list {
+  margin-top: 18rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 40rpx 0;
+}
+
+.ph {
+  color: rgba(231, 233, 243, 0.4);
+}
+

@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="card">
+    <view class="top">
+      <view class="top-left">
+        <view class="gym">{{gym.name}}</view>
+        <view class="tag cycle-tag">{{cycleLabel}}</view>
+      </view>
+      <view class="top-right">
+        <view class="btn btn-warn top-btn" bindtap="goHome">去爬其他馆</view>
+        <view class="date-wrap">
+          <view class="muted date-label">打卡日期</view>
+          <picker mode="date" value="{{date}}" start="{{dateStart}}" end="{{dateEnd}}" bindchange="onPickDate">
+            <view class="tag tag-warn date-tag">{{date}}</view>
+          </picker>
+        </view>
+      </view>
+    </view>
+    <view class="card-bd">
+      <seg-tabs tabs="{{modeTabs}}" value="{{mode}}" bind:change="onModeChange" />
+      <view class="table">
+        <view class="thead">
+          <view class="th th-grade muted">等级</view>
+          <view class="th th-total muted">累计/上限</view>
+          <view class="th th-check muted">打卡</view>
+        </view>
+        <view class="tbody">
+          <view class="tr" wx:for="{{rows}}" wx:key="key">
+            <view class="td td-grade">
+              <view class="tag grade-tag">{{item.label}}</view>
+            </view>
+            <view class="td td-total">{{item.progressText}}</view>
+            <view class="td td-check">
+              <view class="stepper">
+                <view
+                  class="step-btn {{item.delta>0?'':'step-btn--disabled'}}"
+                  data-key="{{item.key}}"
+                  bindtap="onDec"
+                >
+                  -
+                </view>
+                <view class="delta-text">{{item.deltaText}}</view>
+                <view
+                  class="step-btn step-btn--inc {{item.canInc?'':'step-btn--disabled'}}"
+                  data-key="{{item.key}}"
+                  bindtap="onInc"
+                >
+                  +
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="btn btn-primary submit" bindtap="onSubmit">今天就爬到这了！</view>
+</view>
+

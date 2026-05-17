@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "gym-card": "../../components/gymCard/index",
+    "paginator": "../../components/paginator/index"
+  },
+  "navigationBarTitleText": "馆长模式"
+}
+

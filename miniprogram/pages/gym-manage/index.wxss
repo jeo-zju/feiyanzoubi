@@ -1,0 +1,61 @@
+.mt {
+  margin-top: 18rpx;
+}
+
+.mb {
+  margin-bottom: 14rpx;
+}
+
+.mt2 {
+  margin-top: 14rpx;
+}
+
+.flex {
+  flex: 1;
+}
+
+.rows {
+  margin-top: 18rpx;
+}
+
+.route-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14rpx;
+  padding: 12rpx 0;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.route-row:first-child {
+  border-top: none;
+}
+
+.route-grade {
+  font-weight: 800;
+}
+
+.route-input {
+  width: 180rpx;
+  text-align: center;
+}
+
+.add-btn {
+  width: 140rpx;
+  height: 76rpx;
+}
+
+.tpl-btn {
+  width: 160rpx;
+  height: 76rpx;
+}
+
+.date-picker {
+  display: flex;
+  align-items: center;
+}
+
+.ph {
+  color: rgba(231, 233, 243, 0.4);
+}
+

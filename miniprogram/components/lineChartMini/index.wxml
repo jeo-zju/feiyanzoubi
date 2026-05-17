@@ -1,0 +1,9 @@
+<canvas
+  wx:if="{{canvasId}}"
+  class="lc"
+  canvas-id="{{canvasId}}"
+  style="width: 690rpx; height: {{heightRpx}}rpx;"
+  width="{{canvasWidth}}"
+  height="{{canvasHeight}}"
+></canvas>
+

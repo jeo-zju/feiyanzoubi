@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">攀爬统计</view>
+    <view class="card-bd">
+      <line-chart points="{{chartPoints}}" />
+      <view class="muted tip">{{summaryText}}</view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">最近记录</view>
+    <view class="card-bd">
+      <view wx:for="{{recent}}" wx:key="id" class="rec">
+        <view class="rec-left">
+          <view class="rec-title">{{item.gymName}}</view>
+          <view class="muted rec-sub">{{item.date}} · {{item.modeText}}</view>
+        </view>
+        <view class="rec-right">+{{item.delta}}</view>
+      </view>
+      <view wx:if="{{!recent.length && !loading}}" class="empty muted">暂无记录</view>
+      <paginator
+        wx:if="{{recent.length}}"
+        page="{{page}}"
+        hasPrev="{{page>1}}"
+        hasNext="{{hasNext}}"
+        bind:prev="onPrev"
+        bind:next="onNext"
+      />
+    </view>
+  </view>
+</view>
+

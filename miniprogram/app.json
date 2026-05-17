@@ -1,0 +1,47 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/stats/index",
+    "pages/me/index",
+    "pages/checkin/index",
+    "pages/owner/index",
+    "pages/gym-manage/index",
+    "pages/logs/index"
+  ],
+  "window": {
+    "backgroundColor": "#0B0D15",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#0B0D15",
+    "navigationBarTitleText": "飞岩走壁",
+    "navigationBarTextStyle": "white"
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "tabBar": {
+    "color": "#9AA0B3",
+    "selectedColor": "#F2C14E",
+    "backgroundColor": "#0B0D15",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "images/icons/home.png",
+        "selectedIconPath": "images/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/stats/index",
+        "text": "统计",
+        "iconPath": "images/icons/examples.png",
+        "selectedIconPath": "images/icons/examples-active.png"
+      },
+      {
+        "pagePath": "pages/me/index",
+        "text": "我的",
+        "iconPath": "images/icons/usercenter.png",
+        "selectedIconPath": "images/icons/usercenter-active.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+<view class="sr">
+  <view class="sr-left">
+    <view class="sr-label">{{label}}</view>
+    <view wx:if="{{progressText}}" class="sr-sub muted">{{progressText}}</view>
+  </view>
+  <view class="sr-mid muted">{{deltaText}}</view>
+  <view class="sr-actions">
+    <view class="sr-btn {{canDec?'':'sr-btn--disabled'}}" bindtap="onDec">-</view>
+    <view class="sr-btn sr-btn--inc {{canInc?'':'sr-btn--disabled'}}" bindtap="onInc">+</view>
+  </view>
+</view>
+
