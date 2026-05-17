@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">名片预览</view>
+    <view class="card-bd">
+      <view wx:if="{{card}}">
+        <view class="name">{{card.front.displayName}}</view>
+        <view class="muted">{{card.front.title}} {{card.front.mbti}}</view>
+        <view class="mt">{{card.front.oneLiner}}</view>
+      </view>
+      <view wx:else class="muted">加载中…</view>
+    </view>
+  </view>
+
+  <view class="btn btn-primary mt2" bindtap="onClaim">领取</view>
+</view>
+

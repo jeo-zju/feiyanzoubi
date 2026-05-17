@@ -7,6 +7,7 @@
       </view>
       <view class="top-right">
         <view class="btn btn-warn top-btn" bindtap="goHome">去爬其他馆</view>
+        <view class="btn btn-ghost top-btn" bindtap="goWall">攀岩墙</view>
         <view class="date-wrap">
           <view class="muted date-label">打卡日期</view>
           <picker mode="date" value="{{date}}" start="{{dateStart}}" end="{{dateEnd}}" bindchange="onPickDate">

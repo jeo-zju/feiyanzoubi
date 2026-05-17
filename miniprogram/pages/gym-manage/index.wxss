@@ -55,6 +55,48 @@
   align-items: center;
 }
 
+.hist-title {
+  margin-top: 14rpx;
+  margin-bottom: 10rpx;
+  font-weight: 800;
+}
+
+.hist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 0;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.hist-item:first-child {
+  border-top: none;
+}
+
+.hist-name {
+  font-weight: 800;
+}
+
+.hist-sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+}
+
+.hist-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.mini-btn {
+  padding: 10rpx 14rpx;
+  border-radius: 14rpx;
+  font-size: 24rpx;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  color: rgba(231, 233, 243, 0.85);
+}
+
 .ph {
   color: rgba(231, 233, 243, 0.4);
 }

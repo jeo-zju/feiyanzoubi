@@ -28,6 +28,31 @@
         <view class="btn btn-warn tpl-btn" bindtap="onPickDifficultyTemplate">难度模板</view>
       </view>
       <view class="btn btn-primary" bindtap="saveCycle">保存周期</view>
+
+      <view class="divider mt2"></view>
+      <view class="hist-title">历史周期</view>
+      <view class="hist-list">
+        <view wx:for="{{cycles}}" wx:key="_id" class="hist-item" data-id="{{item._id}}" bindtap="onSelectCycle">
+          <view class="hist-main">
+            <view class="hist-name">{{item.name||item.cycle_name||'默认周期'}}</view>
+            <view class="muted hist-sub">{{item.startDate||item.start_date}} ~ {{item.endDate||item.end_date||'至今'}}</view>
+          </view>
+          <view class="hist-right">
+            <view class="tag {{item.status==='archived'?'':'tag-warn'}}">{{item.status==='archived'?'已关闭':'进行中'}}</view>
+            <view class="mini-btn" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="divider mt2"></view>
+      <view class="hist-title">关闭当前周期</view>
+      <view class="row mb">
+        <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate">
+          <view class="input flex date-picker">{{closeEndDate}}</view>
+        </picker>
+        <view class="btn btn-warn tpl-btn" bindtap="onCloseCycle">关闭周期</view>
+      </view>
+
       <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
     </view>
   </view>

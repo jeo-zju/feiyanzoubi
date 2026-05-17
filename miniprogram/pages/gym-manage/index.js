@@ -60,6 +60,9 @@ Page({
   data: {
     gymId: "",
     gym: {},
+    cycles: [],
+    cycleEditing: null,
+    closeEndDate: today(),
     tab: "info",
     tabs: [
       { key: "info", label: "岩馆信息" },
@@ -92,21 +95,25 @@ Page({
     try {
       const res = await get({ gymId: this.data.gymId });
       const gym = (res && res.gym) || {};
-      const cycle = gym.currentCycle || gym.cycle || {};
+      const cycles = (res && res.cycles) || [];
+      const currentCycle = gym.currentCycle || gym.cycle || (cycles && cycles[0]) || {};
       const routes = gym.routes || {};
       this.setData({
         gym,
+        cycles,
         form: {
           name: gym.name || gym.gymName || gym.title || "",
           city: gym.city || gym.cityName || gym.locationCity || "",
           address: gym.address || gym.addr || gym.location || ""
         },
         cycleForm: {
-          name: cycle.name || "",
-          startDate: cycle.startDate || today(),
-          boulderGrades: (cycle.boulderGrades || ["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7+"]).join(","),
-          difficultyGrades: (cycle.difficultyGrades || ["5.9", "5.10a", "5.10b", "5.10c", "5.11a", "5.11b"]).join(",")
+          name: currentCycle.name || currentCycle.cycle_name || "",
+          startDate: currentCycle.startDate || currentCycle.start_date || today(),
+          boulderGrades: (currentCycle.boulderGrades || currentCycle.boulder_grades || ["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7+"]).join(","),
+          difficultyGrades: (currentCycle.difficultyGrades || currentCycle.rope_grades || currentCycle.difficulty_grades || ["5.9", "5.10a", "5.10b", "5.10c", "5.11a", "5.11b"]).join(",")
         },
+        cycleEditing: currentCycle && currentCycle._id ? { _id: currentCycle._id, status: currentCycle.status || "" } : null,
+        closeEndDate: today(),
         routeCounts: {
           boulder: (routes.boulder && (routes.boulder.limits || routes.boulder.counts || routes.boulder)) || {},
           difficulty: (routes.difficulty && (routes.difficulty.limits || routes.difficulty.counts || routes.difficulty)) || {}
@@ -170,6 +177,89 @@ Page({
         if (!tpl) return;
         this.setData({ cycleForm: { ...this.data.cycleForm, difficultyGrades: tpl.grades.join(",") } });
         this.refreshRouteRows();
+      }
+    });
+  },
+  onSelectCycle(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.id : "";
+    const cycles = this.data.cycles || [];
+    const c = cycles.find((x) => x && String(x._id) === String(id));
+    if (!c) return;
+    this.setData({
+      cycleForm: {
+        name: c.name || c.cycle_name || "",
+        startDate: c.startDate || c.start_date || today(),
+        boulderGrades: (c.boulderGrades || c.boulder_grades || []).join(","),
+        difficultyGrades: (c.difficultyGrades || c.rope_grades || c.difficulty_grades || []).join(",")
+      },
+      cycleEditing: { _id: c._id, status: c.status || "" }
+    });
+  },
+  async onDeleteCycle(e) {
+    if (!this.data.gymId) return;
+    const id = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.id : "";
+    if (!id) return;
+    const cycles = this.data.cycles || [];
+    const c = cycles.find((x) => x && String(x._id) === String(id));
+    const name = (c && (c.name || c.cycle_name)) || "该周期";
+    const start = (c && (c.startDate || c.start_date)) || "";
+    const end = (c && (c.endDate || c.end_date)) || "至今";
+
+    wx.showModal({
+      title: "删除周期",
+      content: "删除后不可恢复，并会联动删除该周期下所有用户的打卡记录/进度/黑板统计，请谨慎操作。",
+      confirmText: "下一步",
+      success: (r1) => {
+        if (!r1 || !r1.confirm) return;
+        wx.showModal({
+          title: "再次确认",
+          content: `确认删除【${name}】(${start} ~ ${end}) 吗？`,
+          confirmText: "确认删除",
+          success: async (r2) => {
+            if (!r2 || !r2.confirm) return;
+            try {
+              await upsertGym({
+                gymId: this.data.gymId,
+                deleteCycle: { cycleId: String(id) }
+              });
+              wx.showToast({ title: "已删除", icon: "none" });
+              await this.loadGym();
+            } catch (e2) {
+              wx.showToast({ title: (e2 && e2.message) || "删除失败", icon: "none" });
+            }
+          }
+        });
+      }
+    });
+  },
+  onCloseEndDate(e) {
+    this.setData({ closeEndDate: e.detail.value });
+  },
+  async onCloseCycle() {
+    if (!this.data.gymId) return;
+    const editing = this.data.cycleEditing;
+    const cycleId = editing && editing._id ? String(editing._id) : "";
+    if (!cycleId) {
+      wx.showToast({ title: "未找到当前周期", icon: "none" });
+      return;
+    }
+    const endDate = safeText(this.data.closeEndDate) || today();
+    wx.showModal({
+      title: "关闭周期",
+      content: `确认将该周期关闭到 ${endDate} 吗？`,
+      confirmText: "关闭",
+      success: async (res) => {
+        if (!res || !res.confirm) return;
+        try {
+          await upsertGym({
+            gymId: this.data.gymId,
+            closeCycle: { cycleId, endDate }
+          });
+          wx.showToast({ title: "已关闭", icon: "none" });
+          await this.loadGym();
+        } catch (e) {
+          wx.showToast({ title: (e && e.message) || "关闭失败", icon: "none" });
+        }
       }
     });
   },
@@ -252,7 +342,11 @@ Page({
           name: safeText(this.data.cycleForm.name),
           startDate,
           boulderGrades,
-          difficultyGrades
+          difficultyGrades,
+          cycleId:
+            this.data.cycleEditing && this.data.cycleEditing._id && this.data.cycleEditing.status !== "archived"
+              ? String(this.data.cycleEditing._id)
+              : ""
         }
       });
       wx.showToast({ title: "已保存", icon: "none" });

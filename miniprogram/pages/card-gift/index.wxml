@@ -1,0 +1,29 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">先做一张要送的名片</view>
+    <view class="card-bd">
+      <view class="muted mb">当前草稿：{{draftCardId || '暂无'}}</view>
+      <view class="btn btn-primary" bindtap="goMake">制作/编辑草稿</view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">链接领取</view>
+    <view class="card-bd">
+      <view class="btn btn-warn" bindtap="onCreateLink" data-disabled="{{!draftCardId}}">生成领取链接</view>
+      <view wx:if="{{giftId}}" class="mt2">
+        <view class="muted">giftId：{{giftId}}</view>
+        <image wx:if="{{qrFileId}}" class="qr" mode="aspectFit" src="{{qrFileId}}"></image>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">直接赠送</view>
+    <view class="card-bd">
+      <input class="input mb" placeholder="对方用户ID（openid）" placeholder-class="ph" value="{{toOpenid}}" bindinput="onToOpenid" />
+      <view class="btn btn-warn" bindtap="onCreateDirect" data-disabled="{{!draftCardId}}">直接赠送</view>
+    </view>
+  </view>
+</view>
+

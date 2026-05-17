@@ -1,0 +1,27 @@
+.textarea {
+  width: 100%;
+  min-height: 160rpx;
+  border-radius: 16rpx;
+  padding: 18rpx;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.flex {
+  flex: 1;
+}
+
+.ml {
+  margin-left: 16rpx;
+}
+
+.mt2 {
+  margin-top: 24rpx;
+}
+

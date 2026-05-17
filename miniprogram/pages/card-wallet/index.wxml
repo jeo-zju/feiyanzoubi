@@ -1,0 +1,29 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">统计</view>
+    <view class="card-bd">
+      <view class="muted">累计收到 {{receivedCount}} 张</view>
+      <view class="muted">今日灵感剩余 {{credit.remaining}} / {{credit.limit}}</view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">收到的名片</view>
+    <view class="card-bd">
+      <view wx:if="{{!receivedCards.length}}" class="muted">暂无</view>
+      <view wx:for="{{receivedCards}}" wx:key="cardId" class="row">
+        <image class="avatar" mode="aspectFill" src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl}}"></image>
+        <view class="info">
+          <view class="name">{{item.displayName}}</view>
+          <view class="muted">{{item.title}} {{item.mbti}}</view>
+          <view class="muted">{{item.oneLiner}}</view>
+        </view>
+        <view class="ops">
+          <view class="btn btn-ghost mb" data-id="{{item.cardId}}" bindtap="onSetPrimary">设为主卡</view>
+          <view class="btn btn-ghost" data-id="{{item.cardId}}" bindtap="onRemove">删除</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+

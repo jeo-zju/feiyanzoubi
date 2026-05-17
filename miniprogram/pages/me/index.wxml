@@ -1,5 +1,51 @@
 <view class="page">
   <view class="card">
+    <view class="card-hd">我的名片</view>
+    <view class="card-bd">
+      <view wx:if="{{myPrimaryCard}}">
+        <view class="mycard" bindtap="onFlip">
+          <view wx:if="{{!flipped}}">
+            <view class="mycard-name">{{myPrimaryCard.displayName}}</view>
+            <view class="muted">{{myPrimaryCard.title}} {{myPrimaryCard.mbti}}</view>
+            <view class="muted mt2">{{myPrimaryCard.oneLiner}}</view>
+          </view>
+          <view wx:else>
+            <image wx:if="{{myPrimaryCardDetail.back.photoFileId}}" class="mycard-photo" mode="aspectFill" src="{{myPrimaryCardDetail.back.photoFileId}}"></image>
+            <view class="muted mt2">{{myPrimaryCardDetail.back.story}}</view>
+          </view>
+        </view>
+        <view class="row mt2">
+          <view class="btn btn-primary flex" bindtap="goEditMyCard">编辑</view>
+          <view class="btn btn-warn flex ml" bindtap="goGift">送人</view>
+        </view>
+      </view>
+      <view wx:else>
+        <view class="muted">还没有名片，先来一张？</view>
+        <view class="btn btn-primary mt2" bindtap="goEditMyCard">初始化名片</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">名片夹</view>
+    <view class="card-bd">
+      <view class="muted">累计收到 {{receivedCount}} 张</view>
+      <view class="muted">今日灵感剩余 {{credit.remaining}} / {{credit.limit}}（0点刷新）</view>
+      <view class="thumbs mt2">
+        <image
+          wx:for="{{receivedThumbs}}"
+          wx:key="cardId"
+          class="thumb"
+          mode="aspectFill"
+          src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl || defaultAvatar}}"
+        ></image>
+        <view wx:if="{{receivedCount>0}}" class="btn btn-ghost ml" bindtap="goWallet">打开名片夹</view>
+        <view wx:else class="btn btn-ghost ml" bindtap="goGift">去收一张</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
     <view class="me">
       <view class="me-left">
         <view class="me-name">{{user.nickName || '岩友'}}</view>
@@ -9,6 +55,13 @@
     </view>
     <view class="card-bd">
       <view class="btn btn-warn" bindtap="onSync">同步微信头像昵称</view>
+      <view class="openid mt2" wx:if="{{openid}}">
+        <view class="muted">我的用户ID</view>
+        <view class="row mt2">
+          <view class="tag flex">{{openid}}</view>
+          <view class="btn btn-ghost ml" bindtap="onCopyOpenid">复制</view>
+        </view>
+      </view>
     </view>
   </view>
 

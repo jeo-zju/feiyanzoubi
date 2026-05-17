@@ -21,6 +21,10 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
+function isValidYMD(v) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+}
+
 function normalizeGym(g) {
   const name = g.name || g.gymName || g.title || "";
   const city = g.city || g.cityName || g.locationCity || "";
@@ -48,17 +52,33 @@ function normalizeProgress(doc) {
   if (!doc) return null;
   const rawTotals = doc.totals || doc.total || {};
   const rawTargets = doc.targets || doc.limits || doc.limit || {};
+  function flattenGradeMap(m) {
+    if (!m || typeof m !== "object" || Array.isArray(m)) return {};
+    const out = {};
+    Object.keys(m).forEach((k) => {
+      const v = m[k];
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        Object.keys(v).forEach((k2) => {
+          const key = `${String(k)}.${String(k2)}`;
+          out[key] = v[k2];
+        });
+      } else {
+        out[k] = v;
+      }
+    });
+    return out;
+  }
   return {
     _id: doc._id,
     gymId: doc.gymId || doc.gym_id || "",
     cycleKey: doc.cycleKey || doc.cycle_key || doc.cycleId || doc.cycle_id || doc.cycleId || "",
     totals: {
       boulder: rawTotals.boulder || {},
-      difficulty: rawTotals.difficulty || rawTotals.rope || {}
+      difficulty: flattenGradeMap(rawTotals.difficulty || rawTotals.rope || {})
     },
     limits: {
       boulder: rawTargets.boulder || {},
-      difficulty: rawTargets.difficulty || rawTargets.rope || {}
+      difficulty: flattenGradeMap(rawTargets.difficulty || rawTargets.rope || {})
     },
     visitCount: doc.visitCount || doc.visit_count || 0,
     updatedAt: doc.updatedAt || doc.updated_at || doc.createdAt || 0
@@ -75,6 +95,70 @@ function normalizeCycle(c) {
     boulderGrades: c.boulder_grades || c.boulderGrades || [],
     difficultyGrades: c.rope_grades || c.difficultyGrades || c.ropes || []
   };
+}
+
+async function resolveCycleByDate(gymId, date, fallbackCycleId) {
+  const ymd = isValidYMD(date) ? date : "";
+  const gymWhere = _.or([{ gym_id: gymId }, { gymId }, { gymID: gymId }]);
+  if (!ymd) {
+    if (fallbackCycleId) {
+      try {
+        const r = await db.collection("RockGymCycles").doc(fallbackCycleId).get();
+        const c = normalizeCycle(r && r.data ? r.data : null);
+        return { cycleId: fallbackCycleId, cycle: c };
+      } catch (e) {}
+    }
+    try {
+      const r = await db.collection("RockGymCycles").where(gymWhere).orderBy("start_date", "desc").limit(1).get();
+      const doc = r && r.data && r.data[0] ? r.data[0] : null;
+      const c = normalizeCycle(doc);
+      return { cycleId: c && c._id ? String(c._id) : "", cycle: c };
+    } catch (e) {
+      return { cycleId: "", cycle: null };
+    }
+  }
+
+  const whereSnake = _.and([
+    { gym_id: gymId },
+    { start_date: _.lte(ymd) },
+    _.or([{ end_date: _.gte(ymd) }, { end_date: _.eq("") }, { end_date: _.exists(false) }])
+  ]);
+  const whereCamel = _.and([
+    gymWhere,
+    { startDate: _.lte(ymd) },
+    _.or([{ endDate: _.gte(ymd) }, { endDate: _.eq("") }, { endDate: _.exists(false) }])
+  ]);
+  const tries = [
+    { where: whereSnake, orderBy: "start_date" },
+    { where: whereCamel, orderBy: "startDate" }
+  ];
+  for (let i = 0; i < tries.length; i++) {
+    const t = tries[i];
+    try {
+      const res = await db.collection("RockGymCycles").where(t.where).orderBy(t.orderBy, "desc").limit(1).get();
+      const doc = res && res.data && res.data[0] ? res.data[0] : null;
+      const c = normalizeCycle(doc);
+      if (c && c._id) return { cycleId: String(c._id), cycle: c };
+    } catch (e) {}
+  }
+  try {
+    const res = await db.collection("RockGymCycles").where(gymWhere).limit(200).get();
+    const list = (res && res.data) || [];
+    const hit = list
+      .map((c) => ({
+        _id: c._id,
+        start: String(c.start_date || c.startDate || ""),
+        end: String(c.end_date || c.endDate || "9999-12-31"),
+        raw: c
+      }))
+      .filter((c) => c._id && isValidYMD(c.start) && isValidYMD(c.end))
+      .filter((c) => c.start <= ymd && ymd <= c.end)
+      .sort((a, b) => String(b.start).localeCompare(String(a.start)))[0];
+    const c = hit ? normalizeCycle(hit.raw) : null;
+    return { cycleId: c && c._id ? String(c._id) : "", cycle: c };
+  } catch (e) {
+    return { cycleId: "", cycle: null };
+  }
 }
 
 function normalizeMode(category, mode) {
@@ -131,16 +215,34 @@ function normalizeRouteCountsFromBlackboard(doc) {
   if (!doc) return null;
   const raw = doc.per_grade_counts || doc.perGradeCounts || doc.per_grade_count || doc.perGradeCount || null;
   if (!raw || typeof raw !== "object") return null;
+  function flattenGradeMap(m) {
+    if (!m || typeof m !== "object" || Array.isArray(m)) return {};
+    const out = {};
+    Object.keys(m).forEach((k) => {
+      const v = m[k];
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        Object.keys(v).forEach((k2) => {
+          const key = `${String(k)}.${String(k2)}`;
+          out[key] = v[k2];
+        });
+      } else {
+        out[k] = v;
+      }
+    });
+    return out;
+  }
   const boulder = raw.boulder || raw.boulders || null;
   const rope = raw.rope || raw.ropes || null;
   const difficulty = raw.difficulty || null;
   if (boulder || rope || difficulty) {
     return {
       boulder: (boulder && typeof boulder === "object" ? boulder : {}) || {},
-      difficulty: ((difficulty && typeof difficulty === "object" ? difficulty : null) || (rope && typeof rope === "object" ? rope : {})) || {}
+      difficulty: flattenGradeMap(
+        ((difficulty && typeof difficulty === "object" ? difficulty : null) || (rope && typeof rope === "object" ? rope : {})) || {}
+      )
     };
   }
-  return null;
+  return { flat: raw };
 }
 
 exports.main = async (event) => {
@@ -149,6 +251,7 @@ exports.main = async (event) => {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
     const gymId = safeText(event && event.gymId);
+    const date = safeText(event && event.date);
     if (!gymId) return fail("BAD_REQUEST", "缺少 gymId", tid);
 
     const gymRes = await db.collection("RockGyms").doc(gymId).get();
@@ -174,27 +277,19 @@ exports.main = async (event) => {
     const gymWhere = _.or([{ gymId }, { gym_id: gymId }, { gymID: gymId }]);
     const where = _.and([userWhere, gymWhere]);
 
-    let cycle = null;
-    const cycleId = gym.currentCycleId || "";
-    if (cycleId) {
-      try {
-        const cycleRes = await db.collection("RockGymCycles").doc(cycleId).get();
-        cycle = normalizeCycle(cycleRes && cycleRes.data ? cycleRes.data : null);
-      } catch (e) {}
+    const fallbackCycleId = gym.currentCycleId || "";
+    const cyclePicked = await resolveCycleByDate(gymId, date, fallbackCycleId);
+    const cycleId = cyclePicked && cyclePicked.cycleId ? cyclePicked.cycleId : "";
+    const cycle = cyclePicked ? cyclePicked.cycle : null;
+    if (cycle) {
+      gym.currentCycle = cycle;
+      gym.currentCycleId = cycleId;
     }
-    if (!cycle) {
-      try {
-        const cycleRes = await db.collection("RockGymCycles").where(gymWhere).limit(1).get();
-        const c = cycleRes && cycleRes.data && cycleRes.data[0] ? cycleRes.data[0] : null;
-        cycle = normalizeCycle(c);
-      } catch (e) {}
-    }
-    if (cycle) gym.currentCycle = cycle;
 
     let routeCounts = null;
     try {
       const bbGymWhere = _.or([{ gym_id: gymId }, { gymId }, { gymID: gymId }]);
-      const cycleIdForBB = cycle && cycle._id ? String(cycle._id) : "";
+      const cycleIdForBB = cycleId || (cycle && cycle._id ? String(cycle._id) : "");
       const bbWhere = cycleIdForBB
         ? _.and([bbGymWhere, _.or([{ cycle_id: cycleIdForBB }, { cycleId: cycleIdForBB }, { cycleID: cycleIdForBB }])])
         : bbGymWhere;
@@ -208,8 +303,51 @@ exports.main = async (event) => {
           bbRes = await db.collection("RockGymBlackboards").where(bbWhere).limit(1).get();
         }
       }
-      const bbDoc = bbRes && bbRes.data && bbRes.data[0] ? bbRes.data[0] : null;
-      routeCounts = normalizeRouteCountsFromBlackboard(bbDoc);
+      let bbDoc = bbRes && bbRes.data && bbRes.data[0] ? bbRes.data[0] : null;
+      if (!bbDoc && cycleIdForBB) {
+        try {
+          let bbRes2;
+          try {
+            bbRes2 = await db.collection("RockGymBlackboards").where(bbGymWhere).orderBy("updated_at", "desc").limit(1).get();
+          } catch (e) {
+            try {
+              bbRes2 = await db.collection("RockGymBlackboards").where(bbGymWhere).orderBy("updatedAt", "desc").limit(1).get();
+            } catch (e2) {
+              bbRes2 = await db.collection("RockGymBlackboards").where(bbGymWhere).limit(1).get();
+            }
+          }
+          bbDoc = bbRes2 && bbRes2.data && bbRes2.data[0] ? bbRes2.data[0] : null;
+        } catch (e) {}
+      }
+      const rc = normalizeRouteCountsFromBlackboard(bbDoc);
+      if (rc && rc.flat && typeof rc.flat === "object") {
+        const flat = rc.flat;
+        const boulderOut = {};
+        const diffOut = {};
+        const bGrades = (cycle && cycle.boulderGrades) || [];
+        const dGrades = (cycle && cycle.difficultyGrades) || [];
+        if (Array.isArray(bGrades) && bGrades.length) {
+          bGrades.forEach((g) => {
+            if (Object.prototype.hasOwnProperty.call(flat, g)) boulderOut[g] = flat[g];
+          });
+        }
+        if (Array.isArray(dGrades) && dGrades.length) {
+          dGrades.forEach((g) => {
+            if (Object.prototype.hasOwnProperty.call(flat, g)) diffOut[g] = flat[g];
+          });
+        }
+        if (!Object.keys(boulderOut).length && !Object.keys(diffOut).length) {
+          Object.keys(flat).forEach((k) => {
+            const key = String(k || "").trim();
+            if (!key) return;
+            if (/^v/i.test(key) || key.includes("VB")) boulderOut[key] = flat[k];
+            else diffOut[key] = flat[k];
+          });
+        }
+        routeCounts = { boulder: boulderOut, difficulty: diffOut };
+      } else {
+        routeCounts = rc;
+      }
     } catch (e) {}
 
     let progressRes;

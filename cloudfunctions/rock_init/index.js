@@ -30,11 +30,15 @@ exports.main = async () => {
   try {
     const collections = [
       "RockBlackTalkDictionary",
+      "RockCards",
+      "RockCardCredits",
+      "RockCardGifts",
       "RockCheckinRecords",
       "RockComments",
       "RockFriendships",
       "RockGymBlackboards",
       "RockGymCycles",
+      "RockGymWallCards",
       "RockGyms",
       "RockUserCycleProgress",
       "RockUserDailyProgress",

@@ -1,0 +1,32 @@
+.mt2 {
+  margin-top: 24rpx;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.cell {
+  width: 33.33%;
+  padding: 12rpx 6rpx;
+  box-sizing: border-box;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.name {
+  margin-top: 8rpx;
+  font-weight: 700;
+  font-size: 26rpx;
+}
+
+.small {
+  font-size: 22rpx;
+}
+

@@ -39,9 +39,76 @@ function normalizeDeltas(deltas) {
   return out;
 }
 
+function isValidYMD(v) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+}
+
+function parseYMD(ymd) {
+  if (!isValidYMD(ymd)) return null;
+  const m = String(ymd).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+function formatYMD(d) {
+  const pad2 = (n) => (n < 10 ? `0${n}` : String(n));
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function prevDay(ymd) {
+  const d = parseYMD(ymd);
+  if (!d) return "";
+  d.setDate(d.getDate() - 1);
+  return formatYMD(d);
+}
+
 async function getGym(gymId) {
   const res = await db.collection("RockGyms").doc(gymId).get();
   return (res && res.data) || null;
+}
+
+async function resolveCycleIdByDate(gymId, date) {
+  if (!gymId || !isValidYMD(date)) return "";
+  const gymWhere = _.or([{ gym_id: gymId }, { gymId }, { gymID: gymId }]);
+  const dateEnd = "9999-12-31";
+  const whereSnake = _.and([
+    { gym_id: gymId },
+    { start_date: _.lte(date) },
+    _.or([{ end_date: _.gte(date) }, { end_date: _.eq("") }, { end_date: _.exists(false) }])
+  ]);
+  const whereCamel = _.and([
+    gymWhere,
+    { startDate: _.lte(date) },
+    _.or([{ endDate: _.gte(date) }, { endDate: _.eq("") }, { endDate: _.exists(false) }])
+  ]);
+  const tries = [
+    { where: whereSnake, orderBy: "start_date" },
+    { where: whereCamel, orderBy: "startDate" }
+  ];
+  for (let i = 0; i < tries.length; i++) {
+    const t = tries[i];
+    try {
+      const res = await db.collection("RockGymCycles").where(t.where).orderBy(t.orderBy, "desc").limit(1).get();
+      const doc = res && res.data && res.data[0] ? res.data[0] : null;
+      if (doc && doc._id) return String(doc._id);
+    } catch (e) {}
+  }
+  try {
+    const res = await db.collection("RockGymCycles").where(gymWhere).limit(200).get();
+    const list = (res && res.data) || [];
+    const hit = list
+      .map((c) => {
+        const s = String(c.start_date || c.startDate || "");
+        const e = String(c.end_date || c.endDate || dateEnd);
+        return { _id: c._id, start: s, end: e };
+      })
+      .filter((c) => c._id && isValidYMD(c.start) && isValidYMD(c.end))
+      .filter((c) => c.start <= date && date <= c.end)
+      .sort((a, b) => String(b.start).localeCompare(String(a.start)))[0];
+    return hit && hit._id ? String(hit._id) : "";
+  } catch (e) {
+    return "";
+  }
 }
 
 function addCounts(target, src) {
@@ -141,10 +208,10 @@ exports.main = async (event) => {
     const date = event && event.date ? String(event.date) : "";
     const mode = event && event.mode === "boulder" ? "boulder" : "difficulty";
     const category = mode === "difficulty" ? "rope" : "boulder";
-    const cycleId = event && event.cycleId ? String(event.cycleId) : "";
 
     if (!gymId) return fail("BAD_REQUEST", "缺少 gymId", tid);
     if (!date) return fail("BAD_REQUEST", "缺少 date", tid);
+    if (!isValidYMD(date)) return fail("BAD_REQUEST", "date 格式应为 YYYY-MM-DD", tid);
 
     const deltas = normalizeDeltas(event && event.deltas ? event.deltas : null);
     const deltaSum = sumObject(deltas);
@@ -153,8 +220,8 @@ exports.main = async (event) => {
     const gym = await getGym(gymId);
     if (!gym) return fail("NOT_FOUND", "岩馆不存在", tid);
 
-    const gymCycleId = gym.current_cycle_id || gym.currentCycleId || "";
-    const cycleKey = cycleId || gymCycleId || "default";
+    const cycleKey = await resolveCycleIdByDate(gymId, date);
+    if (!cycleKey) return fail("NO_CYCLE", "该日期没有可用周期，请先在周期设置里维护周期", tid);
 
     const recordIds = [];
     const grades = Object.keys(deltas);

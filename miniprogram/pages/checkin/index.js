@@ -61,7 +61,6 @@ Page({
       };
 
       const limits = routeCounts || gymLimits || {};
-      const dateStart = cycle && isValidYMD(cycle.startDate) ? cycle.startDate : "";
       const dateEnd = this.data.dateEnd || today();
 
       this.setData({
@@ -70,7 +69,7 @@ Page({
         cycleLabel,
         totals: (progress && progress.totals) || {},
         limits,
-        dateStart,
+        dateStart: "",
         dateEnd
       });
     } catch (e) {
@@ -176,6 +175,13 @@ Page({
   async goHome() {
     await this.confirmUnsavedAndRun(async () => {
       wx.switchTab({ url: "/pages/home/index" });
+    });
+  },
+  async goWall() {
+    const gymId = this.data.gymId;
+    if (!gymId) return;
+    await this.confirmUnsavedAndRun(async () => {
+      wx.navigateTo({ url: `/pages/wall/index?gymId=${gymId}` });
     });
   },
   getAllPicked() {

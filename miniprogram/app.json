@@ -6,7 +6,12 @@
     "pages/checkin/index",
     "pages/owner/index",
     "pages/gym-manage/index",
-    "pages/logs/index"
+    "pages/logs/index",
+    "pages/card-edit/index",
+    "pages/card-gift/index",
+    "pages/card-claim/index",
+    "pages/card-wallet/index",
+    "pages/wall/index"
   ],
   "window": {
     "backgroundColor": "#0B0D15",

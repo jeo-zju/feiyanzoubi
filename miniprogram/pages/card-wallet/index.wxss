@@ -1,0 +1,30 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  padding: 12rpx 0;
+}
+
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.info {
+  flex: 1;
+  margin-left: 16rpx;
+}
+
+.name {
+  font-weight: 700;
+}
+
+.ops {
+  width: 160rpx;
+}
+
+.mb {
+  margin-bottom: 12rpx;
+}
+

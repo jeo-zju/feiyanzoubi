@@ -1,0 +1,66 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">正面</view>
+    <view class="card-bd">
+      <input class="input mb" placeholder="名字（微信名或自定义）" placeholder-class="ph" value="{{front.displayName}}" bindinput="onName" />
+
+      <view class="row mb">
+        <picker mode="selector" range="{{titleOptions}}" value="{{titleIndex}}" bindchange="onPickTitle">
+          <view class="input flex">{{front.title || '选择一个头衔（也可自定义）'}}</view>
+        </picker>
+        <view class="btn btn-ghost ml" bindtap="onRandomTitle">随机</view>
+      </view>
+      <input class="input mb" placeholder="头衔（可自定义）" placeholder-class="ph" value="{{front.title}}" bindinput="onTitle" />
+
+      <view class="row mb">
+        <picker mode="selector" range="{{mbtiOptions}}" value="{{mbtiIndex}}" bindchange="onPickMbti">
+          <view class="input flex">{{front.mbti || '选择 MBTI（可不填）'}}</view>
+        </picker>
+        <view class="btn btn-ghost ml" bindtap="onClearMbti">清空</view>
+      </view>
+
+      <view class="row mb">
+        <switch checked="{{front.wanderer}}" bindchange="onWanderer" />
+        <view class="muted ml">浪迹天涯</view>
+      </view>
+      <input
+        class="input mb"
+        placeholder="常去岩馆（最多3个，用逗号分隔）"
+        placeholder-class="ph"
+        value="{{gymsText}}"
+        bindinput="onGymsText"
+        disabled="{{front.wanderer}}"
+      />
+
+      <view class="row mb">
+        <view class="muted">头像</view>
+        <view class="btn btn-ghost ml" bindtap="setAvatarWechat">用微信</view>
+        <view class="btn btn-ghost ml" bindtap="pickAvatar">自定义</view>
+      </view>
+      <view class="muted" wx:if="{{front.avatarMode==='custom' && front.avatarFileId}}">已设置自定义头像</view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">背面</view>
+    <view class="card-bd">
+      <view class="row mb">
+        <view class="btn btn-ghost" bindtap="pickPhoto">选择照片</view>
+        <view class="muted ml" wx:if="{{back.photoFileId}}">已上传</view>
+      </view>
+      <textarea class="textarea" placeholder="写一段攀岩故事（越具体越容易出梗）" placeholder-class="ph" value="{{back.story}}" bindinput="onStory" />
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">一句话介绍</view>
+    <view class="card-bd">
+      <seg-tabs tabs="{{styleTabs}}" value="{{oneLinerStyle}}" bind:change="onStyleChange" />
+      <view class="btn btn-warn mt2" bindtap="onGenerate">生成一句</view>
+      <textarea class="textarea mt2" placeholder="也可以手动改一句（保存会消耗一次 credit）" placeholder-class="ph" value="{{front.oneLiner}}" bindinput="onOneLiner" />
+    </view>
+  </view>
+
+  <view class="btn btn-primary mt2" bindtap="onSave">保存名片</view>
+</view>
+

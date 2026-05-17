@@ -1,0 +1,27 @@
+<view class="page">
+  <view class="card">
+    <view class="card-hd">{{gym.name || '攀岩墙'}}</view>
+    <view class="card-bd">
+      <view class="muted">容量 {{capacity}}，当前 {{total}}</view>
+      <view class="btn btn-warn mt2" bindtap="onHang">我要上墙</view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">墙上名片</view>
+    <view class="card-bd">
+      <view wx:if="{{!cards.length}}" class="muted">空墙一面，等你开张</view>
+      <view class="grid">
+        <view wx:for="{{cards}}" wx:key="_id" class="cell">
+          <image
+            class="avatar"
+            mode="aspectFill"
+            src="{{(item.snapshot.avatarMode==='custom'?item.snapshot.avatarFileId:item.snapshot.avatarUrl) || defaultAvatar}}"
+          ></image>
+          <view class="name">{{item.snapshot.displayName}}</view>
+          <view class="muted small">{{item.snapshot.title}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
