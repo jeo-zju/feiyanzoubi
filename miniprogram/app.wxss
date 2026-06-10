@@ -46,6 +46,14 @@ page {
   font-weight: 700;
 }
 
+.btn.mini {
+  height: 56rpx;
+  border-radius: 14rpx;
+  font-size: 24rpx;
+  padding: 0 16rpx;
+  box-sizing: border-box;
+}
+
 .btn-primary {
   background: #8f7bff;
   color: #0b0d15;

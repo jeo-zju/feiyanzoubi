@@ -1,7 +1,7 @@
 {
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index",
-    "stepper-row": "../../components/stepperRow/index"
+    "date-cal": "../../components/dateCalendarPicker/index"
   }
 }
 

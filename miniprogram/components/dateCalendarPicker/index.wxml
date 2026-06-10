@@ -1,0 +1,35 @@
+<view wx:if="{{visible}}" class="dcp-mask" catchtap="onClose">
+  <view class="dcp-panel" catchtap="noop">
+    <view class="dcp-hd">
+      <picker mode="selector" range="{{years}}" value="{{yearIndex}}" bindchange="onPickYear">
+        <view class="dcp-select">{{year}}年</view>
+      </picker>
+      <picker mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onPickMonth">
+        <view class="dcp-select">{{month}}月</view>
+      </picker>
+      <view class="dcp-close" catchtap="onClose">关闭</view>
+    </view>
+
+    <view class="dcp-week">
+      <view class="dcp-week-item muted">日</view>
+      <view class="dcp-week-item muted">一</view>
+      <view class="dcp-week-item muted">二</view>
+      <view class="dcp-week-item muted">三</view>
+      <view class="dcp-week-item muted">四</view>
+      <view class="dcp-week-item muted">五</view>
+      <view class="dcp-week-item muted">六</view>
+    </view>
+
+    <view class="dcp-grid">
+      <view
+        wx:for="{{cells}}"
+        wx:key="key"
+        class="dcp-cell {{item.empty?'dcp-cell--empty':''}} {{item.disabled?'dcp-cell--disabled':''}} {{item.selected?'dcp-cell--selected':''}}"
+        data-ymd="{{item.ymd}}"
+        catchtap="onTapDay"
+      >
+        <view class="dcp-day">{{item.day}}</view>
+      </view>
+    </view>
+  </view>
+</view>

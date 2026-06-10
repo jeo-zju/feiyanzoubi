@@ -1,8 +1,8 @@
 <view class="page">
-  <view class="card">
-    <view class="card-hd">{{gym.name || '攀岩墙'}}</view>
+  <view class="card hero">
     <view class="card-bd">
-      <view class="muted">容量 {{capacity}}，当前 {{total}}</view>
+      <view class="hero-title">{{gym.name || '攀岩墙'}}</view>
+      <view class="muted hero-sub">容量 {{capacity}}，当前 {{total}}（满了会请最早那位下去透气）</view>
       <view class="btn btn-warn mt2" bindtap="onHang">我要上墙</view>
     </view>
   </view>
@@ -20,6 +20,7 @@
           ></image>
           <view class="name">{{item.snapshot.displayName}}</view>
           <view class="muted small">{{item.snapshot.title}}</view>
+          <view class="muted tiny">{{item.snapshot.oneLiner}}</view>
         </view>
       </view>
     </view>

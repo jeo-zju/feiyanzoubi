@@ -30,7 +30,7 @@ function snapshotFromCard(card, avatarUrl) {
     oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor",
     avatarMode: safeText(front.avatarMode) === "custom" ? "custom" : "wechat",
     avatarFileId: safeText(front.avatarFileId),
-    avatarUrl: safeText(avatarUrl)
+    avatarUrl: safeText(front.avatarUrl || avatarUrl)
   };
 }
 

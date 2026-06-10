@@ -15,10 +15,16 @@
   <view wx:if="{{tab==='cycle'}}" class="card mt">
     <view class="card-hd">当前周期</view>
     <view class="card-bd">
+      <view class="muted field-tip">周期名：用于区分每次换线/活动</view>
       <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
+      <view class="muted field-tip">周期开始时间：从哪天开始生效</view>
       <picker mode="date" value="{{cycleForm.startDate}}" bindchange="onCycleStart">
         <view class="input mb date-picker">{{cycleForm.startDate}}</view>
       </picker>
+      <view class="row mb">
+        <view class="btn btn-ghost mini" bindtap="onCycleStartToday">今天</view>
+        <view class="btn btn-ghost mini" bindtap="onCycleStartMonth">本月1号</view>
+      </view>
       <view class="row mb">
         <input class="input flex" placeholder="抱石等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
         <view class="btn btn-warn tpl-btn" bindtap="onPickBoulderTemplate">抱石模板</view>
@@ -27,6 +33,7 @@
         <input class="input flex" placeholder="难度等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
         <view class="btn btn-warn tpl-btn" bindtap="onPickDifficultyTemplate">难度模板</view>
       </view>
+      <view class="muted field-tip">保存：新建或更新当前选中的周期；未关闭周期不能新建下一期</view>
       <view class="btn btn-primary" bindtap="saveCycle">保存周期</view>
 
       <view class="divider mt2"></view>
@@ -46,6 +53,7 @@
 
       <view class="divider mt2"></view>
       <view class="hist-title">关闭当前周期</view>
+      <view class="muted field-tip">周期结束时间：本周期到哪天结束（默认今天，可手动改）</view>
       <view class="row mb">
         <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate">
           <view class="input flex date-picker">{{closeEndDate}}</view>

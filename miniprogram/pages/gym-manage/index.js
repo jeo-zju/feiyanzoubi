@@ -146,6 +146,19 @@ Page({
   onCycleStart(e) {
     this.setData({ cycleForm: { ...this.data.cycleForm, startDate: e.detail.value } });
   },
+  onCycleStartToday() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: `${y}-${m}-${day}` } });
+  },
+  onCycleStartMonth() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: `${y}-${m}-01` } });
+  },
   onBoulderGrades(e) {
     this.setData({ cycleForm: { ...this.data.cycleForm, boulderGrades: e.detail.value } });
     this.refreshRouteRows();
@@ -243,10 +256,15 @@ Page({
       wx.showToast({ title: "未找到当前周期", icon: "none" });
       return;
     }
+    if (editing && editing.status === "archived") {
+      wx.showToast({ title: "该周期已关闭", icon: "none" });
+      return;
+    }
     const endDate = safeText(this.data.closeEndDate) || today();
+    const startDate = safeText(this.data.cycleForm.startDate) || "";
     wx.showModal({
       title: "关闭周期",
-      content: `确认将该周期关闭到 ${endDate} 吗？`,
+      content: `确认将本周期设置为 ${startDate || "开始日期未知"} ~ ${endDate} 吗？`,
       confirmText: "关闭",
       success: async (res) => {
         if (!res || !res.confirm) return;

@@ -3,34 +3,55 @@
     <view class="card-hd">我的名片</view>
     <view class="card-bd">
       <view wx:if="{{myPrimaryCard}}">
-        <view class="mycard" bindtap="onFlip">
-          <view wx:if="{{!flipped}}">
+        <view class="mycard" bindtap="goEditMyCard">
+          <view class="mycard-top">
             <view class="mycard-name">{{myPrimaryCard.displayName}}</view>
-            <view class="muted">{{myPrimaryCard.title}} {{myPrimaryCard.mbti}}</view>
-            <view class="muted mt2">{{myPrimaryCard.oneLiner}}</view>
+            <view class="mycard-badge">点此编辑</view>
           </view>
-          <view wx:else>
-            <image wx:if="{{myPrimaryCardDetail.back.photoFileId}}" class="mycard-photo" mode="aspectFill" src="{{myPrimaryCardDetail.back.photoFileId}}"></image>
-            <view class="muted mt2">{{myPrimaryCardDetail.back.story}}</view>
-          </view>
+          <view class="mycard-meta">{{myPrimaryCard.title}}<text wx:if="{{myPrimaryCard.mbti}}"> · {{myPrimaryCard.mbti}}</text></view>
+          <view class="mycard-one">{{myPrimaryCard.oneLiner}}</view>
         </view>
         <view class="row mt2">
-          <view class="btn btn-primary flex" bindtap="goEditMyCard">编辑</view>
-          <view class="btn btn-warn flex ml" bindtap="goGift">送人</view>
+          <view class="btn btn-warn flex" bindtap="goGift">送人</view>
+          <view class="btn btn-ghost flex ml" bindtap="goSaveMyCard">保存图片</view>
         </view>
       </view>
       <view wx:else>
-        <view class="muted">还没有名片，先来一张？</view>
-        <view class="btn btn-primary mt2" bindtap="goEditMyCard">初始化名片</view>
+        <view class="mycard mycard--empty" style="width: {{myCardCssW}}px; height: {{myCardCssH}}px;" bindtap="goEditMyCard">
+          <view class="mycard-ph">
+            <view class="mycard-ph-bar"></view>
+            <view class="mycard-ph-body">
+              <view class="mycard-ph-top">
+                <view class="mycard-ph-avatar"></view>
+                <view class="mycard-ph-right">
+                  <view class="mycard-ph-name">岩点测试员</view>
+                  <view class="mycard-ph-meta">长臂猿 · ENTP</view>
+                  <view class="mycard-ph-gym">浪迹天涯</view>
+                </view>
+                <view class="mycard-ph-badge">点此修改</view>
+              </view>
+              <view class="mycard-ph-one">用脚点谈判，用手点签字。</view>
+              <view class="mycard-ph-ft">飞岩走壁 · 攀岩名片</view>
+            </view>
+          </view>
+        </view>
       </view>
     </view>
   </view>
 
-  <view class="card mt">
+  <view class="card mt" bindtap="goWallet">
     <view class="card-hd">名片夹</view>
     <view class="card-bd">
-      <view class="muted">累计收到 {{receivedCount}} 张</view>
-      <view class="muted">今日灵感剩余 {{credit.remaining}} / {{credit.limit}}（0点刷新）</view>
+      <view class="wallet-row">
+        <view class="wallet-left">
+          <view class="wallet-num">{{receivedCount}}</view>
+          <view class="muted">累计收到</view>
+        </view>
+        <view class="wallet-right">
+          <view class="muted">今日灵感剩余</view>
+          <view class="wallet-credit">{{credit.remaining}} / {{credit.limit}}<text class="muted">（0点刷新）</text></view>
+        </view>
+      </view>
       <view class="thumbs mt2">
         <image
           wx:for="{{receivedThumbs}}"
@@ -39,29 +60,15 @@
           mode="aspectFill"
           src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl || defaultAvatar}}"
         ></image>
-        <view wx:if="{{receivedCount>0}}" class="btn btn-ghost ml" bindtap="goWallet">打开名片夹</view>
-        <view wx:else class="btn btn-ghost ml" bindtap="goGift">去收一张</view>
       </view>
     </view>
   </view>
 
-  <view class="card">
-    <view class="me">
-      <view class="me-left">
-        <view class="me-name">{{user.nickName || '岩友'}}</view>
-        <view class="muted">{{user.projectName}}</view>
-      </view>
-      <image class="me-avatar" src="{{user.avatarUrl || defaultAvatar}}"></image>
-    </view>
+  <view class="card mt">
+    <view class="card-hd">工具</view>
     <view class="card-bd">
-      <view class="btn btn-warn" bindtap="onSync">同步微信头像昵称</view>
-      <view class="openid mt2" wx:if="{{openid}}">
-        <view class="muted">我的用户ID</view>
-        <view class="row mt2">
-          <view class="tag flex">{{openid}}</view>
-          <view class="btn btn-ghost ml" bindtap="onCopyOpenid">复制</view>
-        </view>
-      </view>
+      <view class="btn btn-warn mb" bindtap="goGift">去做一张送给朋友</view>
+      <view class="btn btn-ghost" bindtap="onSync">同步微信头像昵称</view>
     </view>
   </view>
 

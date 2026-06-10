@@ -24,6 +24,7 @@ Page({
     date: "",
     dateStart: "",
     dateEnd: "",
+    calendarVisible: false,
     mode: "difficulty",
     modeTabs: [
       { key: "difficulty", label: "难度" },
@@ -36,7 +37,17 @@ Page({
   },
   async onLoad(query) {
     const gymId = query && query.gymId ? String(query.gymId) : "";
-    this.setData({ gymId, date: today(), dateEnd: today() });
+    let mode = "difficulty";
+    try {
+      const byGym = gymId ? wx.getStorageSync(`checkin_mode_${gymId}`) : "";
+      const global = wx.getStorageSync("checkin_mode");
+      const m = String(byGym || global || "");
+      if (m === "boulder" || m === "difficulty") mode = m;
+    } catch (e) {}
+    try {
+      if (gymId) wx.setStorageSync("lastGymId", gymId);
+    } catch (e) {}
+    this.setData({ gymId, date: today(), dateEnd: today(), mode });
     await this.loadContext();
     this.buildRows();
   },
@@ -61,7 +72,13 @@ Page({
       };
 
       const limits = routeCounts || gymLimits || {};
-      const dateEnd = this.data.dateEnd || today();
+      const dateStart = cycle && isValidYMD(cycle.startDate) ? cycle.startDate : "";
+      const dateEnd =
+        cycle && isValidYMD(cycle.endDate)
+          ? cycle.endDate
+          : cycle && cycle.endDate === ""
+            ? today()
+            : this.data.dateEnd || today();
 
       this.setData({
         gym,
@@ -69,7 +86,7 @@ Page({
         cycleLabel,
         totals: (progress && progress.totals) || {},
         limits,
-        dateStart: "",
+        dateStart,
         dateEnd
       });
     } catch (e) {
@@ -79,16 +96,36 @@ Page({
   onModeChange(e) {
     const mode = e.detail.value;
     this.setData({ mode });
+    try {
+      wx.setStorageSync("checkin_mode", mode);
+      if (this.data.gymId) wx.setStorageSync(`checkin_mode_${this.data.gymId}`, mode);
+    } catch (e) {}
     this.buildRows();
+  },
+  async selectDate(value) {
+    const v = String(value || "");
+    if (!v || v === this.data.date) return;
+    await this.confirmUnsavedAndRun(async () => {
+      this.setData({ date: v });
+      await this.loadContext();
+      this.buildRows();
+    });
   },
   async onPickDate(e) {
     const value = e && e.detail && e.detail.value ? String(e.detail.value) : "";
     if (!value || value === this.data.date) return;
-    await this.confirmUnsavedAndRun(async () => {
-      this.setData({ date: value });
-      await this.loadContext();
-      this.buildRows();
-    });
+    await this.selectDate(value);
+  },
+  openCalendar() {
+    this.setData({ calendarVisible: true });
+  },
+  closeCalendar() {
+    this.setData({ calendarVisible: false });
+  },
+  async onCalendarChange(e) {
+    const value = e && e.detail && e.detail.value ? String(e.detail.value) : "";
+    this.closeCalendar();
+    await this.selectDate(value);
   },
   buildRows() {
     const mode = this.data.mode;
@@ -271,6 +308,9 @@ Page({
           cycleId
         });
       }
+      try {
+        if (this.data.gymId) wx.setStorageSync("lastGymId", this.data.gymId);
+      } catch (e) {}
       wx.showToast({ title: `已打卡 +${totalPicked}`, icon: "none" });
       this.setData({ deltas: {} });
       this.syncBeforeUnload();

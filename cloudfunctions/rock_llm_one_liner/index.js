@@ -1,6 +1,4 @@
 const cloud = require("wx-server-sdk");
-const https = require("https");
-const { URL } = require("url");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -20,63 +18,20 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
-function resolveChatUrl(baseUrl) {
-  const b = safeText(baseUrl).replace(/\/+$/, "");
-  if (!b) return "";
-  if (b.endsWith("/chat/completions")) return b;
-  if (b.endsWith("/v1")) return `${b}/chat/completions`;
-  if (b.includes("/v1/")) return `${b}/chat/completions`;
-  return `${b}/v1/chat/completions`;
+function hash32(s) {
+  const str = safeText(s);
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
 }
 
-function requestJson(urlStr, payload, headers) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(urlStr);
-    const data = Buffer.from(JSON.stringify(payload || {}));
-    const req = https.request(
-      {
-        protocol: u.protocol,
-        hostname: u.hostname,
-        port: u.port || 443,
-        path: `${u.pathname}${u.search || ""}`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": data.length,
-          ...(headers || {})
-        }
-      },
-      (res) => {
-        const chunks = [];
-        res.on("data", (c) => chunks.push(c));
-        res.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
-          let json = null;
-          try {
-            json = body ? JSON.parse(body) : null;
-          } catch (e) {
-            json = null;
-          }
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ status: res.statusCode, json, raw: body });
-            return;
-          }
-          const msg =
-            (json && (json.error && (json.error.message || json.error.msg))) ||
-            (json && json.message) ||
-            body ||
-            `HTTP ${res.statusCode}`;
-          const err = new Error(msg);
-          err.status = res.statusCode;
-          err.raw = body;
-          reject(err);
-        });
-      }
-    );
-    req.on("error", reject);
-    req.write(data);
-    req.end();
-  });
+function pick(list, seed) {
+  const arr = Array.isArray(list) ? list : [];
+  if (!arr.length) return "";
+  return arr[seed % arr.length];
 }
 
 function normalizeOneLiner(s) {
@@ -88,42 +43,39 @@ function normalizeOneLiner(s) {
   return cleaned.slice(0, 40);
 }
 
-function systemPrompt(style) {
-  const base = [
-    "你是攀岩名片文案生成器。",
-    "你只输出 1 句中文，不换行，不加引号，不加解释。",
-    "字数 18~30 字优先，必要时可更短。",
-    "不要脏话，不要人身攻击，不要敏感内容。",
-    "要像攀岩圈内人写的，允许黑话、比喻、隐晦的梗。"
-  ];
-  if (style === "encourage") {
-    base.push("风格：鼓励向，像训练搭子一样稳住情绪，带一点俏皮，但整体更温暖。");
-  } else {
-    base.push("风格：幽默向，风趣+牙尖嘴利但不恶毒，更偏梗与隐晦反讽。");
+function mockOneLiner(style, story) {
+  const s = safeText(story);
+  const seed = hash32(`${style}|${s}`);
+
+  if (style === "humor") {
+    const special = [
+      { re: /(牙|嘴|磕|咬)/, text: "这是为数不多的用嘴攀岩者。" },
+      { re: /(热身|拉伸)/, text: "热身做得比主线还认真。" },
+      { re: /(掉|摔|落|飞出去)/, text: "落点熟练到像回家。" },
+      { re: /(横移|横着|traverse)/i, text: "直上不会，横移很稳。" },
+      { re: /(脚|脚点|踩)/, text: "脚点谈判专家，落脚全靠嘴。" }
+    ];
+    for (let i = 0; i < special.length; i++) {
+      if (special[i].re.test(s)) return special[i].text;
+    }
+    const pool = [
+      "今天不爬顶也行，姿态先赢。",
+      "上墙前很谦虚，上墙后很嘴硬。",
+      "动作不一定干净，嘴一定干净利落。",
+      "岩点没说话，但我已经吵赢了。",
+      "理论都懂，身体随机抽签。"
+    ];
+    return pick(pool, seed);
   }
-  return base.join("\n");
-}
 
-function userPrompt(input) {
-  const story = safeText(input && input.story);
-  const name = safeText(input && input.displayName);
-  const title = safeText(input && input.title);
-  const mbti = safeText(input && input.mbti);
-  const gyms = Array.isArray(input && input.gyms) ? input.gyms : [];
-  const gymText = gyms
-    .map((g) => (g && typeof g === "object" ? safeText(g.name || g.gymName || g.title) : safeText(g)))
-    .filter(Boolean)
-    .slice(0, 3)
-    .join("、");
-
-  const parts = [];
-  if (name) parts.push(`名字：${name}`);
-  if (title) parts.push(`头衔：${title}`);
-  if (mbti) parts.push(`MBTI：${mbti}`);
-  if (gymText) parts.push(`常去岩馆：${gymText}`);
-  parts.push(`背面故事：${story}`);
-  parts.push("请生成名片正面的一句话介绍。");
-  return parts.join("\n");
+  const pool = [
+    "稳住呼吸，动作干净，今天也算赢。",
+    "别急，下一把就顺了。",
+    "你已经很强了，剩下交给节奏。",
+    "每次上墙都是进步，别跟自己吵架。",
+    "热身到位，脚点清楚，顶点自然来。"
+  ];
+  return pick(pool, seed);
 }
 
 exports.main = async (event) => {
@@ -132,42 +84,9 @@ exports.main = async (event) => {
     const story = safeText(event && event.story);
     const style = safeText(event && event.style) === "encourage" ? "encourage" : "humor";
     if (!story) return fail("BAD_REQUEST", "缺少 story", tid);
-
-    const baseUrl = safeText(process.env.LLM_BASE_URL);
-    const apiKey = safeText(process.env.LLM_API_KEY);
-    const model = safeText(process.env.LLM_MODEL);
-    if (!baseUrl || !apiKey || !model) return fail("LLM_NOT_CONFIGURED", "未配置 LLM_BASE_URL/LLM_API_KEY/LLM_MODEL", tid);
-
-    const chatUrl = resolveChatUrl(baseUrl);
-    if (!chatUrl) return fail("LLM_NOT_CONFIGURED", "LLM_BASE_URL 无效", tid);
-
-    const payload = {
-      model,
-      temperature: style === "encourage" ? 0.7 : 0.9,
-      max_tokens: 80,
-      messages: [
-        { role: "system", content: systemPrompt(style) },
-        { role: "user", content: userPrompt(event || {}) }
-      ]
-    };
-
-    const res = await requestJson(
-      chatUrl,
-      payload,
-      {
-        Authorization: `Bearer ${apiKey}`
-      }
-    );
-
-    const content =
-      (res && res.json && res.json.choices && res.json.choices[0] && res.json.choices[0].message && res.json.choices[0].message.content) ||
-      (res && res.json && res.json.choices && res.json.choices[0] && res.json.choices[0].text) ||
-      "";
-    const oneLiner = normalizeOneLiner(content);
-    if (!oneLiner) return fail("LLM_EMPTY", "生成为空", tid);
-    return ok({ oneLiner, style }, tid);
+    const oneLiner = normalizeOneLiner(mockOneLiner(style, story));
+    return ok({ oneLiner, style, mocked: true }, tid);
   } catch (e) {
     return fail("LLM_FAILED", e && e.message ? e.message : "生成失败", tid);
   }
 };
-

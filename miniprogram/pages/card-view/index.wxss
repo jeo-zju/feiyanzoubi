@@ -1,0 +1,42 @@
+.card-hero {
+  background: linear-gradient(135deg, rgba(143, 123, 255, 0.18), rgba(242, 193, 78, 0.10));
+  border: 1rpx solid rgba(143, 123, 255, 0.22);
+}
+
+.hero-hd {
+  margin-bottom: 18rpx;
+}
+
+.hero-title {
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.hero-sub {
+  margin-top: 6rpx;
+}
+
+.canvas {
+  border-radius: 18rpx;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1rpx solid rgba(255, 255, 255, 0.10);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.flex {
+  flex: 1;
+}
+
+.ml {
+  margin-left: 16rpx;
+}
+
+.mt2 {
+  margin-top: 24rpx;
+}
+

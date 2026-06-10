@@ -1,29 +1,39 @@
 <view class="page">
-  <view class="card">
-    <view class="card-hd">先做一张要送的名片</view>
+  <view class="card hero">
     <view class="card-bd">
-      <view class="muted mb">当前草稿：{{draftCardId || '暂无'}}</view>
-      <view class="btn btn-primary" bindtap="goMake">制作/编辑草稿</view>
+      <view class="hero-title">做一张送给朋友</view>
+      <view class="muted hero-sub">每次创建链接/直送会消耗 1 次灵感</view>
+      <view class="row mt2">
+        <view class="btn btn-primary flex" bindtap="goMake">1. 先做草稿</view>
+        <view class="btn btn-ghost flex ml" bindtap="goSaveDraft" wx:if="{{draftCardId}}">保存草稿图</view>
+      </view>
+      <view class="muted mt2">当前草稿：{{draftCardId || '暂无'}}</view>
     </view>
   </view>
 
   <view class="card mt">
-    <view class="card-hd">链接领取</view>
+    <view class="card-hd">2. 选择赠送方式</view>
     <view class="card-bd">
-      <view class="btn btn-warn" bindtap="onCreateLink" data-disabled="{{!draftCardId}}">生成领取链接</view>
-      <view wx:if="{{giftId}}" class="mt2">
-        <view class="muted">giftId：{{giftId}}</view>
-        <image wx:if="{{qrFileId}}" class="qr" mode="aspectFit" src="{{qrFileId}}"></image>
+      <view class="split">
+        <view class="split-left">
+          <view class="split-title">链接领取</view>
+          <view class="muted">生成后可转发给好友，或让对方扫码领取</view>
+          <view class="btn btn-warn mt2" bindtap="onCreateLink">生成领取码</view>
+          <view class="btn btn-ghost mt2" open-type="share" wx:if="{{giftId}}">转发给微信好友</view>
+        </view>
       </view>
     </view>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd">直接赠送</view>
+  <view class="card mt" wx:if="{{giftId}}">
+    <view class="card-hd">领取码</view>
     <view class="card-bd">
-      <input class="input mb" placeholder="对方用户ID（openid）" placeholder-class="ph" value="{{toOpenid}}" bindinput="onToOpenid" />
-      <view class="btn btn-warn" bindtap="onCreateDirect" data-disabled="{{!draftCardId}}">直接赠送</view>
+      <view class="row">
+        <view class="tag flex">{{giftId}}</view>
+        <view class="btn btn-ghost ml" bindtap="onCopyGiftId">复制</view>
+      </view>
+      <image wx:if="{{qrFileId}}" class="qr" mode="aspectFit" src="{{qrFileId}}"></image>
+      <view class="muted mt2">让朋友扫码即可领取</view>
     </view>
   </view>
 </view>
-

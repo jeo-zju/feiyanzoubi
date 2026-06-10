@@ -9,15 +9,20 @@ Page({
       projectName: "Project"
     },
     defaultAvatar: "/images/avatar.png",
-    openid: "",
     credit: { remaining: 0, limit: 10 },
     myPrimaryCard: null,
     myPrimaryCardDetail: null,
     flipped: false,
     receivedCount: 0,
-    receivedThumbs: []
+    receivedThumbs: [],
+    myCardCssW: 0,
+    myCardCssH: 0
+  },
+  onLoad() {
+    this.computeMyCardSize();
   },
   async onShow() {
+    this.computeMyCardSize();
     await this.ensureLogin();
     const app = getApp();
     const user = (app && app.globalData && app.globalData.user) || {};
@@ -29,6 +34,17 @@ Page({
       }
     });
     await this.loadCardSummary();
+  },
+  computeMyCardSize() {
+    const BANK_CARD_RATIO = 85.6 / 53.98;
+    const sys = wx.getSystemInfoSync();
+    const winW = sys && sys.windowWidth ? sys.windowWidth : 375;
+    const rpx2px = (rpx) => (rpx * winW) / 750;
+    const pagePad = rpx2px(24 * 2);
+    const cardBdPad = rpx2px(22 * 2);
+    const w = Math.floor(Math.max(240, winW - pagePad - cardBdPad));
+    const h = Math.floor(w / BANK_CARD_RATIO);
+    if (w !== this.data.myCardCssW || h !== this.data.myCardCssH) this.setData({ myCardCssW: w, myCardCssH: h });
   },
   async ensureLogin() {
     const app = getApp();
@@ -61,7 +77,6 @@ Page({
     try {
       const res = await cardApi.listMy({});
       this.setData({
-        openid: (res && res.openid) || "",
         credit: (res && res.credit) || { remaining: 0, limit: 10 },
         myPrimaryCard: (res && res.myPrimaryCard) || null,
         receivedCount: Number(res && res.receivedCount ? res.receivedCount : 0),
@@ -81,6 +96,11 @@ Page({
   goWallet() {
     wx.navigateTo({ url: "/pages/card-wallet/index" });
   },
+  goSaveMyCard() {
+    const cardId = this.data.myPrimaryCard && this.data.myPrimaryCard.cardId ? this.data.myPrimaryCard.cardId : "";
+    if (!cardId) return;
+    wx.navigateTo({ url: `/pages/card-view/index?cardId=${cardId}` });
+  },
   async onFlip() {
     const primary = this.data.myPrimaryCard;
     if (!primary || !primary.cardId) return;
@@ -92,10 +112,5 @@ Page({
     }
     this.setData({ flipped: !this.data.flipped });
   },
-  onCopyOpenid() {
-    const openid = this.data.openid || "";
-    if (!openid) return;
-    wx.setClipboardData({ data: openid });
-  }
 });
 

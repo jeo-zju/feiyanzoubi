@@ -27,14 +27,24 @@ function shanghaiDateKey(ts) {
   return d.toISOString().slice(0, 10);
 }
 
+function isCollectionNotExistError(e) {
+  const msg = e && e.message ? String(e.message) : "";
+  return msg.includes("database collection not exists") || msg.includes("Db or Table not exist") || msg.includes("-502005");
+}
+
 async function getCredit(openid) {
   const date = shanghaiDateKey(Date.now());
   const col = db.collection("RockCardCredits");
-  const res = await col.where({ openid, date }).limit(1).get();
-  const doc = res && res.data && res.data[0] ? res.data[0] : null;
-  const limit = doc && typeof doc.limit === "number" ? doc.limit : 10;
-  const used = doc && typeof doc.used === "number" ? doc.used : 0;
-  return { date, limit, used, remaining: Math.max(0, limit - used) };
+  try {
+    const res = await col.where({ openid, date }).limit(1).get();
+    const doc = res && res.data && res.data[0] ? res.data[0] : null;
+    const limit = doc && typeof doc.limit === "number" ? doc.limit : 10;
+    const used = doc && typeof doc.used === "number" ? doc.used : 0;
+    return { date, limit, used, remaining: Math.max(0, limit - used) };
+  } catch (e) {
+    if (isCollectionNotExistError(e)) return { date, limit: 10, used: 0, remaining: 10 };
+    throw e;
+  }
 }
 
 function pickCardSnapshot(card, userAvatarUrl) {
@@ -48,7 +58,7 @@ function pickCardSnapshot(card, userAvatarUrl) {
     oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor",
     avatarMode: safeText(front.avatarMode) === "custom" ? "custom" : "wechat",
     avatarFileId: safeText(front.avatarFileId),
-    avatarUrl: safeText(userAvatarUrl)
+    avatarUrl: safeText(front.avatarUrl || userAvatarUrl)
   };
 }
 
@@ -64,8 +74,13 @@ exports.main = async (event) => {
     const userAvatarUrl = userDoc && userDoc.avatarUrl ? String(userDoc.avatarUrl) : "";
 
     const cardsCol = db.collection("RockCards");
-    const ownedRes = await cardsCol.where({ ownerOpenid: openid, status: "active" }).orderBy("updatedAt", "desc").limit(120).get();
-    const owned = (ownedRes && ownedRes.data) || [];
+    let owned = [];
+    try {
+      const ownedRes = await cardsCol.where({ ownerOpenid: openid, status: "active" }).orderBy("updatedAt", "desc").limit(120).get();
+      owned = (ownedRes && ownedRes.data) || [];
+    } catch (e) {
+      if (!isCollectionNotExistError(e)) throw e;
+    }
 
     const primary = owned.find((c) => !!c && c.isPrimary) || null;
     const received = owned.filter((c) => !!c && safeText(c.createdByOpenid) && safeText(c.createdByOpenid) !== openid);
@@ -78,42 +93,36 @@ exports.main = async (event) => {
 
     const credit = await getCredit(openid);
 
-    return ok(
-      {
-        openid,
-        credit,
-        myPrimaryCard: primary ? pickCardSnapshot(primary, userAvatarUrl) : null,
-        receivedCount,
-        receivedThumbs,
-        ...(full
-          ? {
-              receivedCards: received
-                .slice(0, 100)
-                .map((c) => ({ ...pickCardSnapshot(c, userAvatarUrl), createdAt: c && c.createdAt ? c.createdAt : 0 }))
-                .filter((x) => x && x.cardId),
-              myCreatedGiftedCards: (
-                (
-                  await cardsCol
-                    .where(
-                      _.and([
-                        { createdByOpenid: openid },
-                        { ownerOpenid: _.neq("") },
-                        { ownerOpenid: _.neq(openid) },
-                        { status: "active" }
-                      ])
-                    )
-                    .orderBy("updatedAt", "desc")
-                    .limit(50)
-                    .get()
-                )?.data || []
-              )
-                .map((c) => ({ ...pickCardSnapshot(c, userAvatarUrl), createdAt: c && c.createdAt ? c.createdAt : 0 }))
-                .filter((x) => x && x.cardId)
-            }
-          : {})
-      },
-      tid
-    );
+    const payload = {
+      openid,
+      credit,
+      myPrimaryCard: primary ? pickCardSnapshot(primary, userAvatarUrl) : null,
+      receivedCount,
+      receivedThumbs
+    };
+
+    if (full) {
+      payload.receivedCards = received
+        .slice(0, 100)
+        .map((c) => ({ ...pickCardSnapshot(c, userAvatarUrl), createdAt: c && c.createdAt ? c.createdAt : 0 }))
+        .filter((x) => x && x.cardId);
+
+      let sentRes = null;
+      try {
+        sentRes = await cardsCol.where({ createdByOpenid: openid, status: "active" }).orderBy("updatedAt", "desc").limit(200).get();
+      } catch (e) {
+        if (isCollectionNotExistError(e)) sentRes = { data: [] };
+        else sentRes = await cardsCol.where({ createdByOpenid: openid, status: "active" }).limit(200).get();
+      }
+      const sent = (sentRes && sentRes.data) || [];
+      payload.myCreatedGiftedCards = sent
+        .filter((c) => !!c && safeText(c.ownerOpenid) && safeText(c.ownerOpenid) !== openid)
+        .slice(0, 50)
+        .map((c) => ({ ...pickCardSnapshot(c, userAvatarUrl), createdAt: c && c.createdAt ? c.createdAt : 0 }))
+        .filter((x) => x && x.cardId);
+    }
+
+    return ok(payload, tid);
   } catch (e) {
     return fail("CARD_LIST_FAILED", e && e.message ? e.message : "查询失败", tid);
   }

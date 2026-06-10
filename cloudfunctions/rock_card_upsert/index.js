@@ -72,6 +72,7 @@ function normalizeCard(input) {
       wanderer,
       avatarMode: safeText(front.avatarMode) === "custom" ? "custom" : "wechat",
       avatarFileId: safeText(front.avatarFileId),
+      avatarUrl: safeText(front.avatarUrl),
       oneLiner: clampText(front.oneLiner, 60),
       oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor"
     },
@@ -114,12 +115,16 @@ exports.main = async (event) => {
   try {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
-    await ensureUser(openid);
+    const userDoc = await ensureUser(openid);
+    const userAvatarUrl = userDoc && userDoc.avatarUrl ? String(userDoc.avatarUrl) : "";
 
     const mode = safeText(event && event.mode) === "giftDraft" ? "giftDraft" : "self";
     const cardId = safeText(event && event.cardId);
 
     const normalized = normalizeCard(event && event.card ? event.card : null);
+    if (normalized.front.avatarMode === "wechat" && !normalized.front.avatarFileId) {
+      if (!normalized.front.avatarUrl && userAvatarUrl) normalized.front.avatarUrl = userAvatarUrl;
+    }
     if (!normalized.back.story) return fail("BAD_REQUEST", "背面故事不能为空", tid);
 
     const now = Date.now();
@@ -187,4 +192,3 @@ exports.main = async (event) => {
     return fail("CARD_UPSERT_FAILED", e && e.message ? e.message : "保存失败", tid);
   }
 };
-

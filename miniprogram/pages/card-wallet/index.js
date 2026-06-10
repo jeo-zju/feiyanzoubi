@@ -6,7 +6,8 @@ Page({
   data: {
     credit: { remaining: 0, limit: 10 },
     receivedCount: 0,
-    receivedCards: []
+    receivedCards: [],
+    defaultAvatar: "/images/avatar.png"
   },
   onShow() {
     this.load();
@@ -51,6 +52,13 @@ Page({
         }
       }
     });
+  },
+  goGift() {
+    wx.navigateTo({ url: "/pages/card-gift/index" });
+  },
+  onSave(e) {
+    const cardId = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id);
+    if (!cardId) return;
+    wx.navigateTo({ url: `/pages/card-view/index?cardId=${cardId}` });
   }
 });
-

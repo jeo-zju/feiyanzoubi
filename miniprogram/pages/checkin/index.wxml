@@ -1,18 +1,18 @@
 <view class="page">
   <view class="card">
     <view class="top">
-      <view class="top-left">
+      <view class="top-row">
         <view class="gym">{{gym.name}}</view>
-        <view class="tag cycle-tag">{{cycleLabel}}</view>
+        <view class="actions">
+          <view class="btn btn-ghost top-btn" bindtap="goWall">攀岩墙</view>
+          <view class="btn btn-warn top-btn" bindtap="goHome">去爬其他馆</view>
+        </view>
       </view>
-      <view class="top-right">
-        <view class="btn btn-warn top-btn" bindtap="goHome">去爬其他馆</view>
-        <view class="btn btn-ghost top-btn" bindtap="goWall">攀岩墙</view>
-        <view class="date-wrap">
+      <view class="top-sub">
+        <view class="tag cycle-tag">{{cycleLabel}}</view>
+        <view class="date-chip" bindtap="openCalendar">
           <view class="muted date-label">打卡日期</view>
-          <picker mode="date" value="{{date}}" start="{{dateStart}}" end="{{dateEnd}}" bindchange="onPickDate">
-            <view class="tag tag-warn date-tag">{{date}}</view>
-          </picker>
+          <view class="tag tag-warn date-tag">{{date}}</view>
         </view>
       </view>
     </view>
@@ -56,5 +56,14 @@
   </view>
 
   <view class="btn btn-primary submit" bindtap="onSubmit">今天就爬到这了！</view>
+
+  <date-cal
+    visible="{{calendarVisible}}"
+    value="{{date}}"
+    min="{{dateStart}}"
+    max="{{dateEnd}}"
+    bind:change="onCalendarChange"
+    bind:close="closeCalendar"
+  />
 </view>
 

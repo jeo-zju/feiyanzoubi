@@ -1,29 +1,49 @@
 <view class="page">
   <view class="card">
-    <view class="card-hd">统计</view>
+    <view class="card-hd">名片夹</view>
     <view class="card-bd">
-      <view class="muted">累计收到 {{receivedCount}} 张</view>
-      <view class="muted">今日灵感剩余 {{credit.remaining}} / {{credit.limit}}</view>
+      <view class="stat-row">
+        <view class="stat">
+          <view class="stat-num">{{receivedCount}}</view>
+          <view class="muted">累计收到</view>
+        </view>
+        <view class="stat">
+          <view class="muted">今日灵感剩余</view>
+          <view class="stat-credit">{{credit.remaining}} / {{credit.limit}}</view>
+        </view>
+      </view>
+      <view class="row mt2">
+        <view class="btn btn-warn flex" bindtap="goGift">去做一张送人</view>
+      </view>
     </view>
   </view>
 
   <view class="card mt">
     <view class="card-hd">收到的名片</view>
     <view class="card-bd">
-      <view wx:if="{{!receivedCards.length}}" class="muted">暂无</view>
-      <view wx:for="{{receivedCards}}" wx:key="cardId" class="row">
-        <image class="avatar" mode="aspectFill" src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl}}"></image>
-        <view class="info">
-          <view class="name">{{item.displayName}}</view>
-          <view class="muted">{{item.title}} {{item.mbti}}</view>
-          <view class="muted">{{item.oneLiner}}</view>
+      <view wx:if="{{!receivedCards.length}}" class="empty muted">还没收到名片</view>
+      <view wx:for="{{receivedCards}}" wx:key="cardId" class="card-item">
+        <view class="item-left">
+          <image
+            class="avatar"
+            mode="aspectFill"
+            src="{{(item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl) || defaultAvatar}}"
+          ></image>
         </view>
-        <view class="ops">
-          <view class="btn btn-ghost mb" data-id="{{item.cardId}}" bindtap="onSetPrimary">设为主卡</view>
-          <view class="btn btn-ghost" data-id="{{item.cardId}}" bindtap="onRemove">删除</view>
+        <view class="item-mid">
+          <view class="name">{{item.displayName}}</view>
+          <view class="meta">
+            <view class="tag tag-purple">{{item.title}}</view>
+            <view wx:if="{{item.mbti}}" class="tag tag-warn ml">{{item.mbti}}</view>
+          </view>
+          <view class="one muted">{{item.oneLiner}}</view>
+          <view class="row mt2">
+            <view class="btn btn-ghost flex" data-id="{{item.cardId}}" bindtap="onSave">保存</view>
+            <view class="btn btn-ghost flex ml" data-id="{{item.cardId}}" bindtap="onSetPrimary">设为主卡</view>
+            <view class="btn btn-ghost flex ml" data-id="{{item.cardId}}" bindtap="onRemove">删除</view>
+          </view>
         </view>
       </view>
     </view>
   </view>
 </view>
-
