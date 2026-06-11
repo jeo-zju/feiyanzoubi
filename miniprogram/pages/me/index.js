@@ -1,5 +1,6 @@
-const { login } = require("../../services/api/auth");
 const cardApi = require("../../services/api/card");
+const { ensureAppLogin } = require("../../utils/session");
+const { getWindowWidth } = require("../../utils/window");
 
 Page({
   data: {
@@ -10,6 +11,7 @@ Page({
     },
     defaultAvatar: "/images/avatar.png",
     credit: { remaining: 0, limit: 10 },
+    creditPercent: 0,
     myPrimaryCard: null,
     myPrimaryCardDetail: null,
     flipped: false,
@@ -37,8 +39,7 @@ Page({
   },
   computeMyCardSize() {
     const BANK_CARD_RATIO = 85.6 / 53.98;
-    const sys = wx.getSystemInfoSync();
-    const winW = sys && sys.windowWidth ? sys.windowWidth : 375;
+    const winW = getWindowWidth();
     const rpx2px = (rpx) => (rpx * winW) / 750;
     const pagePad = rpx2px(24 * 2);
     const cardBdPad = rpx2px(22 * 2);
@@ -47,37 +48,29 @@ Page({
     if (w !== this.data.myCardCssW || h !== this.data.myCardCssH) this.setData({ myCardCssW: w, myCardCssH: h });
   },
   async ensureLogin() {
-    const app = getApp();
-    if (app && app.globalData && app.globalData.user && app.globalData.user.openid) return;
     try {
-      const res = await login(null);
-      if (app && app.globalData) app.globalData.user = res && res.user ? res.user : res;
+      await ensureAppLogin();
     } catch (e) {}
   },
-  async onSync() {
-    try {
-      const profile = await wx.getUserProfile({ desc: "用于展示头像昵称" });
-      const userInfo = profile && profile.userInfo ? profile.userInfo : null;
-      const res = await login(userInfo);
-      const app = getApp();
-      if (app && app.globalData) app.globalData.user = res && res.user ? res.user : res;
-      wx.showToast({ title: "已同步", icon: "none" });
-      await this.onShow();
-    } catch (e) {
-      wx.showToast({ title: "未授权", icon: "none" });
-    }
+  goProfileEdit() {
+    wx.navigateTo({ url: "/pages/profile-edit/index" });
   },
   goOwner() {
     wx.navigateTo({ url: "/pages/owner/index" });
   },
-  goLogs() {
-    wx.navigateTo({ url: "/pages/logs/index" });
+  goDebugLogs() {
+    wx.navigateTo({ url: "/pages/debug-logs/index" });
   },
   async loadCardSummary() {
     try {
       const res = await cardApi.listMy({});
+      const credit = (res && res.credit) || { remaining: 0, limit: 10 };
+      const remaining = Number(credit && credit.remaining ? credit.remaining : 0);
+      const limit = Number(credit && credit.limit ? credit.limit : 0);
+      const creditPercent = limit > 0 ? Math.max(0, Math.min(100, Math.round((remaining * 100) / limit))) : 0;
       this.setData({
-        credit: (res && res.credit) || { remaining: 0, limit: 10 },
+        credit,
+        creditPercent,
         myPrimaryCard: (res && res.myPrimaryCard) || null,
         receivedCount: Number(res && res.receivedCount ? res.receivedCount : 0),
         receivedThumbs: (res && res.receivedThumbs) || [],

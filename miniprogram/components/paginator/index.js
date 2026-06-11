@@ -1,12 +1,11 @@
 Component({
   properties: {
     page: { type: Number, value: 1 },
-    hasPrev: { type: Boolean, value: false },
     hasNext: { type: Boolean, value: false }
   },
   methods: {
     onPrev() {
-      if (!this.data.hasPrev) return;
+      if (Number(this.data.page || 1) <= 1) return;
       this.triggerEvent("prev");
     },
     onNext() {

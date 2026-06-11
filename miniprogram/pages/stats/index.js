@@ -1,4 +1,5 @@
 const { summary } = require("../../services/api/stats");
+const { startPageLoad, finishPageLoad, turnToPrevPage, turnToNextPage } = require("../../utils/pageState");
 
 Page({
   data: {
@@ -14,24 +15,20 @@ Page({
     this.load({ reset: true });
   },
   onPrev() {
-    if (this.data.page <= 1) return;
-    this.setData({ page: this.data.page - 1 });
-    this.load({ reset: false });
+    turnToPrevPage(this, this.load);
   },
   onNext() {
-    if (!this.data.hasNext) return;
-    this.setData({ page: this.data.page + 1 });
-    this.load({ reset: false });
+    turnToNextPage(this, this.load);
   },
   async load({ reset }) {
-    if (this.data.loading) return;
-    const page = reset ? 1 : this.data.page;
-    this.setData({ loading: true, page });
+    const paging = startPageLoad(this, reset);
+    if (!paging) return;
+    const { page, pageSize } = paging;
     try {
       const res = await summary({
         days: 30,
         page,
-        pageSize: this.data.pageSize
+        pageSize
       });
       const chartPoints = Array.isArray(res && res.chartPoints)
         ? res.chartPoints.map((p) => {
@@ -53,7 +50,7 @@ Page({
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     } finally {
-      this.setData({ loading: false });
+      finishPageLoad(this);
     }
   }
 });

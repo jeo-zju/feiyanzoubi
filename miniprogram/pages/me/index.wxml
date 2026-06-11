@@ -1,19 +1,29 @@
 <view class="page">
-  <view class="card">
+  <view class="profile-shell" bindtap="goProfileEdit">
+    <image class="profile-avatar" mode="aspectFill" src="{{user.avatarUrl || defaultAvatar}}"></image>
+    <view class="profile-main">
+      <view class="profile-name">{{user.nickName || "岩友"}}</view>
+      <view class="profile-sub">{{user.projectName || "Project"}}</view>
+      <view class="profile-tip">点击编辑资料</view>
+    </view>
+    <view class="profile-arrow">›</view>
+  </view>
+
+  <view class="card card-soft mt">
     <view class="card-hd">我的名片</view>
     <view class="card-bd">
       <view wx:if="{{myPrimaryCard}}">
         <view class="mycard" bindtap="goEditMyCard">
           <view class="mycard-top">
             <view class="mycard-name">{{myPrimaryCard.displayName}}</view>
-            <view class="mycard-badge">点此编辑</view>
+            <view class="mycard-badge">编辑</view>
           </view>
           <view class="mycard-meta">{{myPrimaryCard.title}}<text wx:if="{{myPrimaryCard.mbti}}"> · {{myPrimaryCard.mbti}}</text></view>
           <view class="mycard-one">{{myPrimaryCard.oneLiner}}</view>
         </view>
-        <view class="row mt2">
-          <view class="btn btn-warn flex" bindtap="goGift">送人</view>
-          <view class="btn btn-ghost flex ml" bindtap="goSaveMyCard">保存图片</view>
+        <view class="action-pills">
+          <view class="action-pill action-pill--warn" bindtap="goGift">送人</view>
+          <view class="action-pill" bindtap="goSaveMyCard">保存</view>
         </view>
       </view>
       <view wx:else>
@@ -28,7 +38,7 @@
                   <view class="mycard-ph-meta">长臂猿 · ENTP</view>
                   <view class="mycard-ph-gym">浪迹天涯</view>
                 </view>
-                <view class="mycard-ph-badge">点此修改</view>
+                <view class="mycard-ph-badge">创建</view>
               </view>
               <view class="mycard-ph-one">用脚点谈判，用手点签字。</view>
               <view class="mycard-ph-ft">飞岩走壁 · 攀岩名片</view>
@@ -39,44 +49,55 @@
     </view>
   </view>
 
-  <view class="card mt" bindtap="goWallet">
-    <view class="card-hd">名片夹</view>
-    <view class="card-bd">
-      <view class="wallet-row">
-        <view class="wallet-left">
-          <view class="wallet-num">{{receivedCount}}</view>
-          <view class="muted">累计收到</view>
+  <view class="glance-grid mt">
+    <view class="card glance-card" bindtap="goWallet">
+      <view class="card-bd glance-bd">
+        <view class="glance-top">
+          <view class="glance-title">名片夹</view>
+          <view class="glance-value">{{receivedCount}}</view>
         </view>
-        <view class="wallet-right">
-          <view class="muted">今日灵感剩余</view>
-          <view class="wallet-credit">{{credit.remaining}} / {{credit.limit}}<text class="muted">（0点刷新）</text></view>
+        <view class="glance-sub">收到的卡片</view>
+        <view class="thumbs thumbs--compact">
+          <image
+            wx:for="{{receivedThumbs}}"
+            wx:key="cardId"
+            class="thumb thumb--compact"
+            mode="aspectFill"
+            src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl || defaultAvatar}}"
+          ></image>
+          <view wx:if="{{!receivedThumbs.length}}" class="thumb thumb--ghost"></view>
+          <view wx:if="{{!receivedThumbs.length}}" class="thumb thumb--ghost"></view>
+          <view wx:if="{{!receivedThumbs.length}}" class="thumb thumb--ghost"></view>
         </view>
       </view>
-      <view class="thumbs mt2">
-        <image
-          wx:for="{{receivedThumbs}}"
-          wx:key="cardId"
-          class="thumb"
-          mode="aspectFill"
-          src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl || defaultAvatar}}"
-        ></image>
+    </view>
+
+    <view class="card glance-card glance-card--credit">
+      <view class="card-bd glance-bd">
+        <view class="glance-top">
+          <view class="glance-title">灵感</view>
+          <view class="glance-value">{{credit.remaining}}</view>
+        </view>
+        <view class="glance-sub">{{credit.limit}} / 日，0 点刷新</view>
+        <view class="credit-bar">
+          <view class="credit-bar-fill" style="width: {{creditPercent}}%;"></view>
+        </view>
       </view>
     </view>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd">工具</view>
+  <view class="card mt card-soft">
     <view class="card-bd">
-      <view class="btn btn-warn mb" bindtap="goGift">去做一张送给朋友</view>
-      <view class="btn btn-ghost" bindtap="onSync">同步微信头像昵称</view>
-    </view>
-  </view>
-
-  <view class="card mt">
-    <view class="card-hd">管理</view>
-    <view class="card-bd">
-      <view class="btn btn-ghost mb" bindtap="goOwner">馆长后台</view>
-      <view class="btn btn-ghost" bindtap="goLogs">管理日志</view>
+      <view class="quick-grid quick-grid--compact">
+        <view class="quick-item" bindtap="goOwner">
+          <view class="quick-mark">馆</view>
+          <view class="quick-label">馆长</view>
+        </view>
+        <view class="quick-item" bindtap="goDebugLogs">
+          <view class="quick-mark">志</view>
+          <view class="quick-label">日志</view>
+        </view>
+      </view>
     </view>
   </view>
 </view>

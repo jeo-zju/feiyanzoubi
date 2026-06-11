@@ -1,5 +1,5 @@
 <view class="pg">
-  <view class="pg-btn {{hasPrev?'':'pg-btn--disabled'}}" bindtap="onPrev">上一页</view>
+  <view class="pg-btn {{page>1?'':'pg-btn--disabled'}}" bindtap="onPrev">上一页</view>
   <view class="pg-mid">第{{page}}页</view>
   <view class="pg-btn {{hasNext?'':'pg-btn--disabled'}}" bindtap="onNext">下一页</view>
 </view>

@@ -281,6 +281,8 @@ exports.main = async (event) => {
     const cyclePicked = await resolveCycleByDate(gymId, date, fallbackCycleId);
     const cycleId = cyclePicked && cyclePicked.cycleId ? cyclePicked.cycleId : "";
     const cycle = cyclePicked ? cyclePicked.cycle : null;
+    const cycleWhere = cycleId ? _.or([{ cycle_id: cycleId }, { cycleId }, { cycleID: cycleId }]) : null;
+    const scopedWhere = cycleWhere ? _.and([where, cycleWhere]) : where;
     if (cycle) {
       gym.currentCycle = cycle;
       gym.currentCycleId = cycleId;
@@ -352,12 +354,12 @@ exports.main = async (event) => {
 
     let progressRes;
     try {
-      progressRes = await db.collection("RockUserCycleProgress").where(where).orderBy("updated_at", "desc").limit(1).get();
+      progressRes = await db.collection("RockUserCycleProgress").where(scopedWhere).orderBy("updated_at", "desc").limit(1).get();
     } catch (e) {
       try {
-        progressRes = await db.collection("RockUserCycleProgress").where(where).orderBy("updatedAt", "desc").limit(1).get();
+        progressRes = await db.collection("RockUserCycleProgress").where(scopedWhere).orderBy("updatedAt", "desc").limit(1).get();
       } catch (e2) {
-        progressRes = await db.collection("RockUserCycleProgress").where(where).limit(1).get();
+        progressRes = await db.collection("RockUserCycleProgress").where(scopedWhere).limit(1).get();
       }
     }
     const doc = progressRes && progressRes.data && progressRes.data[0] ? progressRes.data[0] : null;
@@ -369,7 +371,7 @@ exports.main = async (event) => {
 
     if (!progress || !progress.totals || (!Object.keys(progress.totals.boulder || {}).length && !Object.keys(progress.totals.difficulty || {}).length)) {
       try {
-        const recRes = await db.collection("RockCheckinRecords").where(where).limit(200).get();
+        const recRes = await db.collection("RockCheckinRecords").where(scopedWhere).limit(200).get();
         const records = (recRes && recRes.data) || [];
         const totals = normalizeTotalsFromRecords(records);
         progress = progress || { _id: "", gymId, cycleKey: cycleId || "", totals: {}, limits: {}, visitCount: 0, updatedAt: 0 };

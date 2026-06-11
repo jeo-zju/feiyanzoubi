@@ -1,6 +1,7 @@
+const { getWindowWidth } = require("../../utils/window");
+
 function toPx(rpx) {
-  const sys = wx.getSystemInfoSync();
-  return (Number(rpx || 0) * sys.windowWidth) / 750;
+  return (Number(rpx || 0) * getWindowWidth()) / 750;
 }
 
 Component({

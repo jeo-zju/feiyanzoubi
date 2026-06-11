@@ -21,7 +21,6 @@
       <paginator
         wx:if="{{recent.length}}"
         page="{{page}}"
-        hasPrev="{{page>1}}"
         hasNext="{{hasNext}}"
         bind:prev="onPrev"
         bind:next="onNext"

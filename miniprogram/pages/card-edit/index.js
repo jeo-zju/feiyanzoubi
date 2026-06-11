@@ -1,70 +1,14 @@
 const cardApi = require("../../services/api/card");
 const { safeText } = require("../../utils/format");
+const { getImagePath } = require("../../utils/cardCanvas");
+const { drawFrontCard, drawBackCard, flushCanvas } = require("../../utils/cardRenderer");
+const { getWindowWidth } = require("../../utils/window");
 
 const DEFAULT_AVATAR = "/images/avatar.png";
 const DEFAULT_AVATAR_CANVAS = "../../images/avatar.png";
 const BANK_CARD_RATIO = 85.6 / 53.98;
 const CARD_PX_W = 1080;
 const CARD_PX_H = Math.round(CARD_PX_W / BANK_CARD_RATIO);
-
-function clamp(s, n) {
-  const t = safeText(s);
-  if (!t) return "";
-  return t.length <= n ? t : t.slice(0, n);
-}
-
-function wrapLines(ctx, text, maxWidth) {
-  const t = safeText(text);
-  if (!t) return [];
-  const chars = t.split("");
-  const lines = [];
-  let line = "";
-  for (let i = 0; i < chars.length; i++) {
-    const next = line + chars[i];
-    if (ctx.measureText(next).width <= maxWidth) {
-      line = next;
-      continue;
-    }
-    if (line) lines.push(line);
-    line = chars[i];
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-
-function isCloudFileId(v) {
-  const s = safeText(v);
-  return s.startsWith("cloud://");
-}
-
-async function toTempUrl(fileIdOrUrl) {
-  const v = safeText(fileIdOrUrl);
-  if (!v) return "";
-  if (!isCloudFileId(v)) return v;
-  try {
-    const r = await wx.cloud.getTempFileURL({ fileList: [v] });
-    const item = r && r.fileList && r.fileList[0] ? r.fileList[0] : null;
-    return item && item.tempFileURL ? item.tempFileURL : "";
-  } catch (e) {
-    return "";
-  }
-}
-
-async function getImagePath(fileIdOrUrl) {
-  const url = await toTempUrl(fileIdOrUrl);
-  if (!url) return "";
-  const s = String(url);
-  if (s.startsWith("wxfile://")) return s;
-  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
-  if (!/^https?:\/\//.test(s)) return s;
-  return new Promise((resolve) => {
-    wx.getImageInfo({
-      src: url,
-      success: (r) => resolve(r && r.path ? r.path : ""),
-      fail: () => resolve("")
-    });
-  });
-}
 
 function parseGyms(text) {
   const t = safeText(text);
@@ -81,13 +25,6 @@ function fileExt(path) {
   const p = safeText(path);
   const m = p.match(/\.([a-zA-Z0-9]+)$/);
   return m ? m[1].toLowerCase() : "jpg";
-}
-
-function previewText(s, maxLen) {
-  const t = safeText(s);
-  if (!t) return "";
-  if (t.length <= maxLen) return t;
-  return `${t.slice(0, maxLen)}…`;
 }
 
 function pickOne(list) {
@@ -124,13 +61,10 @@ Page({
     gymsText: "",
     moreOpen: false,
     previewSide: "front",
-    gymsLabel: "",
-    storyPreview: "",
     storyTitle: "",
     storyPlaceholder: "",
     storyEmptyHint: "",
     storyRequiredToast: "",
-    previewAvatar: DEFAULT_AVATAR,
     cardCssW: 320,
     cardCssH: Math.floor(320 / BANK_CARD_RATIO),
     cardPxW: CARD_PX_W,
@@ -165,8 +99,7 @@ Page({
     const userNickName = safeText(user.nickName);
     const userAvatarUrl = safeText(user.avatarUrl);
 
-    const sys = wx.getSystemInfoSync();
-    const winW = sys && sys.windowWidth ? sys.windowWidth : 375;
+    const winW = getWindowWidth();
     const rpx2px = (rpx) => (rpx * winW) / 750;
     const pagePad = rpx2px(24 * 2);
     const cardBdPad = rpx2px(22 * 2);
@@ -225,10 +158,7 @@ Page({
         front,
         back,
         gymsText: "",
-        oneLinerStyle: "humor",
-        previewAvatar: this.computePreviewAvatar(front),
-        gymsLabel: this.computeGymsLabel(front, ""),
-        storyPreview: previewText(back.story, 120)
+        oneLinerStyle: "humor"
       },
       () => {}
     );
@@ -247,13 +177,6 @@ Page({
     if (!gyms.length) return "";
     return `常去：${gyms.join("、")}`;
   },
-  computePreviewAvatar(front) {
-    const f = front && typeof front === "object" ? front : {};
-    if (f.avatarMode === "custom" && safeText(f.avatarFileId)) return safeText(f.avatarFileId);
-    if (safeText(f.avatarUrl)) return safeText(f.avatarUrl);
-    if (safeText(this.data.userAvatarUrl)) return safeText(this.data.userAvatarUrl);
-    return DEFAULT_AVATAR;
-  },
   async loadCard(cardId) {
     try {
       const res = await cardApi.get({ cardId });
@@ -268,9 +191,6 @@ Page({
         back: { ...this.data.back, ...back },
         gymsText,
         oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor",
-        gymsLabel: this.computeGymsLabel({ ...this.data.front, ...front }, gymsText),
-        storyPreview: previewText(back && back.story, 120),
-        previewAvatar: this.computePreviewAvatar({ ...this.data.front, ...front }),
         showPlaceholder: false
       }, () => this.renderPreviewSoon());
     } catch (e) {
@@ -345,7 +265,7 @@ Page({
     if (side === "front") this.drawPreviewFront(ctx, W, H, previewFront, gymsLabel, avatarPath);
     else this.drawPreviewBack(ctx, W, H, previewFront, previewBack, photoPath);
 
-    await new Promise((resolve) => ctx.draw(false, resolve));
+    await flushCanvas(ctx);
     if (token !== this._previewToken) return;
 
     const tempPath = await new Promise((resolve) => {
@@ -388,109 +308,10 @@ Page({
     this.setData({ previewImage: tempPath });
   },
   drawPreviewFront(ctx, W, H, front, gymsLabel, avatarPath) {
-    ctx.setFillStyle("#0B0D15");
-    ctx.fillRect(0, 0, W, H);
-
-    const barH = Math.max(56, Math.floor(H * 0.14));
-    const g = ctx.createLinearGradient(0, 0, W, 0);
-    g.addColorStop(0, "rgba(143,123,255,0.95)");
-    g.addColorStop(1, "rgba(242,193,78,0.95)");
-    ctx.setFillStyle(g);
-    ctx.fillRect(0, 0, W, barH);
-
-    const pad = Math.floor(W * 0.06);
-    const cardY = barH + Math.floor(H * 0.08);
-    ctx.setFillStyle("rgba(255,255,255,0.10)");
-    ctx.fillRect(pad, cardY, W - pad * 2, H - cardY - pad);
-
-    const ar = Math.floor(H * 0.17);
-    const ax = pad + Math.floor(W * 0.03);
-    const ay = cardY + Math.floor(H * 0.08);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(ax + ar, ay + ar, ar, 0, Math.PI * 2);
-    ctx.clip();
-    if (avatarPath) ctx.drawImage(avatarPath, ax, ay, ar * 2, ar * 2);
-    ctx.restore();
-
-    ctx.setStrokeStyle("rgba(242,193,78,0.85)");
-    ctx.setLineWidth(Math.max(4, Math.floor(H * 0.012)));
-    ctx.beginPath();
-    ctx.arc(ax + ar, ay + ar, ar + Math.floor(H * 0.008), 0, Math.PI * 2);
-    ctx.stroke();
-
-    const tx = ax + ar * 2 + Math.floor(W * 0.05);
-    ctx.setFillStyle("#FFFFFF");
-    ctx.setFontSize(Math.floor(H * 0.11));
-    ctx.fillText(clamp(front.displayName || "岩友", 10), tx, ay + Math.floor(H * 0.13));
-
-    ctx.setFillStyle("rgba(255,255,255,0.92)");
-    ctx.setFontSize(Math.floor(H * 0.06));
-    const meta = `${clamp(front.title, 12)}${front.mbti ? ` · ${clamp(front.mbti, 6)}` : ""}`;
-    ctx.fillText(meta, tx, ay + Math.floor(H * 0.24));
-
-    ctx.setFillStyle("rgba(242,193,78,0.95)");
-    ctx.setFontSize(Math.floor(H * 0.055));
-    ctx.fillText(clamp(gymsLabel, 14), tx, ay + Math.floor(H * 0.33));
-
-    const one = clamp(front.oneLiner, 40);
-    ctx.setFillStyle("rgba(255,255,255,0.95)");
-    ctx.setFontSize(Math.floor(H * 0.075));
-    const lines = wrapLines(ctx, one, W - pad * 2 - Math.floor(W * 0.08));
-    const ox = pad + Math.floor(W * 0.06);
-    const oy = ay + ar * 2 + Math.floor(H * 0.06);
-    const lh = Math.floor(H * 0.10);
-    for (let i = 0; i < Math.min(2, lines.length); i++) {
-      ctx.fillText(lines[i], ox, oy + i * lh);
-    }
-
-    ctx.setFillStyle("rgba(255,255,255,0.65)");
-    ctx.setFontSize(Math.floor(H * 0.05));
-    ctx.fillText("飞岩走壁 · 攀岩名片", ox, H - Math.floor(H * 0.12));
-    ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", ox, H - Math.floor(H * 0.06));
+    drawFrontCard(ctx, { W, H, front, gymsLabel, avatarPath, layout: "responsive" });
   },
   drawPreviewBack(ctx, W, H, front, back, photoPath) {
-    ctx.setFillStyle("#0B0D15");
-    ctx.fillRect(0, 0, W, H);
-
-    if (photoPath) {
-      ctx.drawImage(photoPath, 0, 0, W, H);
-      ctx.setFillStyle("rgba(11,13,21,0.55)");
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, "rgba(143,123,255,0.55)");
-      g.addColorStop(1, "rgba(242,193,78,0.35)");
-      ctx.setFillStyle(g);
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    const pad = Math.floor(W * 0.06);
-    ctx.setFillStyle("rgba(255,255,255,0.10)");
-    ctx.fillRect(pad, pad, W - pad * 2, H - pad * 2);
-
-    const tx = pad + Math.floor(W * 0.06);
-    ctx.setFillStyle("#FFFFFF");
-    ctx.setFontSize(Math.floor(H * 0.10));
-    ctx.fillText(clamp(front.displayName || "岩友", 10), tx, pad + Math.floor(H * 0.18));
-
-    ctx.setFillStyle("rgba(255,255,255,0.92)");
-    ctx.setFontSize(Math.floor(H * 0.065));
-    ctx.fillText("背面故事", tx, pad + Math.floor(H * 0.30));
-
-    ctx.setFillStyle("rgba(255,255,255,0.95)");
-    ctx.setFontSize(Math.floor(H * 0.07));
-    const lines = wrapLines(ctx, clamp(back.story, 220), W - tx * 2);
-    const startY = pad + Math.floor(H * 0.42);
-    const lh = Math.floor(H * 0.105);
-    const maxLines = Math.max(6, Math.floor((H - startY - Math.floor(H * 0.20)) / lh));
-    for (let i = 0; i < Math.min(maxLines, lines.length); i++) {
-      ctx.fillText(lines[i], tx, startY + i * lh);
-    }
-
-    ctx.setFillStyle("rgba(255,255,255,0.65)");
-    ctx.setFontSize(Math.floor(H * 0.05));
-    ctx.fillText("飞岩走壁 · 攀岩名片", tx, H - Math.floor(H * 0.08));
+    drawBackCard(ctx, { W, H, front, back, photoPath, layout: "responsive" });
   },
   onName(e) {
     this.setData({ front: { ...this.data.front, displayName: e.detail.value } }, () => this.revealPreviewAndRender());
@@ -516,13 +337,13 @@ Page({
     const t = this.randomTitle();
     if (!t) return;
     const front = { ...this.data.front, title: t };
-    this.setData({ front, pickerVisible: false, pickerType: "", previewAvatar: this.computePreviewAvatar(front) }, () => this.revealPreviewAndRender());
+    this.setData({ front, pickerVisible: false, pickerType: "" }, () => this.revealPreviewAndRender());
   },
   selectTitle(e) {
     const v = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.v);
     if (!v) return;
     const front = { ...this.data.front, title: v };
-    this.setData({ front, pickerVisible: false, pickerType: "", previewAvatar: this.computePreviewAvatar(front) }, () => this.revealPreviewAndRender());
+    this.setData({ front, pickerVisible: false, pickerType: "" }, () => this.revealPreviewAndRender());
   },
   selectMbti(e) {
     const v = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.v);
@@ -537,16 +358,16 @@ Page({
     const front = { ...this.data.front, wanderer };
     if (wanderer) front.gyms = [];
     const gymsText = wanderer ? "" : this.data.gymsText;
-    this.setData({ front, gymsText, gymsLabel: this.computeGymsLabel(front, gymsText) }, () => this.revealPreviewAndRender());
+    this.setData({ front, gymsText }, () => this.revealPreviewAndRender());
   },
   onGymsText(e) {
     const gymsText = e.detail.value;
-    this.setData({ gymsText, gymsLabel: this.computeGymsLabel(this.data.front, gymsText) }, () => this.revealPreviewAndRender());
+    this.setData({ gymsText }, () => this.revealPreviewAndRender());
   },
   setAvatarWechat() {
     const front = { ...this.data.front, avatarMode: "wechat", avatarFileId: "" };
     if (safeText(this.data.userAvatarUrl) && !safeText(front.avatarUrl)) front.avatarUrl = safeText(this.data.userAvatarUrl);
-    this.setData({ front, previewAvatar: this.computePreviewAvatar(front) }, () => this.revealPreviewAndRender());
+    this.setData({ front }, () => this.revealPreviewAndRender());
   },
   async pickAvatar() {
     try {
@@ -554,7 +375,7 @@ Page({
       if (!r) return;
       const fileID = await this.uploadToCloud(r);
       const front = { ...this.data.front, avatarMode: "custom", avatarFileId: fileID };
-      this.setData({ front, previewAvatar: this.computePreviewAvatar(front) }, () => this.revealPreviewAndRender());
+      this.setData({ front }, () => this.revealPreviewAndRender());
     } catch (e) {
       wx.showToast({ title: "上传失败", icon: "none" });
     }
@@ -604,7 +425,7 @@ Page({
   },
   onStory(e) {
     const story = e.detail.value;
-    this.setData({ back: { ...this.data.back, story }, storyPreview: previewText(story, 120) }, () => this.revealPreviewAndRender());
+    this.setData({ back: { ...this.data.back, story } }, () => this.revealPreviewAndRender());
   },
   onOneLiner(e) {
     this.setData({ front: { ...this.data.front, oneLiner: e.detail.value } }, () => this.revealPreviewAndRender());

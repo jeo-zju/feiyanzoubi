@@ -56,6 +56,14 @@ async function hasPrimary(ownerOpenid) {
   return !!(res && res.data && res.data[0]);
 }
 
+async function rollbackClaim(giftsCol, giftId, openid, now) {
+  try {
+    await giftsCol.where({ _id: giftId, status: "claimed", claimedByOpenid: openid }).update({
+      data: { status: "pending", toOpenid: "", claimedByOpenid: "", claimedAt: 0, updated_at: db.serverDate(), updatedAt: now }
+    });
+  } catch (e) {}
+}
+
 exports.main = async (event) => {
   const tid = traceId();
   try {
@@ -117,12 +125,13 @@ exports.main = async (event) => {
 
       const recvCount = await countReceivedCards(toOpenid);
       if (recvCount >= 100) return fail("WALLET_FULL", "对方名片夹已满（100）", tid);
+      const primary = await hasPrimary(toOpenid);
 
       const credit = await consumeCredit(openid);
       if (!credit.ok) return fail("NO_CREDIT", "今日灵感额度已用完", tid);
 
       await cardsCol.doc(cardId).update({
-        data: { ownerOpenid: toOpenid, status: "active", isPrimary: false, updatedAt: now, updated_at: db.serverDate() }
+        data: { ownerOpenid: toOpenid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
       });
 
       await giftsCol.add({
@@ -153,21 +162,27 @@ exports.main = async (event) => {
       const cardRes = await cardsCol.doc(String(gift.cardId)).get();
       const card = cardRes && cardRes.data ? cardRes.data : null;
       if (!card) return fail("NOT_FOUND", "名片不存在", tid);
+      const giftStatus = safeText(gift.status);
+      const fromOpenid = safeText(gift.fromOpenid);
+      const toOpenid = safeText(gift.toOpenid);
+      const claimedByOpenid = safeText(gift.claimedByOpenid);
+      const canViewFullCard = openid && [fromOpenid, toOpenid, claimedByOpenid].includes(openid);
+      if (giftStatus !== "pending" && !canViewFullCard) return fail("FORBIDDEN", "无权限查看", tid);
 
       return ok(
         {
           gift: {
             _id: giftId,
             method: safeText(gift.method),
-            status: safeText(gift.status),
-            fromOpenid: safeText(gift.fromOpenid),
+            status: giftStatus,
+            fromOpenid,
             createdAt: gift.createdAt || 0,
             claimedAt: gift.claimedAt || 0
           },
           card: {
             _id: String(card._id),
             front: card.front || {},
-            back: card.back || {}
+            back: giftStatus === "pending" && !canViewFullCard ? {} : card.back || {}
           }
         },
         tid
@@ -192,14 +207,34 @@ exports.main = async (event) => {
       const recvCount = await countReceivedCards(openid);
       if (recvCount >= 100) return fail("WALLET_FULL", "你的名片夹已满（100）", tid);
 
-      const primary = await hasPrimary(openid);
-      await cardsCol.doc(cardId).update({
-        data: { ownerOpenid: openid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
-      });
-
-      await giftsCol.doc(giftId).update({
+      const claimGiftRes = await giftsCol.where({ _id: giftId, status: "pending" }).update({
         data: { status: "claimed", toOpenid: openid, claimedByOpenid: openid, claimedAt: now, updated_at: db.serverDate() }
       });
+      const updated =
+        claimGiftRes &&
+        claimGiftRes.stats &&
+        typeof claimGiftRes.stats.updated === "number" &&
+        claimGiftRes.stats.updated === 1;
+      if (!updated) return fail("BAD_REQUEST", "该名片已被领取或已取消", tid);
+
+      const primary = await hasPrimary(openid);
+      try {
+        const claimCardRes = await cardsCol.where({ _id: cardId, ownerOpenid: "" }).update({
+          data: { ownerOpenid: openid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
+        });
+        const cardUpdated =
+          claimCardRes &&
+          claimCardRes.stats &&
+          typeof claimCardRes.stats.updated === "number" &&
+          claimCardRes.stats.updated === 1;
+        if (!cardUpdated) {
+          await rollbackClaim(giftsCol, giftId, openid, now);
+          return fail("BAD_REQUEST", "名片已归属，无法重复领取", tid);
+        }
+      } catch (e) {
+        await rollbackClaim(giftsCol, giftId, openid, now);
+        throw e;
+      }
 
       return ok({ claimed: true, cardId }, tid);
     }
@@ -212,6 +247,23 @@ exports.main = async (event) => {
       if (!gift) return fail("NOT_FOUND", "赠送记录不存在", tid);
       if (safeText(gift.fromOpenid) !== openid) return fail("FORBIDDEN", "无权限", tid);
       if (safeText(gift.status) !== "pending") return fail("BAD_REQUEST", "无法取消", tid);
+      const cardId = safeText(gift.cardId);
+      if (cardId) {
+        try {
+          const cardRes = await cardsCol.doc(cardId).get();
+          const card = cardRes && cardRes.data ? cardRes.data : null;
+          if (
+            card &&
+            safeText(card.createdByOpenid) === openid &&
+            !safeText(card.ownerOpenid) &&
+            safeText(card.status) === "active"
+          ) {
+            await cardsCol.doc(cardId).update({
+              data: { status: "draft", updatedAt: now, updated_at: db.serverDate() }
+            });
+          }
+        } catch (e) {}
+      }
       await giftsCol.doc(giftId).update({ data: { status: "cancelled", updated_at: db.serverDate() } });
       return ok({ cancelled: true }, tid);
     }
@@ -221,4 +273,3 @@ exports.main = async (event) => {
     return fail("GIFT_FAILED", e && e.message ? e.message : "操作失败", tid);
   }
 };
-

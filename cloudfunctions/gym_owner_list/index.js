@@ -40,6 +40,19 @@ function normalizeGym(g) {
   };
 }
 
+function sumLines(gyms) {
+  const list = Array.isArray(gyms) ? gyms : [];
+  return list.reduce(
+    (acc, gym) => {
+      const lines = gym && gym.lines ? gym.lines : {};
+      acc.boulderLines += Number(lines.boulder || 0);
+      acc.diffLines += Number(lines.difficulty || 0);
+      return acc;
+    },
+    { boulderLines: 0, diffLines: 0 }
+  );
+}
+
 exports.main = async (event) => {
   const tid = traceId();
   try {
@@ -58,6 +71,27 @@ exports.main = async (event) => {
       { managers: _.in([openid]) }
     ]);
 
+    const totalRes = await db.collection("RockGyms").where(where).count();
+    const total = totalRes && typeof totalRes.total === "number" ? totalRes.total : 0;
+
+    let summary = { gymCount: total, boulderLines: 0, diffLines: 0 };
+    if (total > 0) {
+      const batchSize = 100;
+      const batches = Math.ceil(total / batchSize);
+      const allGyms = [];
+      for (let i = 0; i < batches; i++) {
+        let batchRes;
+        try {
+          batchRes = await db.collection("RockGyms").where(where).skip(i * batchSize).limit(batchSize).get();
+        } catch (e) {
+          batchRes = { data: [] };
+        }
+        const rows = (batchRes && batchRes.data) || [];
+        allGyms.push(...rows);
+      }
+      summary = { gymCount: total, ...sumLines(allGyms) };
+    }
+
     let res;
     try {
       res = await db.collection("RockGyms").where(where).orderBy("updatedAt", "desc").skip(skip).limit(pageSize + 1).get();
@@ -68,7 +102,7 @@ exports.main = async (event) => {
     const list = (res && res.data) || [];
     const hasNext = list.length > pageSize;
     const gyms = list.slice(0, pageSize).map(normalizeGym);
-    return ok({ gyms, hasNext, page }, tid);
+    return ok({ gyms, hasNext, page, total, summary }, tid);
   } catch (e) {
     return fail("GYM_OWNER_LIST_FAILED", e && e.message ? e.message : "查询失败", tid);
   }

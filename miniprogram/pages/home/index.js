@@ -1,6 +1,7 @@
 const { list } = require("../../services/api/gym");
 const { formatDate, monthLabel } = require("../../utils/date");
 const { safeText } = require("../../utils/format");
+const { startPageLoad, finishPageLoad, turnToPrevPage, turnToNextPage } = require("../../utils/pageState");
 
 Page({
   data: {
@@ -41,14 +42,10 @@ Page({
     this.loadGyms({ reset: true });
   },
   onPrev() {
-    if (this.data.page <= 1) return;
-    this.setData({ page: this.data.page - 1 });
-    this.loadGyms({ reset: false });
+    turnToPrevPage(this, this.loadGyms);
   },
   onNext() {
-    if (!this.data.hasNext) return;
-    this.setData({ page: this.data.page + 1 });
-    this.loadGyms({ reset: false });
+    turnToNextPage(this, this.loadGyms);
   },
   onTapGym(e) {
     const gym = e.detail.gym;
@@ -56,11 +53,9 @@ Page({
     wx.navigateTo({ url: `/pages/checkin/index?gymId=${gym._id}` });
   },
   async loadGyms({ reset }) {
-    if (this.data.loading) return;
-    const page = reset ? 1 : this.data.page;
-    const pageSize = this.data.pageSize;
-
-    this.setData({ loading: true, page });
+    const paging = startPageLoad(this, reset);
+    if (!paging) return;
+    const { page, pageSize } = paging;
     try {
       const city = safeText(this.data.city);
       const keyword = safeText(this.data.keyword);
@@ -81,7 +76,7 @@ Page({
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     } finally {
-      this.setData({ loading: false });
+      finishPageLoad(this);
     }
   },
   decorateGym(gym) {

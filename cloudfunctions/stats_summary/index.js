@@ -59,6 +59,34 @@ function normalizeMode(category, mode) {
   return "boulder";
 }
 
+async function fetchRecentRecordsBatch(db, userWhere, skip, limit) {
+  try {
+    const res = await db
+      .collection("RockCheckinRecords")
+      .where(userWhere)
+      .orderBy("date", "desc")
+      .orderBy("created_at", "desc")
+      .skip(skip)
+      .limit(limit)
+      .get();
+    return (res && res.data) || [];
+  } catch (e1) {
+    try {
+      const res = await db
+        .collection("RockCheckinRecords")
+        .where(userWhere)
+        .orderBy("date", "desc")
+        .skip(skip)
+        .limit(limit)
+        .get();
+      return (res && res.data) || [];
+    } catch (e2) {
+      const res = await db.collection("RockCheckinRecords").where(userWhere).skip(skip).limit(limit).get();
+      return (res && res.data) || [];
+    }
+  }
+}
+
 exports.main = async (event) => {
   const tid = traceId();
   try {
@@ -84,7 +112,6 @@ exports.main = async (event) => {
     const days = Math.max(1, Math.min(90, Number(event && event.days ? event.days : 30)));
     const page = Math.max(1, Number(event && event.page ? event.page : 1));
     const pageSize = Math.max(1, Math.min(20, Number(event && event.pageSize ? event.pageSize : 5)));
-    const skip = (page - 1) * pageSize;
 
     const end = new Date();
     const start = new Date();
@@ -137,7 +164,8 @@ exports.main = async (event) => {
           Number(d.count || 0) ||
           sumToday(d.today) ||
           (d.totals ? Number((d.totals.boulder || 0) + (d.totals.difficulty || 0)) : 0);
-        dailyMap[d.date] = Number.isFinite(v) ? v : 0;
+        if (!Number.isFinite(v)) return;
+        dailyMap[d.date] = Number(dailyMap[d.date] || 0) + v;
       });
       const hasDailyNonZero = Object.keys(dailyMap).some((k) => Number(dailyMap[k] || 0) > 0);
       if (hasDailyNonZero) dateToDelta = dailyMap;
@@ -149,47 +177,34 @@ exports.main = async (event) => {
       chartPoints.push(Number(dateToDelta[ymd] || 0));
     }
 
-    const listLimit = Math.max(50, Math.min(500, page * pageSize * 50));
-    let recordRes;
-    try {
-      recordRes = await db
-        .collection("RockCheckinRecords")
-        .where(userWhere)
-        .orderBy("date", "desc")
-        .orderBy("created_at", "desc")
-        .limit(listLimit)
-        .get();
-    } catch (e1) {
-      try {
-        recordRes = await db
-          .collection("RockCheckinRecords")
-          .where(userWhere)
-          .orderBy("date", "desc")
-          .limit(listLimit)
-          .get();
-      } catch (e2) {
-        recordRes = await db.collection("RockCheckinRecords").where(userWhere).limit(listLimit).get();
-      }
-    }
-
-    const records = (recordRes && recordRes.data) || [];
     const grouped = {};
-    records.forEach((r) => {
-      if (!r) return;
-      const gid = String(r.gym_id || r.gymId || r.gymID || "");
-      const date = String(r.date || "");
-      const mode = normalizeMode(r.category, r.mode);
-      if (!gid || !date) return;
-      const key = `${gid}|${date}|${mode}`;
-      if (!grouped[key]) grouped[key] = { _id: key, gymId: gid, date, mode, delta: 0 };
+    const startIdx = (page - 1) * pageSize;
+    const groupedTarget = startIdx + pageSize + 1;
+    const batchSize = Math.max(100, pageSize * 40);
+    let skip = 0;
+    let exhausted = false;
+    while (!exhausted) {
+      const records = await fetchRecentRecordsBatch(db, userWhere, skip, batchSize);
+      if (!records.length) break;
+      records.forEach((r) => {
+        if (!r) return;
+        const gid = String(r.gym_id || r.gymId || r.gymID || "");
+        const date = String(r.date || "");
+        const mode = normalizeMode(r.category, r.mode);
+        if (!gid || !date) return;
+        const key = `${gid}|${date}|${mode}`;
+        if (!grouped[key]) grouped[key] = { _id: key, gymId: gid, date, mode, delta: 0 };
 
-      let d = 0;
-      if (r.count != null) d = Number(r.count || 0);
-      else if (r.deltaSum != null) d = Number(r.deltaSum || 0);
-      else if (r.delta_sum != null) d = Number(r.delta_sum || 0);
-      else if (r.deltas && typeof r.deltas === "object" && !Array.isArray(r.deltas)) d = sumObject(r.deltas);
-      if (Number.isFinite(d) && d > 0) grouped[key].delta += d;
-    });
+        let d = 0;
+        if (r.count != null) d = Number(r.count || 0);
+        else if (r.deltaSum != null) d = Number(r.deltaSum || 0);
+        else if (r.delta_sum != null) d = Number(r.delta_sum || 0);
+        else if (r.deltas && typeof r.deltas === "object" && !Array.isArray(r.deltas)) d = sumObject(r.deltas);
+        if (Number.isFinite(d) && d > 0) grouped[key].delta += d;
+      });
+      skip += records.length;
+      exhausted = records.length < batchSize || Object.keys(grouped).length > groupedTarget;
+    }
 
     const groupedList = Object.values(grouped).sort((a, b) => {
       const d = String(b.date || "").localeCompare(String(a.date || ""));
@@ -198,9 +213,8 @@ exports.main = async (event) => {
       if (g) return g;
       return String(b.mode || "").localeCompare(String(a.mode || ""));
     });
-    const startIdx = (page - 1) * pageSize;
     const pageItems = groupedList.slice(startIdx, startIdx + pageSize);
-    const hasNext = groupedList.length > startIdx + pageSize;
+    const hasNext = groupedList.length > startIdx + pageSize || !exhausted;
 
     const gymIds = Array.from(new Set(pageItems.map((r) => r.gymId).filter(Boolean)));
     let gymsById = {};
