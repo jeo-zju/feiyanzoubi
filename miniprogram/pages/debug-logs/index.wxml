@@ -1,20 +1,24 @@
-<view class="page">
-  <view class="card">
+<view class="page viewport-page">
+  <view class="card card-hero">
     <view class="card-hd">日志概览</view>
     <view class="card-bd">
       <view class="summary-row">
-        <view class="summary-item">
+        <view class="summary-item {{filterKey==='all' ? 'summary-item--active' : ''}}" bindtap="setFilter" data-filter="all" data-label="全部">
           <view class="summary-num">{{total}}</view>
           <view class="muted">总条数</view>
         </view>
-        <view class="summary-item">
+        <view class="summary-item {{filterKey==='error' ? 'summary-item--active' : ''}}" bindtap="setFilter" data-filter="error" data-label="错误">
           <view class="summary-num summary-num--error">{{errorCount}}</view>
           <view class="muted">错误</view>
         </view>
-        <view class="summary-item">
+        <view class="summary-item {{filterKey==='cloud' ? 'summary-item--active' : ''}}" bindtap="setFilter" data-filter="cloud" data-label="云调用">
           <view class="summary-num summary-num--cloud">{{cloudCount}}</view>
           <view class="muted">云调用</view>
         </view>
+      </view>
+      <view wx:if="{{filterKey!=='all'}}" class="filter-bar">
+        <view class="tag tag-warn">当前筛选：{{filterLabel}}</view>
+        <view class="btn btn-ghost mini" bindtap="clearFilter">查看全部</view>
       </view>
       <view class="action-row">
         <view class="btn btn-ghost mini flex" bindtap="onRefresh">刷新</view>
@@ -24,33 +28,45 @@
     </view>
   </view>
 
-  <view wx:if="{{logs.length}}" class="list">
-    <view wx:for="{{logs}}" wx:key="id" class="card mt">
-      <view class="card-bd">
-        <view class="row top-row">
-          <view class="row">
-            <view class="tag {{item.type==='error' ? 'tag-error' : item.type==='success' ? 'tag-success' : ''}}">{{item.typeText}}</view>
-            <view class="tag tag-ghost ml-sm">{{item.category}}</view>
+  <scroll-view scroll-y class="viewport-scroll list-scroll">
+    <view wx:if="{{logs.length}}" class="list">
+      <view wx:for="{{logs}}" wx:key="id" class="card mt">
+        <view class="card-bd">
+          <view class="row top-row">
+            <view class="row">
+              <view
+                class="tag {{item.type==='error' ? 'tag-error' : item.type==='success' ? 'tag-success' : ''}}"
+                bindtap="setFilter"
+                data-filter="{{item.type}}"
+                data-label="{{item.typeText}}"
+              >{{item.typeText}}</view>
+              <view
+                class="tag tag-ghost ml-sm"
+                bindtap="setFilter"
+                data-filter="{{item.category}}"
+                data-label="{{item.category==='cloud' ? '云调用' : '应用错误'}}"
+              >{{item.category}}</view>
+            </view>
+            <view class="time">{{item.timeText}}</view>
           </view>
-          <view class="time">{{item.timeText}}</view>
-        </view>
-        <view class="title">{{item.title}}</view>
-        <view wx:if="{{item.summary}}" class="summary">{{item.summary}}</view>
-        <view wx:if="{{item.traceId || item.code || item.durationText || item.page}}" class="meta">
-          <text wx:if="{{item.traceId}}">traceId: {{item.traceId}}</text>
-          <text wx:if="{{item.code}}">code: {{item.code}}</text>
-          <text wx:if="{{item.durationText}}">duration: {{item.durationText}}</text>
-          <text wx:if="{{item.page}}">page: {{item.page}}</text>
-        </view>
-        <view wx:if="{{item.detail}}" class="detail">{{item.detail}}</view>
-        <view class="action-row">
-          <view class="btn btn-ghost mini" bindtap="onCopyItem" data-id="{{item.id}}">复制本条</view>
+          <view class="title">{{item.title}}</view>
+          <view wx:if="{{item.summary}}" class="summary">{{item.summary}}</view>
+          <view wx:if="{{item.traceId || item.code || item.durationText || item.page}}" class="meta">
+            <text wx:if="{{item.traceId}}">traceId: {{item.traceId}}</text>
+            <text wx:if="{{item.code}}">code: {{item.code}}</text>
+            <text wx:if="{{item.durationText}}">duration: {{item.durationText}}</text>
+            <text wx:if="{{item.page}}">page: {{item.page}}</text>
+          </view>
+          <view wx:if="{{item.detail}}" class="detail">{{item.detail}}</view>
+          <view class="action-row">
+            <view class="btn btn-ghost mini" bindtap="onCopyItem" data-id="{{item.id}}">复制本条</view>
+          </view>
         </view>
       </view>
     </view>
-  </view>
 
-  <view wx:else class="card mt">
-    <view class="card-bd empty">还没有调试日志，先去操作一下功能再回来查看。</view>
-  </view>
+    <view wx:else class="card mt">
+      <view class="card-bd empty">还没有调试日志</view>
+    </view>
+  </scroll-view>
 </view>

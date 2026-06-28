@@ -1,0 +1,41 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">开发工具</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view class="card mt">
+      <view class="card-hd">常用工具</view>
+      <view class="card-bd">
+        <view class="list-row" bindtap="goSync">
+          <view class="section-title">批量同步</view>
+          <view class="btn btn-ghost mini">进入</view>
+        </view>
+        <view class="list-row" bindtap="goReviewQueue">
+          <view class="section-title">审核队列</view>
+          <view class="btn btn-ghost mini">处理</view>
+        </view>
+        <view class="list-row" bindtap="goOwner">
+          <view class="section-title">岩馆管理</view>
+          <view class="btn btn-ghost mini">进入</view>
+        </view>
+        <view class="list-row" bindtap="goLogs">
+          <view class="section-title">调试日志</view>
+          <view class="btn btn-ghost mini">查看</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card mt">
+      <view class="card-hd">其他</view>
+      <view class="card-bd">
+        <view class="list-row" bindtap="goHealth">
+          <view class="section-title">环境检查</view>
+          <view class="btn btn-ghost mini">进入</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

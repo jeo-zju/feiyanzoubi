@@ -1,3 +1,16 @@
+.viewport-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewport-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-top: 18rpx;
+}
+
 .mt {
   margin-top: 18rpx;
 }
@@ -41,12 +54,12 @@
 }
 
 .add-btn {
-  width: 140rpx;
+  width: 170rpx;
   height: 76rpx;
 }
 
 .tpl-btn {
-  width: 160rpx;
+  width: 128rpx;
   height: 76rpx;
 }
 

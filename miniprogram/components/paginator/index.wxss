@@ -1,14 +1,14 @@
 .pg {
   display: flex;
   align-items: center;
-  gap: 18rpx;
-  margin-top: 18rpx;
+  gap: 14rpx;
+  margin-top: 16rpx;
 }
 
 .pg-btn {
   flex: 1;
-  height: 72rpx;
-  border-radius: 16rpx;
+  height: 64rpx;
+  border-radius: 14rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,9 +22,10 @@
 }
 
 .pg-mid {
-  width: 160rpx;
+  width: 132rpx;
   text-align: center;
   color: rgba(231, 233, 243, 0.7);
   font-weight: 700;
+  font-size: 24rpx;
 }
 

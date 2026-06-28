@@ -1,0 +1,34 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">环境检查</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view class="card mt">
+      <view class="card-bd">
+        <view class="btn btn-primary" bindtap="onCheckHealth">{{healthLoading ? '检查中' : '重新检查'}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{healthError}}" class="card mt">
+      <view class="card-bd">
+        <view class="tag tag-warn">{{healthError}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{healthChecks.length}}" class="card mt">
+      <view class="card-hd">检查结果</view>
+      <view class="card-bd list">
+        <view wx:for="{{healthChecks}}" wx:key="name" class="list-row">
+          <view>
+            <view class="section-title">{{item.name}}</view>
+            <view class="section-tip">{{item.ok ? '可访问' : '检查失败'}}</view>
+          </view>
+          <view class="tag {{item.ok ? '' : 'tag-warn'}}">{{item.ok ? item.total : '异常'}}</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

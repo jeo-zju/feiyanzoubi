@@ -1,87 +1,112 @@
-<view class="page">
-  <seg-tabs tabs="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
-
-  <view wx:if="{{tab==='info'}}" class="card mt">
-    <view class="card-hd">岩馆信息</view>
+<view class="page viewport-page">
+  <view class="card card-hero">
     <view class="card-bd">
-      <input class="input mb" placeholder="岩馆名（比如：飞岩岩馆）" placeholder-class="ph" value="{{form.name}}" bindinput="onName" />
-      <input class="input mb" placeholder="城市（比如：上海）" placeholder-class="ph" value="{{form.city}}" bindinput="onCity" />
-      <input class="input mb" placeholder="地址（比如：XX 路 XX 号）" placeholder-class="ph" value="{{form.address}}" bindinput="onAddress" />
-      <view class="btn btn-primary" bindtap="saveGym">{{gymId?'保存岩馆':'创建岩馆'}}</view>
-      <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+      <view class="section-title-lg">{{gymId ? '岩馆管理' : '创建岩馆'}}</view>
     </view>
   </view>
 
-  <view wx:if="{{tab==='cycle'}}" class="card mt">
-    <view class="card-hd">当前周期</view>
-    <view class="card-bd">
-      <view class="muted field-tip">周期名：用于区分每次换线/活动</view>
-      <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
-      <view class="muted field-tip">周期开始时间：从哪天开始生效</view>
-      <picker mode="date" value="{{cycleForm.startDate}}" bindchange="onCycleStart">
-        <view class="input mb date-picker">{{cycleForm.startDate}}</view>
-      </picker>
-      <view class="row mb">
-        <view class="btn btn-ghost mini" bindtap="onCycleStartToday">今天</view>
-        <view class="btn btn-ghost mini" bindtap="onCycleStartMonth">本月1号</view>
-      </view>
-      <view class="row mb">
-        <input class="input flex" placeholder="抱石等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
-        <view class="btn btn-warn tpl-btn" bindtap="onPickBoulderTemplate">抱石模板</view>
-      </view>
-      <view class="row mb">
-        <input class="input flex" placeholder="难度等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
-        <view class="btn btn-warn tpl-btn" bindtap="onPickDifficultyTemplate">难度模板</view>
-      </view>
-      <view class="muted field-tip">保存：新建或更新当前选中的周期；未关闭周期不能新建下一期</view>
-      <view class="btn btn-primary" bindtap="saveCycle">保存周期</view>
+  <view class="mt">
+    <seg-tabs tabs="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
+  </view>
 
-      <view class="divider mt2"></view>
-      <view class="hist-title">历史周期</view>
-      <view class="hist-list">
-        <view wx:for="{{cycles}}" wx:key="_id" class="hist-item" data-id="{{item._id}}" bindtap="onSelectCycle">
-          <view class="hist-main">
-            <view class="hist-name">{{item.name||item.cycle_name||'默认周期'}}</view>
-            <view class="muted hist-sub">{{item.startDate||item.start_date}} ~ {{item.endDate||item.end_date||'至今'}}</view>
-          </view>
-          <view class="hist-right">
-            <view class="tag {{item.status==='archived'?'':'tag-warn'}}">{{item.status==='archived'?'已关闭':'进行中'}}</view>
-            <view class="mini-btn" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</view>
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{tab==='info'}}" class="card mt">
+      <view class="card-hd">岩馆信息</view>
+      <view class="card-bd">
+        <input class="input mb" placeholder="岩馆名（比如：飞岩岩馆）" placeholder-class="ph" value="{{form.name}}" bindinput="onName" />
+        <input class="input mb" placeholder="城市（比如：上海）" placeholder-class="ph" value="{{form.city}}" bindinput="onCity" />
+        <input class="input mb" placeholder="地址（比如：XX 路 XX 号）" placeholder-class="ph" value="{{form.address}}" bindinput="onAddress" />
+        <view class="muted field-tip">前台可打卡模式</view>
+        <view class="row mb">
+          <view
+            wx:for="{{modeOptions}}"
+            wx:key="key"
+            class="tag {{form.supportedModes.indexOf(item.key) >= 0 ? 'tag-warn' : ''}}"
+            data-mode="{{item.key}}"
+            bindtap="onToggleMode"
+          >
+            {{item.label}}
           </view>
         </view>
+        <view class="btn btn-primary" bindtap="saveGym">{{gymId?'保存岩馆':'创建岩馆'}}</view>
+        <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
       </view>
+    </view>
 
-      <view class="divider mt2"></view>
-      <view class="hist-title">关闭当前周期</view>
-      <view class="muted field-tip">周期结束时间：本周期到哪天结束（默认今天，可手动改）</view>
-      <view class="row mb">
-        <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate">
-          <view class="input flex date-picker">{{closeEndDate}}</view>
+    <view wx:if="{{tab==='cycle'}}" class="card mt">
+      <view class="card-hd">当前周期</view>
+      <view class="card-bd">
+        <view class="muted field-tip">周期名</view>
+        <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
+        <view class="muted field-tip">开始日期</view>
+        <picker mode="date" value="{{cycleForm.startDate}}" bindchange="onCycleStart">
+          <view class="input mb date-picker">{{cycleForm.startDate}}</view>
         </picker>
-        <view class="btn btn-warn tpl-btn" bindtap="onCloseCycle">关闭周期</view>
-      </view>
-
-      <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
-    </view>
-  </view>
-
-  <view wx:if="{{tab==='routes'}}" class="card mt">
-    <view class="card-hd">线路录入</view>
-    <view class="card-bd">
-      <seg-tabs tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
-      <view class="rows">
-        <view wx:for="{{routeRows}}" wx:key="grade" class="route-row">
-          <view class="route-grade">{{item.grade}}</view>
-          <input class="input route-input" type="number" value="{{item.count}}" data-grade="{{item.grade}}" bindinput="onRouteCount" />
+        <view class="row mb">
+          <view class="btn btn-ghost mini" bindtap="onCycleStartToday">今天</view>
+          <view class="btn btn-ghost mini" bindtap="onCycleStartMonth">本月1号</view>
         </view>
+        <view class="row mb">
+          <input class="input flex" placeholder="抱石等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
+          <view class="btn btn-warn tpl-btn" bindtap="onPickBoulderTemplate">套用</view>
+        </view>
+        <view class="row mb">
+          <input class="input flex" placeholder="难度等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
+          <view class="btn btn-warn tpl-btn" bindtap="onPickDifficultyTemplate">套用</view>
+        </view>
+        <view class="row mb">
+          <input class="input flex" placeholder="先锋等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.leadGrades}}" bindinput="onLeadGrades" />
+          <view class="btn btn-warn tpl-btn" bindtap="onPickLeadTemplate">套用</view>
+        </view>
+        <view class="btn btn-primary" bindtap="saveCycle">保存当前周期</view>
+
+        <view class="divider mt2"></view>
+        <view class="hist-title">历史周期</view>
+        <view class="hist-list">
+          <view wx:for="{{cycles}}" wx:key="_id" class="hist-item" data-id="{{item._id}}" bindtap="onSelectCycle">
+            <view class="hist-main">
+              <view class="hist-name">{{item.name||item.cycle_name||'默认周期'}}</view>
+              <view class="muted hist-sub">{{item.startDate||item.start_date}} ~ {{item.endDate||item.end_date||'至今'}}</view>
+            </view>
+            <view class="hist-right">
+              <view class="tag {{item.status==='archived'?'':'tag-warn'}}">{{item.status==='archived'?'已关闭':'进行中'}}</view>
+              <view class="mini-btn" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="divider mt2"></view>
+        <view class="hist-title">关闭当前周期</view>
+        <view class="muted field-tip">结束日期</view>
+        <view class="row mb">
+          <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate">
+            <view class="input flex date-picker">{{closeEndDate}}</view>
+          </picker>
+          <view class="btn btn-warn tpl-btn" bindtap="onCloseCycle">关闭周期</view>
+        </view>
+
+        <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
       </view>
-      <view class="row mt2">
-        <input class="input flex" placeholder="自定义等级（如 V0-V1）" placeholder-class="ph" value="{{customGrade}}" bindinput="onCustomGrade" />
-        <view class="btn btn-warn add-btn" bindtap="addGrade">添加</view>
-      </view>
-      <view class="btn btn-primary mt2" bindtap="saveRoutes">更新线路</view>
-      <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
     </view>
-  </view>
+
+    <view wx:if="{{tab==='routes'}}" class="card mt">
+      <view class="card-hd">线路录入</view>
+      <view class="card-bd">
+        <seg-tabs tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
+        <view class="rows">
+          <view wx:for="{{routeRows}}" wx:key="grade" class="route-row">
+            <view class="route-grade">{{item.grade}}</view>
+            <input class="input route-input" type="number" value="{{item.count}}" data-grade="{{item.grade}}" bindinput="onRouteCount" />
+          </view>
+        </view>
+        <view class="row mt2">
+          <input class="input flex" placeholder="自定义等级（如 V0-V1）" placeholder-class="ph" value="{{customGrade}}" bindinput="onCustomGrade" />
+          <view class="btn btn-warn add-btn" bindtap="addGrade">添加等级</view>
+        </view>
+        <view class="btn btn-primary mt2" bindtap="saveRoutes">更新线路</view>
+        <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+      </view>
+    </view>
+  </scroll-view>
 </view>
 

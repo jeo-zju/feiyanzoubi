@@ -122,6 +122,21 @@ function addCounts(target, src) {
   });
 }
 
+function normalizeMode(mode) {
+  const value = String(mode || "").toLowerCase();
+  if (value === "boulder") return "boulder";
+  if (value === "lead") return "lead";
+  if (value === "rope") return "difficulty";
+  if (value === "difficulty") return "difficulty";
+  return "difficulty";
+}
+
+function toCategory(mode) {
+  if (mode === "boulder") return "boulder";
+  if (mode === "lead") return "lead";
+  return "rope";
+}
+
 async function upsertDaily(uid, date, gymId, cycleId, category, deltas) {
   const col = db.collection("RockUserDailyProgress");
   const found = await col.where({ uid, date, gym_id: gymId, cycle_id: cycleId }).limit(1).get();
@@ -160,15 +175,15 @@ async function upsertCycle(uid, gymId, cycleId, category, deltas) {
   const doc = found && found.data && found.data[0] ? found.data[0] : null;
 
   if (!doc) {
-    const totals = { boulder: {}, rope: {} };
-    addCounts(category === "boulder" ? totals.boulder : totals.rope, deltas);
+    const totals = { boulder: {}, rope: {}, lead: {} };
+    addCounts(totals[category] || totals.rope, deltas);
     await col.add({
       data: {
         uid,
         gym_id: gymId,
         cycle_id: cycleId,
         totals,
-        targets: { boulder: {}, rope: {} },
+        targets: { boulder: {}, rope: {}, lead: {} },
         cap_locked: false,
         created_at: db.serverDate(),
         updated_at: db.serverDate()
@@ -177,7 +192,7 @@ async function upsertCycle(uid, gymId, cycleId, category, deltas) {
     return;
   }
 
-  const totals = doc.totals && typeof doc.totals === "object" ? { ...doc.totals } : { boulder: {}, rope: {} };
+  const totals = doc.totals && typeof doc.totals === "object" ? { ...doc.totals } : { boulder: {}, rope: {}, lead: {} };
   const byCat = totals[category] && typeof totals[category] === "object" ? { ...totals[category] } : {};
   addCounts(byCat, deltas);
   totals[category] = byCat;
@@ -206,8 +221,8 @@ exports.main = async (event) => {
 
     const gymId = event && event.gymId ? String(event.gymId) : "";
     const date = event && event.date ? String(event.date) : "";
-    const mode = event && event.mode === "boulder" ? "boulder" : "difficulty";
-    const category = mode === "difficulty" ? "rope" : "boulder";
+    const mode = normalizeMode(event && event.mode);
+    const category = toCategory(mode);
 
     if (!gymId) return fail("BAD_REQUEST", "缺少 gymId", tid);
     if (!date) return fail("BAD_REQUEST", "缺少 date", tid);

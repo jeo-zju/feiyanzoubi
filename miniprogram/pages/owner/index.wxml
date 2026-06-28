@@ -1,37 +1,43 @@
-<view class="page">
-  <view class="card">
-    <view class="card-hd">我的岩馆</view>
+<view class="page viewport-page">
+  <view class="card card-hero">
     <view class="card-bd">
-      <view class="muted">你管理 {{summary.gymCount}} 家岩馆</view>
-      <view class="stat-row">
-        <view class="stat card">
-          <view class="stat-num">{{summary.boulderLines}}</view>
-          <view class="muted stat-txt">抱石线路</view>
+      <view class="section-title-lg">我的岩馆</view>
+      <view class="section-desc">你管理 {{summary.gymCount}} 家岩馆，这里看整体概况。</view>
+      <view class="stat-grid mt">
+        <view class="panel stat-card">
+          <view class="stat-number stat-number-warn">{{summary.boulderLines}}</view>
+          <view class="stat-label">抱石线路</view>
         </view>
-        <view class="stat card">
-          <view class="stat-num">{{summary.diffLines}}</view>
-          <view class="muted stat-txt">难度线路</view>
+        <view class="panel stat-card">
+          <view class="stat-number">{{summary.diffLines}}</view>
+          <view class="stat-label">难度线路</view>
+        </view>
+        <view class="panel stat-card">
+          <view class="stat-number">{{summary.leadLines}}</view>
+          <view class="stat-label">先锋线路</view>
         </view>
       </view>
     </view>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd row">
-      <view>岩馆列表</view>
-      <view class="add btn btn-ghost" bindtap="onAdd">+</view>
+  <scroll-view scroll-y class="viewport-scroll mt">
+    <view class="card">
+      <view class="card-hd row">
+        <view>岩馆列表</view>
+        <view class="add btn btn-ghost mini" bindtap="onAdd">新建</view>
+      </view>
+      <view class="card-bd list-bd">
+        <gym-card wx:for="{{gyms}}" wx:key="_id" gym="{{item}}" bind:tap="onTapGym" />
+        <view wx:if="{{!gyms.length && !loading}}" class="empty-state">还没有岩馆</view>
+        <paginator
+          wx:if="{{gyms.length}}"
+          page="{{page}}"
+          hasNext="{{hasNext}}"
+          bind:prev="onPrev"
+          bind:next="onNext"
+        />
+      </view>
     </view>
-    <view class="card-bd">
-      <gym-card wx:for="{{gyms}}" wx:key="_id" gym="{{item}}" bind:tap="onTapGym" />
-      <view wx:if="{{!gyms.length && !loading}}" class="empty muted">暂无岩馆</view>
-      <paginator
-        wx:if="{{gyms.length}}"
-        page="{{page}}"
-        hasNext="{{hasNext}}"
-        bind:prev="onPrev"
-        bind:next="onNext"
-      />
-    </view>
-  </view>
+  </scroll-view>
 </view>
 

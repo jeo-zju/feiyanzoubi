@@ -27,7 +27,7 @@ function formatYMD(d) {
 
 function sumTotals(t) {
   if (!t) return 0;
-  return Number(t.boulder || 0) + Number(t.difficulty || 0);
+  return Number(t.boulder || 0) + Number(t.difficulty || 0) + Number(t.lead || 0);
 }
 
 exports.main = async (event) => {

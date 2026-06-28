@@ -47,6 +47,7 @@ function sumToday(today) {
   return (
     sumObject(today.boulder || today.boulders || {}) +
     sumObject(today.difficulty || today.rope || today.ropes || {}) +
+    sumObject(today.lead || today.leads || {}) +
     sumObject(today.other || {})
   );
 }
@@ -54,6 +55,7 @@ function sumToday(today) {
 function normalizeMode(category, mode) {
   const c = String(category || mode || "").toLowerCase();
   if (c === "boulder") return "boulder";
+  if (c === "lead") return "lead";
   if (c === "rope") return "difficulty";
   if (c === "difficulty") return "difficulty";
   return "boulder";
@@ -163,7 +165,7 @@ exports.main = async (event) => {
         const v =
           Number(d.count || 0) ||
           sumToday(d.today) ||
-          (d.totals ? Number((d.totals.boulder || 0) + (d.totals.difficulty || 0)) : 0);
+          (d.totals ? Number((d.totals.boulder || 0) + (d.totals.difficulty || 0) + (d.totals.lead || 0)) : 0);
         if (!Number.isFinite(v)) return;
         dailyMap[d.date] = Number(dailyMap[d.date] || 0) + v;
       });

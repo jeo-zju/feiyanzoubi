@@ -64,7 +64,7 @@ exports.main = async (event) => {
       nickName: userDoc.nickName || "",
       avatarUrl: userDoc.avatarUrl || "",
       role: userDoc.role || "",
-      projectName: userDoc.projectName || "Project"
+      projectName: userDoc.projectName || ""
     };
     return ok({ user }, tid);
   } catch (e) {

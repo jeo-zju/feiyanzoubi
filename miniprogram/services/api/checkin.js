@@ -4,8 +4,12 @@ async function create(payload) {
   return callCloud("checkin_create", payload || {}, { loading: true, loadingTitle: "提交中" });
 }
 
-async function context(params) {
-  return callCloud("rock_checkin_context", params || {}, { loading: true, loadingTitle: "加载中" });
+async function context(params, options) {
+  return callCloud("rock_checkin_context", params || {}, {
+    loading: true,
+    loadingTitle: "加载中",
+    ...(options || {})
+  });
 }
 
 module.exports = {

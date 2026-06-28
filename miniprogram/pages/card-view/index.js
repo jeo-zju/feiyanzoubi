@@ -1,8 +1,16 @@
 const cardApi = require("../../services/api/card");
 const { safeText } = require("../../utils/format");
 const { getImagePath } = require("../../utils/cardCanvas");
-const { drawFrontCard, drawBackCard, flushCanvas } = require("../../utils/cardRenderer");
+const { drawFrontCard, flushCanvas } = require("../../utils/cardRenderer");
 const { getWindowWidth } = require("../../utils/window");
+
+function computeGymsLabel(front) {
+  const data = front && typeof front === "object" ? front : {};
+  if (data.wanderer) return "浪迹天涯";
+  const gyms = Array.isArray(data.gyms) ? data.gyms : [];
+  const names = gyms.map((item) => safeText(item && (item.name || item.gymName || item.title))).filter(Boolean);
+  return names.length ? `常去：${names.join("、")}` : "浪迹天涯";
+}
 
 Page({
   data: {
@@ -29,27 +37,12 @@ Page({
       const res = await cardApi.get({ cardId: this.data.cardId });
       const card = res && res.card ? res.card : null;
       this.setData({ card });
-      await this.renderFront();
+      await this.renderCard();
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     }
   },
-  async renderFront() {
-    const card = this.data.card;
-    if (!card) return;
-    const front = card.front || {};
-
-    const ctx = wx.createCanvasContext("cardCanvas", this);
-    const W = this.data.canvasW;
-    const H = this.data.canvasH;
-
-    ctx.setFillStyle("#0B0D15");
-    const avatarSrc = front.avatarMode === "custom" ? front.avatarFileId : front.avatarUrl;
-    const avatarPath = (await getImagePath(avatarSrc)) || (await getImagePath(this.data.defaultAvatar));
-    drawFrontCard(ctx, { W, H, front, avatarPath, layout: "fixed" });
-    await flushCanvas(ctx);
-  },
-  async renderBack() {
+  async renderCard() {
     const card = this.data.card;
     if (!card) return;
     const front = card.front || {};
@@ -59,8 +52,11 @@ Page({
     const W = this.data.canvasW;
     const H = this.data.canvasH;
 
-    const photoPath = await getImagePath(back.photoFileId);
-    drawBackCard(ctx, { W, H, front, back, photoPath, layout: "fixed" });
+    const avatarSrc = front.avatarMode === "custom" ? front.avatarFileId : front.avatarUrl;
+    const avatarPath = (await getImagePath(avatarSrc)) || (await getImagePath(this.data.defaultAvatar));
+    const photoPath = await getImagePath((front && front.photoFileId) || back.photoFileId);
+    const gymsLabel = computeGymsLabel(front);
+    drawFrontCard(ctx, { W, H, front, avatarPath, photoPath, gymsLabel, layout: "fixed" });
     await flushCanvas(ctx);
   },
   async ensureAlbumPermission() {
@@ -120,12 +116,8 @@ Page({
       })
     );
   },
-  async saveFront() {
-    await this.renderFront();
-    await this.saveCurrent();
-  },
-  async saveBack() {
-    await this.renderBack();
+  async onSaveCard() {
+    await this.renderCard();
     await this.saveCurrent();
   }
 });

@@ -41,15 +41,10 @@ Page({
   async onClaim() {
     if (!this.data.giftId) return wx.showToast({ title: "缺少 giftId", icon: "none" });
     try {
-      const res = await giftApi.claim({ giftId: this.data.giftId });
-      const cardId = safeText(res && res.cardId);
+      await giftApi.claim({ giftId: this.data.giftId });
       wx.showToast({ title: "已领取", icon: "success" });
       setTimeout(() => {
-        if (cardId) {
-          wx.navigateTo({ url: `/pages/card-view/index?cardId=${cardId}` });
-          return;
-        }
-        wx.switchTab({ url: "/pages/me/index" });
+        wx.redirectTo({ url: "/pages/card-wallet/index?tab=received" });
       }, 600);
     } catch (e) {
       wx.showToast({ title: e && e.message ? e.message : "领取失败", icon: "none" });

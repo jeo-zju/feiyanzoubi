@@ -1,58 +1,4 @@
-.profile-shell {
-  padding: 20rpx 22rpx;
-  display: flex;
-  align-items: center;
-  border-radius: 22rpx;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(143, 123, 255, 0.08));
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-
-.profile-avatar {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-
-.profile-main {
-  flex: 1;
-  margin-left: 18rpx;
-  min-width: 0;
-}
-
-.profile-name {
-  font-size: 34rpx;
-  font-weight: 900;
-  color: #fff;
-}
-
-.profile-sub {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: rgba(231, 233, 243, 0.6);
-}
-
-.profile-tip {
-  margin-top: 10rpx;
-  font-size: 20rpx;
-  color: rgba(231, 233, 243, 0.42);
-}
-
-.profile-arrow {
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  font-size: 30rpx;
-  line-height: 1;
-  color: rgba(231, 233, 243, 0.56);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-}
+@import "../../styles/profile-card.wxss";
 
 .mt {
   margin-top: 18rpx;
@@ -84,6 +30,167 @@
   padding: 20rpx;
   background: linear-gradient(135deg, rgba(143, 123, 255, 0.22), rgba(242, 193, 78, 0.10));
   border: 1rpx solid rgba(242, 193, 78, 0.18);
+}
+
+.mycard-render-box {
+  position: relative;
+  border-radius: 22rpx;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1rpx solid rgba(255, 255, 255, 0.10);
+}
+
+.mycard-module {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mycard-render {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 22rpx;
+}
+
+.mycard-render-ph {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 22rpx;
+  background: linear-gradient(135deg, rgba(143, 123, 255, 0.22), rgba(242, 193, 78, 0.10));
+}
+
+.mycard-bar-title {
+  position: absolute;
+  left: 50%;
+  top: 22rpx;
+  transform: translateX(-50%);
+  font-size: 20rpx;
+  font-weight: 700;
+  color: rgba(11, 13, 21, 0.48);
+  letter-spacing: 1rpx;
+  white-space: nowrap;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.card-img-box {
+  margin: 0 auto;
+  border-radius: 22rpx;
+  overflow: hidden;
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1rpx solid rgba(255, 255, 255, 0.10);
+}
+
+.card-ph {
+  width: 100%;
+  height: 100%;
+  background: #0B0D15;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-ph-bar {
+  height: 18%;
+  background: linear-gradient(90deg, rgba(143, 123, 255, 0.95), rgba(242, 193, 78, 0.95));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  padding: 0 18rpx;
+  box-sizing: border-box;
+}
+
+.card-ph-bar-side {
+  width: 48rpx;
+  height: 48rpx;
+  flex: none;
+}
+
+.card-ph-bar-title {
+  flex: 1;
+  font-size: 20rpx;
+  font-weight: 700;
+  color: rgba(11, 13, 21, 0.48);
+  letter-spacing: 1rpx;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.card-ph-body {
+  flex: 1;
+  padding: 26rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-ph-top {
+  display: flex;
+  align-items: center;
+}
+
+.card-ph-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border: 6rpx solid rgba(242, 193, 78, 0.85);
+  box-sizing: border-box;
+  flex: none;
+}
+
+.card-ph-right {
+  flex: 1;
+  margin-left: 20rpx;
+}
+
+.card-ph-name {
+  font-size: 40rpx;
+  font-weight: 900;
+  color: #fff;
+}
+
+.card-ph-meta {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.card-ph-gym {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: rgba(242, 193, 78, 0.95);
+}
+
+.card-ph-one {
+  margin-top: 16rpx;
+  font-size: 30rpx;
+  line-height: 1.35;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.card-ph-edit {
+  width: 48rpx;
+  height: 48rpx;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  line-height: 1;
+  font-weight: 900;
+  color: rgba(11, 13, 21, 0.84);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: rotate(-18deg);
+  transform-origin: center;
+  opacity: 0.8;
 }
 
 .mycard--empty {
@@ -178,12 +285,6 @@
   color: rgba(255, 255, 255, 0.95);
 }
 
-.mycard-ph-ft {
-  margin-top: 12rpx;
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.65);
-}
-
 .mycard-name {
   font-size: 38rpx;
   font-weight: 900;
@@ -193,14 +294,47 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16rpx;
+}
+
+.mycard-head {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.mycard-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 28rpx;
+  flex: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+}
+
+.mycard-head-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 16rpx;
 }
 
 .mycard-badge {
-  padding: 6rpx 12rpx;
-  border-radius: 999rpx;
-  font-size: 22rpx;
-  color: #0B0D15;
-  background: rgba(242, 193, 78, 0.95);
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(11, 13, 21, 0.84);
+  background: transparent;
+  position: absolute;
+  right: 16rpx;
+  top: 14rpx;
+  z-index: 2;
+  transform: rotate(-18deg);
 }
 
 .mycard-meta {
@@ -233,18 +367,19 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
-.action-pills {
-  margin-top: 18rpx;
+.mycard-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12rpx;
+  justify-content: center;
+  gap: 14rpx;
+  margin-top: 18rpx;
 }
 
+.mycard-action,
 .action-pill {
-  min-width: 112rpx;
-  height: 60rpx;
-  padding: 0 20rpx;
+  min-width: 124rpx;
+  height: 58rpx;
+  padding: 0 24rpx;
   box-sizing: border-box;
   border-radius: 999rpx;
   display: inline-flex;
@@ -252,56 +387,23 @@
   justify-content: center;
   font-size: 24rpx;
   font-weight: 800;
-  color: rgba(231, 233, 243, 0.9);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  color: rgba(231, 233, 243, 0.92);
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  background: rgba(11, 13, 21, 0.36);
 }
 
-.action-pill--warn {
+.mycard-action--warn {
   color: #f2c14e;
-  border-color: rgba(242, 193, 78, 0.25);
-  background: rgba(242, 193, 78, 0.12);
+  border-color: rgba(242, 193, 78, 0.3);
+  background: rgba(242, 193, 78, 0.16);
 }
 
-.thumbs {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+.action-pill--ghost {
+  color: rgba(231, 233, 243, 0.82);
 }
 
-.thumb {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 36rpx;
-  margin-right: 10rpx;
-  margin-top: 10rpx;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.thumbs--compact {
-  margin-top: 16rpx;
-  flex-wrap: nowrap;
-}
-
-.thumb--compact {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 28rpx;
-  margin-right: -10rpx;
-  margin-top: 0;
-  border: 4rpx solid #121624;
-  box-sizing: border-box;
-}
-
-.thumb--ghost {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 28rpx;
-  margin-right: -10rpx;
-  margin-top: 0;
-  border: 4rpx solid #121624;
-  box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.05);
+.action-pill--block {
+  width: 100%;
 }
 
 .glance-grid {
@@ -323,13 +425,14 @@
 }
 
 .glance-bd {
-  padding-top: 18rpx;
+  padding-top: 14rpx;
 }
 
-.glance-top {
+.glance-main {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: baseline;
+  gap: 8rpx;
+  margin-top: 8rpx;
 }
 
 .glance-title {
@@ -344,14 +447,13 @@
   color: #fff;
 }
 
-.glance-sub {
-  margin-top: 10rpx;
+.glance-unit {
   font-size: 22rpx;
   color: rgba(231, 233, 243, 0.62);
 }
 
 .credit-bar {
-  margin-top: 18rpx;
+  margin-top: 14rpx;
   height: 10rpx;
   border-radius: 999rpx;
   overflow: hidden;
@@ -369,7 +471,6 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12rpx;
-  padding-top: 18rpx;
 }
 
 .quick-grid--compact {
@@ -378,12 +479,12 @@
 
 .quick-item {
   min-width: 0;
-  padding: 18rpx 10rpx 16rpx;
+  height: 76rpx;
+  padding: 0 18rpx;
   border-radius: 18rpx;
   background: rgba(255, 255, 255, 0.04);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
@@ -393,28 +494,81 @@
   border-color: rgba(242, 193, 78, 0.18);
 }
 
-.quick-mark {
-  width: 54rpx;
-  height: 54rpx;
-  border-radius: 18rpx;
+.quick-label {
+  font-size: 24rpx;
+  font-weight: 800;
+  color: rgba(231, 233, 243, 0.88);
+}
+
+.share-canvas {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  z-index: 2000;
+}
+
+.sheet {
+  width: 100%;
+  border-top-left-radius: 22rpx;
+  border-top-right-radius: 22rpx;
+  background: #0B0D15;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  padding: 18rpx;
+  box-sizing: border-box;
+}
+
+.sheet-hd {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(143, 123, 255, 0.16);
-  color: #fff;
-  font-size: 24rpx;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.sheet-title {
+  font-size: 30rpx;
   font-weight: 900;
 }
 
-.quick-item--warn .quick-mark {
-  background: rgba(242, 193, 78, 0.22);
-  color: #f2c14e;
+.sheet-bd {
+  padding-bottom: 12rpx;
 }
 
-.quick-label {
-  margin-top: 10rpx;
-  font-size: 22rpx;
-  color: rgba(231, 233, 243, 0.8);
+.mini-pill {
+  min-width: 0;
+  padding: 0 16rpx;
+}
+
+.share-btn {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+  border-radius: 18rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #0B0D15;
+  background: linear-gradient(135deg, rgba(242, 193, 78, 0.98), rgba(250, 215, 110, 0.92));
+  border: 0;
+}
+
+.share-btn::after {
+  border: 0;
 }
 
 @media (max-width: 360px) {

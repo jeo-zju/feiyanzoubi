@@ -3,7 +3,7 @@
     <view class="card-bd">
       <view class="hero-hd">
         <view class="hero-title">把这张嘴硬存下来</view>
-        <view class="hero-sub muted">正面/反面都能保存到相册</view>
+        <view class="hero-sub muted">所见即所得，直接保存这张名片。</view>
       </view>
 
       <canvas
@@ -15,14 +15,8 @@
       ></canvas>
 
       <view class="row mt2">
-        <view class="btn btn-ghost flex" bindtap="renderFront">预览正面</view>
-        <view class="btn btn-ghost flex ml" bindtap="renderBack">预览反面</view>
-      </view>
-      <view class="row mt2">
-        <view class="btn btn-primary flex" bindtap="saveFront">保存正面</view>
-        <view class="btn btn-warn flex ml" bindtap="saveBack">保存反面</view>
+        <view class="btn btn-primary flex" bindtap="onSaveCard">保存名片</view>
       </view>
     </view>
   </view>
 </view>
-

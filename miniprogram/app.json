@@ -3,6 +3,10 @@
     "pages/home/index",
     "pages/stats/index",
     "pages/me/index",
+    "pages/backstage/index",
+    "pages/backstage-sync/index",
+    "pages/backstage-health/index",
+    "pages/review-queue/index",
     "pages/checkin/index",
     "pages/owner/index",
     "pages/gym-manage/index",
@@ -12,8 +16,7 @@
     "pages/card-wallet/index",
     "pages/card-view/index",
     "pages/wall/index",
-    "pages/debug-logs/index",
-    "pages/profile-edit/index"
+    "pages/debug-logs/index"
   ],
   "window": {
     "backgroundColor": "#0B0D15",

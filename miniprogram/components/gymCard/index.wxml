@@ -1,15 +1,17 @@
 <view class="gc card" bindtap="onTap">
   <view class="gc-hd">
-    <view class="gc-title">{{gym.name}}</view>
-    <view wx:if="{{gym.city}}" class="tag">{{gym.city}}</view>
+    <view class="gc-title">{{displayGym.name}}</view>
+    <view wx:if="{{displayGym.city}}" class="tag">{{displayGym.city}}</view>
   </view>
-  <view class="gc-sub muted">{{gym.address}}</view>
+  <view class="gc-sub muted">{{displayGym.address}}</view>
   <view class="gc-tags">
-    <view wx:if="{{gym.cycleLabel}}" class="tag">{{gym.cycleLabel}}</view>
-    <view wx:if="{{gym.visitLabel}}" class="tag">{{gym.visitLabel}}</view>
-    <view wx:if="{{gym.boulderLabel}}" class="tag">抱石 {{gym.boulderLabel}}</view>
-    <view wx:if="{{gym.diffLabel}}" class="tag">难度 {{gym.diffLabel}}</view>
-    <view wx:if="{{gym.lastVisitLabel}}" class="tag tag-warn">{{gym.lastVisitLabel}}</view>
+    <view wx:if="{{displayGym.cycleLabel}}" class="tag">{{displayGym.cycleLabel}}</view>
+    <view wx:if="{{displayGym.visitLabel}}" class="tag">{{displayGym.visitLabel}}</view>
+    <view wx:for="{{displayGym.supportedModeLabels}}" wx:key="*this" class="tag">{{item}}</view>
+    <view wx:if="{{displayGym.boulderLabel}}" class="tag">抱石 {{displayGym.boulderLabel}}</view>
+    <view wx:if="{{displayGym.diffLabel}}" class="tag">难度 {{displayGym.diffLabel}}</view>
+    <view wx:if="{{displayGym.leadLabel}}" class="tag">先锋 {{displayGym.leadLabel}}</view>
+    <view wx:if="{{displayGym.lastVisitLabel}}" class="tag tag-warn">{{displayGym.lastVisitLabel}}</view>
   </view>
 </view>
 

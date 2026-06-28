@@ -38,6 +38,7 @@ function normalizeGym(g) {
     currentCycle,
     routes,
     lines,
+    supportedModes: Array.isArray(g.supportedModes) ? g.supportedModes : [],
     lastCheckinAt: g.lastCheckinAt || g.lastVisitAt || g.last_checkin_at || "",
     visitCount: typeof g.visitCount === "number" ? g.visitCount : typeof g.visit_count === "number" ? g.visit_count : 0,
     updatedAt: g.updatedAt || g.updateTime || g.updated_at || g.createdAt || 0
@@ -53,7 +54,8 @@ function normalizeCycle(c) {
     startDate: c.start_date || c.startDate || "",
     endDate: c.end_date || c.endDate || "",
     boulderGrades: c.boulder_grades || c.boulderGrades || [],
-    difficultyGrades: c.rope_grades || c.difficultyGrades || c.ropes || []
+    difficultyGrades: c.rope_grades || c.difficultyGrades || c.ropes || [],
+    leadGrades: c.lead_grades || c.leadGrades || []
   };
 }
 

@@ -34,6 +34,7 @@ function normalizeGym(g) {
     currentCycle,
     routes,
     lines,
+    supportedModes: Array.isArray(g.supportedModes) ? g.supportedModes : [],
     lastCheckinAt: g.lastCheckinAt || g.lastVisitAt || g.last_checkin_at || "",
     visitCount: typeof g.visitCount === "number" ? g.visitCount : typeof g.visit_count === "number" ? g.visit_count : 0,
     updatedAt: g.updatedAt || g.updateTime || g.updated_at || g.createdAt || 0
@@ -47,9 +48,10 @@ function sumLines(gyms) {
       const lines = gym && gym.lines ? gym.lines : {};
       acc.boulderLines += Number(lines.boulder || 0);
       acc.diffLines += Number(lines.difficulty || 0);
+      acc.leadLines += Number(lines.lead || 0);
       return acc;
     },
-    { boulderLines: 0, diffLines: 0 }
+    { boulderLines: 0, diffLines: 0, leadLines: 0 }
   );
 }
 
@@ -74,7 +76,7 @@ exports.main = async (event) => {
     const totalRes = await db.collection("RockGyms").where(where).count();
     const total = totalRes && typeof totalRes.total === "number" ? totalRes.total : 0;
 
-    let summary = { gymCount: total, boulderLines: 0, diffLines: 0 };
+    let summary = { gymCount: total, boulderLines: 0, diffLines: 0, leadLines: 0 };
     if (total > 0) {
       const batchSize = 100;
       const batches = Math.ceil(total / batchSize);

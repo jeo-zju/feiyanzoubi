@@ -1,7 +1,9 @@
 const cardApi = require("../../services/api/card");
 const { safeText } = require("../../utils/format");
+const { syncAppLogin } = require("../../utils/session");
 const { getImagePath } = require("../../utils/cardCanvas");
-const { drawFrontCard, drawBackCard, flushCanvas } = require("../../utils/cardRenderer");
+const { TITLE_OPTIONS, ONE_LINER_OPTIONS, getDefaultCardPreview } = require("../../utils/cardDefaults");
+const { drawFrontCard, flushCanvas } = require("../../utils/cardRenderer");
 const { getWindowWidth } = require("../../utils/window");
 
 const DEFAULT_AVATAR = "/images/avatar.png";
@@ -27,31 +29,16 @@ function fileExt(path) {
   return m ? m[1].toLowerCase() : "jpg";
 }
 
-function pickOne(list) {
-  const arr = Array.isArray(list) ? list : [];
-  const n = arr.length;
-  if (!n) return "";
-  return safeText(arr[Math.floor(Math.random() * n)]);
+function isRemotePath(path) {
+  return /^(cloud|https?):/.test(safeText(path));
 }
 
 Page({
   data: {
+    defaultAvatar: DEFAULT_AVATAR,
     mode: "self",
     cardId: "",
-    titleOptions: [
-      "长臂猿",
-      "理论攀岩者",
-      "小短手",
-      "小短腿",
-      "脚点哲学家",
-      "热身冠军",
-      "落点收藏家",
-      "复盘型选手",
-      "保护点强迫症",
-      "岩点谈判专家",
-      "只会横移的",
-      "观众席 MVP"
-    ],
+    titleOptions: TITLE_OPTIONS,
     mbtiOptions: ["INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP", "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"],
     styleTabs: [
       { key: "encourage", label: "鼓励" },
@@ -59,11 +46,7 @@ Page({
     ],
     oneLinerStyle: "encourage",
     gymsText: "",
-    moreOpen: false,
-    previewSide: "front",
-    storyTitle: "",
     storyPlaceholder: "",
-    storyEmptyHint: "",
     storyRequiredToast: "",
     cardCssW: 320,
     cardCssH: Math.floor(320 / BANK_CARD_RATIO),
@@ -71,10 +54,17 @@ Page({
     cardPxH: CARD_PX_H,
     previewImage: "",
     showPlaceholder: true,
+    previewGymsLabel: "浪迹天涯",
+    defaultPreview: {
+      displayName: "岩友",
+      title: "长臂猿",
+      gymLabel: "浪迹天涯",
+      oneLiner: "再试一次就过"
+    },
     pickerVisible: false,
     pickerType: "",
     filteredTitles: [],
-    slangOptions: ["顶绳热身", "别问，问就是脚点没擦", "再试一次就过", "今天状态在线", "这个点太滑了", "手套忘带了", "走线有点骚", "我不累，我只是缺氧", "先休息三分钟", "这条线有点恶意", "落点不讲武德", "我会，但今天不想"],
+    slangOptions: ONE_LINER_OPTIONS,
     front: {
       displayName: "",
       title: "",
@@ -87,7 +77,6 @@ Page({
       oneLinerStyle: "encourage"
     },
     back: {
-      photoFileId: "",
       story: ""
     }
   },
@@ -98,6 +87,8 @@ Page({
     const user = (app && app.globalData && app.globalData.user) || {};
     const userNickName = safeText(user.nickName);
     const userAvatarUrl = safeText(user.avatarUrl);
+    const userOpenid = safeText(user.openid);
+    const defaultPreview = getDefaultCardPreview({ openid: userOpenid, nickName: userNickName });
 
     const winW = getWindowWidth();
     const rpx2px = (rpx) => (rpx * winW) / 750;
@@ -109,12 +100,15 @@ Page({
       mode,
       cardId,
       userNickName,
+      userOpenid,
       userAvatarUrl,
+      defaultPreview,
       cardCssW: cssW,
       cardCssH: cssH,
       cardPxW: CARD_PX_W,
       cardPxH: CARD_PX_H,
       previewImage: "",
+      previewGymsLabel: defaultPreview.gymLabel || "浪迹天涯",
       showPlaceholder: !cardId
     });
     this.applyModeCopy(mode);
@@ -131,25 +125,28 @@ Page({
   applyModeCopy(mode) {
     const isGift = mode === "giftDraft";
     this.setData({
-      storyTitle: isGift ? "写一个 TA 让你印象深刻的点" : "来点攀岩黑话",
-      storyPlaceholder: isGift ? "比如：他每次都能把最阴的脚点踩出声音" : "不想写也行，我先给你来一句（可改）",
-      storyEmptyHint: isGift ? "（写一个 TA 的特点就行）" : "（你可以随便改，也可以不改）",
-      storyRequiredToast: isGift ? "先写一个 TA 的特点" : "先写点内容"
+      storyPlaceholder: isGift ? "比如：他每次都能把最阴的脚点踩出声音" : "比如：脚点很稳，但嘴比手快",
+      storyRequiredToast: isGift ? "先写一个 TA 的特点" : "先写一点素材"
     });
   },
   applyDefaultsIfNew() {
     const front = { ...this.data.front };
-    if (!safeText(front.displayName) && safeText(this.data.userNickName)) front.displayName = safeText(this.data.userNickName);
-    if (!safeText(front.title)) front.title = this.randomTitle();
+    const defaults = getDefaultCardPreview({
+      openid: this.data.userOpenid,
+      nickName: this.data.userNickName
+    });
+    if (!safeText(front.displayName)) front.displayName = defaults.displayName;
+    if (!safeText(front.title)) front.title = defaults.title;
     front.wanderer = true;
     front.gyms = [];
     if (safeText(this.data.userAvatarUrl)) front.avatarUrl = safeText(this.data.userAvatarUrl);
     front.avatarMode = "wechat";
     front.avatarFileId = "";
     front.oneLinerStyle = "humor";
+    if (!safeText(front.oneLiner)) front.oneLiner = defaults.oneLiner;
     const back = { ...this.data.back };
     if (this.data.mode === "self") {
-      if (!safeText(back.story)) back.story = pickOne(this.data.slangOptions);
+      if (!safeText(back.story)) back.story = defaults.oneLiner;
     } else {
       back.story = "";
     }
@@ -158,7 +155,8 @@ Page({
         front,
         back,
         gymsText: "",
-        oneLinerStyle: "humor"
+        oneLinerStyle: "humor",
+        previewGymsLabel: defaults.gymLabel || "浪迹天涯"
       },
       () => {}
     );
@@ -191,19 +189,12 @@ Page({
         back: { ...this.data.back, ...back },
         gymsText,
         oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor",
+        previewGymsLabel: this.computeGymsLabel({ ...this.data.front, ...front }, gymsText) || this.data.defaultPreview.gymLabel,
         showPlaceholder: false
       }, () => this.renderPreviewSoon());
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     }
-  },
-  toggleMore() {
-    this.setData({ moreOpen: !this.data.moreOpen });
-  },
-  togglePreviewSide() {
-    this.setData({ previewSide: this.data.previewSide === "front" ? "back" : "front" }, () => {
-      if (!this.data.showPlaceholder) this.renderPreviewSoon();
-    });
   },
   revealPreviewAndRender() {
     if (this.data.showPlaceholder) {
@@ -231,17 +222,20 @@ Page({
 
     const front = this.data.front && typeof this.data.front === "object" ? this.data.front : {};
     const back = this.data.back && typeof this.data.back === "object" ? this.data.back : {};
+    const defaults = getDefaultCardPreview({
+      openid: this.data.userOpenid,
+      nickName: this.data.userNickName
+    });
     const previewFront = {
       ...front,
-      displayName: safeText(front.displayName) || "岩点测试员",
-      title: safeText(front.title) || "长臂猿",
-      mbti: safeText(front.mbti) || "ENTP",
-      oneLiner: safeText(front.oneLiner) || "用脚点谈判，用手点签字。",
+      displayName: safeText(front.displayName) || defaults.displayName,
+      title: safeText(front.title) || defaults.title,
+      mbti: safeText(front.mbti),
+      oneLiner: safeText(front.oneLiner) || defaults.oneLiner,
       oneLinerStyle: safeText(front.oneLinerStyle) || (this.data.oneLinerStyle === "humor" ? "humor" : "encourage"),
       wanderer: typeof front.wanderer === "boolean" ? front.wanderer : true
     };
     const previewBack = { ...back, story: safeText(back.story) || "给朋友打保护比自己爬更紧张，但嘴还是很硬。" };
-    const side = this.data.previewSide === "back" ? "back" : "front";
     const W = this.data.cardPxW || CARD_PX_W;
     const H = this.data.cardPxH || CARD_PX_H;
 
@@ -256,14 +250,13 @@ Page({
     if (!avatarPath) avatarPath = DEFAULT_AVATAR_CANVAS;
     if (!avatarPath) avatarPath = DEFAULT_AVATAR;
 
-    let photoPath = "";
-    if (side === "back") photoPath = await getImagePath(previewBack.photoFileId);
+    const photoPath = await getImagePath(front.photoFileId || previewBack.photoFileId);
 
     if (token !== this._previewToken) return;
 
-    const gymsLabel = this.computeGymsLabel(previewFront, this.data.gymsText) || "浪迹天涯";
-    if (side === "front") this.drawPreviewFront(ctx, W, H, previewFront, gymsLabel, avatarPath);
-    else this.drawPreviewBack(ctx, W, H, previewFront, previewBack, photoPath);
+    const gymsLabel = this.computeGymsLabel(previewFront, this.data.gymsText) || defaults.gymLabel;
+    this.setData({ previewGymsLabel: gymsLabel });
+    this.drawPreviewFront(ctx, W, H, previewFront, gymsLabel, avatarPath, photoPath);
 
     await flushCanvas(ctx);
     if (token !== this._previewToken) return;
@@ -307,11 +300,41 @@ Page({
     }
     this.setData({ previewImage: tempPath });
   },
-  drawPreviewFront(ctx, W, H, front, gymsLabel, avatarPath) {
-    drawFrontCard(ctx, { W, H, front, gymsLabel, avatarPath, layout: "responsive" });
+  drawPreviewFront(ctx, W, H, front, gymsLabel, avatarPath, photoPath) {
+    drawFrontCard(ctx, { W, H, front, gymsLabel, avatarPath, photoPath, layout: "responsive" });
   },
-  drawPreviewBack(ctx, W, H, front, back, photoPath) {
-    drawBackCard(ctx, { W, H, front, back, photoPath, layout: "responsive" });
+  async persistCard(options = {}) {
+    const { navigateBack = false, successToast = true } = options;
+    let front = { ...this.data.front };
+    front.gyms = front.wanderer ? [] : parseGyms(this.data.gymsText);
+    const back = { ...this.data.back };
+    back.photoFileId = safeText(front.photoFileId || back.photoFileId);
+    if (!safeText(back.story)) throw new Error(this.data.storyRequiredToast || "内容不能为空");
+    const defaults = getDefaultCardPreview({
+      openid: this.data.userOpenid,
+      nickName: this.data.userNickName
+    });
+    if (!safeText(front.displayName)) front.displayName = defaults.displayName;
+    if (!safeText(front.title)) front.title = defaults.title;
+    if (!safeText(front.oneLiner)) front.oneLiner = defaults.oneLiner;
+
+    front = await this.syncProfileFromCard(front);
+    const payload = {
+      mode: this.data.mode,
+      cardId: this.data.cardId || "",
+      card: { front, back }
+    };
+    const res = await cardApi.upsert(payload);
+    const id = safeText(res && res.cardId);
+    if (id) this.setData({ cardId: id });
+
+    try {
+      wx.setStorageSync(this.data.mode === "giftDraft" ? "giftDraftCardId" : "myPrimaryCardId", id);
+    } catch (e) {}
+
+    if (successToast) wx.showToast({ title: "已保存", icon: "success" });
+    if (navigateBack) setTimeout(() => wx.navigateBack({ delta: 1 }), 600);
+    return id;
   },
   onName(e) {
     this.setData({ front: { ...this.data.front, displayName: e.detail.value } }, () => this.revealPreviewAndRender());
@@ -326,8 +349,35 @@ Page({
       filteredTitles: this.data.titleOptions.slice(0)
     });
   },
+  openNameEditor() {
+    this.setData({ pickerVisible: true, pickerType: "name" });
+  },
+  useWechatNickName() {
+    const nickName = safeText(this.data.userNickName);
+    if (!nickName) {
+      wx.showToast({ title: "暂无微信昵称", icon: "none" });
+      return;
+    }
+    this.setData(
+      {
+        front: { ...this.data.front, displayName: nickName },
+        pickerVisible: false,
+        pickerType: ""
+      },
+      () => this.revealPreviewAndRender()
+    );
+  },
+  openStoryEditor() {
+    this.setData({ pickerVisible: true, pickerType: "story" });
+  },
+  openAvatarEditor() {
+    this.setData({ pickerVisible: true, pickerType: "avatar" });
+  },
   openMbtiPicker() {
     this.setData({ pickerVisible: true, pickerType: "mbti" });
+  },
+  openGymsEditor() {
+    this.setData({ pickerVisible: true, pickerType: "gyms" });
   },
   closePicker() {
     this.setData({ pickerVisible: false, pickerType: "" });
@@ -364,10 +414,16 @@ Page({
     const gymsText = e.detail.value;
     this.setData({ gymsText }, () => this.revealPreviewAndRender());
   },
-  setAvatarWechat() {
-    const front = { ...this.data.front, avatarMode: "wechat", avatarFileId: "" };
-    if (safeText(this.data.userAvatarUrl) && !safeText(front.avatarUrl)) front.avatarUrl = safeText(this.data.userAvatarUrl);
-    this.setData({ front }, () => this.revealPreviewAndRender());
+  onChooseWechatAvatar(e) {
+    const avatarUrl = safeText(e && e.detail ? e.detail.avatarUrl : "");
+    if (!avatarUrl) return;
+    const front = {
+      ...this.data.front,
+      avatarMode: "wechat",
+      avatarFileId: "",
+      avatarUrl
+    };
+    this.setData({ front, userAvatarUrl: avatarUrl, pickerVisible: false, pickerType: "" }, () => this.revealPreviewAndRender());
   },
   async pickAvatar() {
     try {
@@ -375,7 +431,7 @@ Page({
       if (!r) return;
       const fileID = await this.uploadToCloud(r);
       const front = { ...this.data.front, avatarMode: "custom", avatarFileId: fileID };
-      this.setData({ front }, () => this.revealPreviewAndRender());
+      this.setData({ front, pickerVisible: false, pickerType: "" }, () => this.revealPreviewAndRender());
     } catch (e) {
       wx.showToast({ title: "上传失败", icon: "none" });
     }
@@ -385,7 +441,9 @@ Page({
       const r = await this.chooseOneImage();
       if (!r) return;
       const fileID = await this.uploadToCloud(r);
-      this.setData({ back: { ...this.data.back, photoFileId: fileID } }, () => this.revealPreviewAndRender());
+      const front = { ...this.data.front, photoFileId: fileID };
+      const back = { ...this.data.back, photoFileId: fileID };
+      this.setData({ front, back }, () => this.revealPreviewAndRender());
     } catch (e) {
       wx.showToast({ title: "上传失败", icon: "none" });
     }
@@ -423,6 +481,60 @@ Page({
       });
     });
   },
+  async resolveProfileAvatarUrl(front) {
+    if (!front || front.avatarMode !== "wechat") {
+      return safeText(front && (front.avatarFileId || front.avatarUrl || this.data.userAvatarUrl));
+    }
+    const avatarUrl = safeText(front.avatarUrl || this.data.userAvatarUrl);
+    if (!avatarUrl) return "";
+    if (avatarUrl.startsWith("/")) return "";
+    if (isRemotePath(avatarUrl)) return avatarUrl;
+    const ext = fileExt(avatarUrl);
+    const cloudPath = `avatars/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+    return new Promise((resolve, reject) => {
+      wx.cloud.uploadFile({
+        cloudPath,
+        filePath: avatarUrl,
+        success: (res) => resolve(safeText(res && res.fileID)),
+        fail: reject
+      });
+    });
+  },
+  async syncProfileFromCard(front) {
+    if (this.data.mode !== "self") return front;
+    const nickName = safeText(front && front.displayName);
+    if (!nickName) return front;
+    const avatarUrl = await this.resolveProfileAvatarUrl(front);
+    const user = await syncAppLogin({
+      nickName,
+      avatarUrl
+    });
+    const nextNickName = safeText(user && user.nickName) || nickName;
+    const nextAvatarUrl = safeText(user && user.avatarUrl) || avatarUrl;
+    const nextFront = {
+      ...front,
+      displayName: nextNickName
+    };
+    if (nextAvatarUrl) {
+      if (nextFront.avatarMode === "wechat") nextFront.avatarUrl = nextAvatarUrl;
+      if (nextFront.avatarMode === "custom" && !safeText(nextFront.avatarFileId)) nextFront.avatarFileId = nextAvatarUrl;
+    }
+    this.setData({
+      userNickName: nextNickName,
+      userAvatarUrl: nextAvatarUrl,
+      defaultPreview: getDefaultCardPreview({
+        openid: this.data.userOpenid,
+        nickName: nextNickName
+      }),
+      front: {
+        ...this.data.front,
+        displayName: nextFront.displayName,
+        avatarUrl: nextFront.avatarUrl,
+        avatarFileId: nextFront.avatarFileId
+      }
+    });
+    return nextFront;
+  },
   onStory(e) {
     const story = e.detail.value;
     this.setData({ back: { ...this.data.back, story } }, () => this.revealPreviewAndRender());
@@ -448,35 +560,15 @@ Page({
       };
       const res = await cardApi.generateOneLiner(payload);
       const oneLiner = safeText(res && res.oneLiner);
+      if (!oneLiner) throw new Error("没有生成到可用文案");
       this.setData({ front: { ...this.data.front, oneLiner, oneLinerStyle: this.data.oneLinerStyle } }, () => this.revealPreviewAndRender());
     } catch (e) {
       wx.showToast({ title: e && e.message ? e.message : "生成失败", icon: "none" });
     }
   },
   async onSave() {
-    const front = { ...this.data.front };
-    front.gyms = front.wanderer ? [] : parseGyms(this.data.gymsText);
-    const back = { ...this.data.back };
-    if (!safeText(back.story)) return wx.showToast({ title: this.data.storyRequiredToast || "内容不能为空", icon: "none" });
-    if (!safeText(front.displayName)) front.displayName = "岩友";
-    if (!safeText(front.title)) front.title = "新手上路";
-
     try {
-      const payload = {
-        mode: this.data.mode,
-        cardId: this.data.cardId || "",
-        card: { front, back }
-      };
-      const res = await cardApi.upsert(payload);
-      const id = safeText(res && res.cardId);
-      if (id) this.setData({ cardId: id });
-
-      try {
-        wx.setStorageSync(this.data.mode === "giftDraft" ? "giftDraftCardId" : "myPrimaryCardId", id);
-      } catch (e) {}
-
-      wx.showToast({ title: "已保存", icon: "success" });
-      setTimeout(() => wx.navigateBack({ delta: 1 }), 600);
+      await this.persistCard({ navigateBack: true, successToast: true });
     } catch (e) {
       wx.showToast({ title: e && e.message ? e.message : "保存失败", icon: "none" });
     }

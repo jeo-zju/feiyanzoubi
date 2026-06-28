@@ -1,0 +1,137 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">批量同步</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view class="card mt">
+      <view class="card-hd">同步参数</view>
+      <view class="card-bd">
+        <view class="field-block">
+          <view class="field-label">城市</view>
+          <picker mode="selector" range="{{cityOptions}}" value="{{cityIndex}}" bindchange="onCityChange">
+            <view class="picker-field">{{cityOptions[cityIndex] || '请选择城市'}}</view>
+          </picker>
+        </view>
+        <view class="field-block mt">
+          <view class="row">
+            <view class="field-label">关键词</view>
+            <view class="btn btn-ghost mini" bindtap="onToggleKeywordPanel">{{keywordCollapsed ? '编辑' : '收起'}}</view>
+          </view>
+          <view class="section-tip">{{keywordCount}} 个内置关键词</view>
+          <textarea
+            wx:if="{{!keywordCollapsed}}"
+            class="textarea mt-sm"
+            auto-height
+            maxlength="-1"
+            value="{{keywordText}}"
+            placeholder="每行一个关键词"
+            bindinput="onKeywordInput"
+          ></textarea>
+        </view>
+        <view class="dual-grid mt">
+          <view class="field-block">
+            <view class="field-label">翻页</view>
+            <input class="input" type="number" value="{{pageLimitText}}" bindinput="onPageLimitInput" />
+          </view>
+          <view class="field-block">
+            <view class="field-label">每页</view>
+            <input class="input" type="number" value="{{pageSizeText}}" bindinput="onPageSizeInput" />
+          </view>
+        </view>
+        <view class="action-row mt">
+          <view class="btn btn-primary flex" bindtap="onRunSyncPreview">{{syncLoading ? '预览中' : '开始预览'}}</view>
+          <view class="btn btn-warn mini ml" bindtap="onRunSyncWrite">写入</view>
+          <view class="btn btn-ghost mini ml" bindtap="onCopySyncResult">复制</view>
+        </view>
+        <view wx:if="{{syncError}}" class="tag tag-warn mt">{{syncError}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{syncResult}}" class="card mt">
+      <view class="card-hd">同步结果</view>
+      <view class="card-bd">
+        <view class="stat-grid">
+          <view class="panel stat-card">
+            <view class="stat-number stat-number-warn">{{syncStats.requests}}</view>
+            <view class="stat-label">请求</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.fetched}}</view>
+            <view class="stat-label">原始</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.unique}}</view>
+            <view class="stat-label">去重后</view>
+          </view>
+        </view>
+        <view class="stat-grid mt-sm">
+          <view class="panel stat-card">
+            <view class="stat-number stat-number-warn">{{syncStats.inserted}}</view>
+            <view class="stat-label">新增</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.updated}}</view>
+            <view class="stat-label">更新</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.sourceSaved}}</view>
+            <view class="stat-label">来源</view>
+          </view>
+        </view>
+        <view class="stat-grid mt-sm">
+          <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.reviewQueued}}</view>
+            <view class="stat-label">待审核</view>
+          </view>
+        </view>
+
+        <view wx:if="{{syncRequests.length}}" class="mt">
+          <view class="section-title">请求</view>
+          <view class="list mt-sm">
+            <view wx:for="{{syncRequests}}" wx:key="index" class="list-row">
+              <view>
+                <view>{{item.city}} · {{item.keyword}}</view>
+                <view class="section-tip">第 {{item.page}} 页 · {{item.count}} 条</view>
+              </view>
+              <view class="tag">{{item.keyword}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{syncItems.length}}" class="mt">
+          <view class="section-title">预览</view>
+          <view class="list mt-sm">
+            <view wx:for="{{syncItems}}" wx:key="providerPoiId" class="panel panel-soft mt-sm">
+              <view class="row">
+                <view class="section-title item-title">{{item.name}}</view>
+                <view wx:if="{{item.supportedModesText}}" class="tag">{{item.supportedModesText}}</view>
+              </view>
+              <view class="section-tip">{{item.city}} {{item.district}}</view>
+              <view class="item-address">{{item.address}}</view>
+              <view class="item-meta">
+                <text>{{item.phone || '暂无电话'}}</text>
+                <text>{{item.category || '未分类'}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{syncWriteResults.length}}" class="mt">
+          <view class="section-title">写入</view>
+          <view class="list mt-sm">
+            <view wx:for="{{syncWriteResults}}" wx:key="providerPoiId" class="list-row">
+              <view>
+                <view>{{item.name}}</view>
+                <view class="section-tip">{{item.action === 'insert' ? '新增' : '更新'}} · {{item.gymId}}</view>
+              </view>
+              <view class="tag">{{item.action}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

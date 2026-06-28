@@ -109,6 +109,20 @@ function normalizeLimits(limits) {
   return out;
 }
 
+function uniqueModes(list) {
+  const out = [];
+  const seen = {};
+  (Array.isArray(list) ? list : []).forEach((item) => {
+    const mode = safeText(item).toLowerCase();
+    if (!mode) return;
+    if (!["boulder", "difficulty", "lead"].includes(mode)) return;
+    if (seen[mode]) return;
+    seen[mode] = true;
+    out.push(mode);
+  });
+  return out;
+}
+
 async function canManageGym(openid, gymId) {
   const res = await db.collection("RockGyms").doc(gymId).get();
   const gym = res && res.data ? res.data : null;
@@ -149,14 +163,17 @@ exports.main = async (event) => {
             name: safeText(cyclePatch.name),
             startDate: safeText(cyclePatch.startDate),
             boulderGrades: Array.isArray(cyclePatch.boulderGrades) ? cyclePatch.boulderGrades : [],
-            difficultyGrades: Array.isArray(cyclePatch.difficultyGrades) ? cyclePatch.difficultyGrades : []
+            difficultyGrades: Array.isArray(cyclePatch.difficultyGrades) ? cyclePatch.difficultyGrades : [],
+            leadGrades: Array.isArray(cyclePatch.leadGrades) ? cyclePatch.leadGrades : []
           }
         : null;
+      const supportedModes = uniqueModes(gymPatch && gymPatch.supportedModes);
 
       const doc = {
         name,
         city,
         address,
+        supportedModes,
         ownerOpenid: openid,
         owner_uid: openid,
         managers: [openid],
@@ -173,7 +190,7 @@ exports.main = async (event) => {
       doc.updated_at = db.serverDate();
 
       if (routesPatch && routesPatch.mode && routesPatch.limits) {
-        const mode = routesPatch.mode === "boulder" ? "boulder" : "difficulty";
+        const mode = routesPatch.mode === "boulder" ? "boulder" : routesPatch.mode === "lead" ? "lead" : "difficulty";
         doc.routes[mode] = { limits: normalizeLimits(routesPatch.limits) };
       }
 
@@ -300,6 +317,7 @@ exports.main = async (event) => {
       if (name) patch.name = name;
       if (gymPatch.city != null) patch.city = safeText(gymPatch.city);
       if (gymPatch.address != null) patch.address = safeText(gymPatch.address);
+      if (gymPatch.supportedModes != null) patch.supportedModes = uniqueModes(gymPatch.supportedModes);
     }
 
     if (cyclePatch) {
@@ -307,6 +325,7 @@ exports.main = async (event) => {
       const startDate = safeText(cyclePatch.startDate);
       const boulderGrades = Array.isArray(cyclePatch.boulderGrades) ? cyclePatch.boulderGrades : [];
       const difficultyGrades = Array.isArray(cyclePatch.difficultyGrades) ? cyclePatch.difficultyGrades : [];
+      const leadGrades = Array.isArray(cyclePatch.leadGrades) ? cyclePatch.leadGrades : [];
       if (!startDate) return fail("BAD_REQUEST", "缺少开始日期", tid);
       if (!isValidYMD(startDate)) return fail("BAD_REQUEST", "开始日期格式应为 YYYY-MM-DD", tid);
 
@@ -329,7 +348,7 @@ exports.main = async (event) => {
           }
         }
 
-        patch.currentCycle = _.set({ name, startDate, boulderGrades, difficultyGrades });
+        patch.currentCycle = _.set({ name, startDate, boulderGrades, difficultyGrades, leadGrades });
         await db.collection("RockGymCycles").doc(editingCycleId).update({
           data: {
             gym_id: gymId,
@@ -342,6 +361,8 @@ exports.main = async (event) => {
             boulderGrades,
             rope_grades: difficultyGrades,
             difficultyGrades,
+            lead_grades: leadGrades,
+            leadGrades,
             updated_at: db.serverDate(),
             updatedAt: now
           }
@@ -368,6 +389,7 @@ exports.main = async (event) => {
           start_date: startDate,
           boulder_grades: boulderGrades,
           rope_grades: difficultyGrades,
+          lead_grades: leadGrades,
           status: "active",
           created_at: db.serverDate(),
           updated_at: db.serverDate(),
@@ -376,6 +398,7 @@ exports.main = async (event) => {
           startDate,
           boulderGrades,
           difficultyGrades,
+          leadGrades,
           createdAt: now,
           updatedAt: now
         };
@@ -385,15 +408,15 @@ exports.main = async (event) => {
 
         patch.current_cycle_id = cycleId;
         patch.currentCycleId = cycleId;
-        patch.currentCycle = _.set({ name, startDate, boulderGrades, difficultyGrades });
+        patch.currentCycle = _.set({ name, startDate, boulderGrades, difficultyGrades, leadGrades });
       }
     }
 
     if (routesPatch && routesPatch.limits) {
-      const mode = routesPatch.mode === "boulder" ? "boulder" : "difficulty";
+      const mode = routesPatch.mode === "boulder" ? "boulder" : routesPatch.mode === "lead" ? "lead" : "difficulty";
       patch.routes = perm.gym.routes && typeof perm.gym.routes === "object" ? perm.gym.routes : {};
       patch.routes[mode] = { ...(patch.routes[mode] || {}), limits: normalizeLimits(routesPatch.limits) };
-      patch.lines = patch.lines || perm.gym.lines || { boulder: 0, difficulty: 0 };
+      patch.lines = patch.lines || perm.gym.lines || { boulder: 0, difficulty: 0, lead: 0 };
       const sum = Object.keys(patch.routes[mode].limits).reduce((s, k) => s + Number(patch.routes[mode].limits[k] || 0), 0);
       patch.lines[mode] = sum;
     }

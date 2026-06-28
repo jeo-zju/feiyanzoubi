@@ -1,4 +1,20 @@
+.viewport-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewport-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
 .mt {
+  margin-top: 18rpx;
+}
+
+.list-scroll {
   margin-top: 18rpx;
 }
 
@@ -14,6 +30,12 @@
 .summary-item {
   flex: 1;
   padding: 20rpx 0 10rpx;
+  border-radius: 18rpx;
+  transition: all 0.2s ease;
+}
+
+.summary-item--active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .summary-num {
@@ -34,6 +56,14 @@
   display: flex;
   align-items: center;
   margin-top: 18rpx;
+}
+
+.filter-bar {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
 }
 
 .flex {

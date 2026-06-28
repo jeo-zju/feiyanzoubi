@@ -8,8 +8,11 @@ async function get(payload) {
   return callCloud("rock_card_get", payload || {}, { loading: true, loadingTitle: "加载中" });
 }
 
-async function listMy(payload) {
-  return callCloud("rock_card_list_my", payload || {}, { loading: false });
+async function listMy(payload, options) {
+  return callCloud("rock_card_list_my", payload || {}, {
+    loading: false,
+    ...(options || {})
+  });
 }
 
 async function generateOneLiner(payload) {
@@ -22,4 +25,3 @@ module.exports = {
   listMy,
   generateOneLiner
 };
-

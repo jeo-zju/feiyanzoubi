@@ -21,28 +21,6 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
-function shanghaiDateKey(ts) {
-  const t = typeof ts === "number" ? ts : Date.now();
-  const d = new Date(t + 8 * 60 * 60 * 1000);
-  return d.toISOString().slice(0, 10);
-}
-
-async function consumeCredit(openid) {
-  const date = shanghaiDateKey(Date.now());
-  const col = db.collection("RockCardCredits");
-  const found = await col.where({ openid, date }).limit(1).get();
-  const doc = found && found.data && found.data[0] ? found.data[0] : null;
-  const limit = doc && typeof doc.limit === "number" ? doc.limit : 10;
-  const used = doc && typeof doc.used === "number" ? doc.used : 0;
-  if (used >= limit) return { ok: false, limit, used, remaining: 0, date };
-  if (!doc) {
-    await col.add({ data: { openid, date, limit, used: 1, updated_at: db.serverDate() } });
-    return { ok: true, limit, used: 1, remaining: Math.max(0, limit - 1), date };
-  }
-  await col.doc(doc._id).update({ data: { used: _.inc(1), updated_at: db.serverDate() } });
-  return { ok: true, limit, used: used + 1, remaining: Math.max(0, limit - (used + 1)), date };
-}
-
 async function countReceivedCards(ownerOpenid) {
   const res = await db
     .collection("RockCards")
@@ -64,6 +42,34 @@ async function rollbackClaim(giftsCol, giftId, openid, now) {
   } catch (e) {}
 }
 
+function resolveSourceMode(card, openid) {
+  const createdByOpenid = safeText(card && card.createdByOpenid);
+  const ownerOpenid = safeText(card && card.ownerOpenid);
+  const status = safeText(card && card.status);
+  if (createdByOpenid !== openid) return "";
+  if (ownerOpenid === openid && status === "active") return "self";
+  if (!ownerOpenid && status === "draft") return "giftDraft";
+  return "";
+}
+
+async function cloneCardForRecipient(cardsCol, sourceCard, toOpenid, isPrimary, now) {
+  const addRes = await cardsCol.add({
+    data: {
+      ownerOpenid: toOpenid,
+      createdByOpenid: safeText(sourceCard && sourceCard.createdByOpenid),
+      status: "active",
+      isPrimary: !!isPrimary,
+      front: sourceCard && sourceCard.front ? sourceCard.front : {},
+      back: sourceCard && sourceCard.back ? sourceCard.back : {},
+      createdAt: now,
+      updatedAt: now,
+      created_at: db.serverDate(),
+      updated_at: db.serverDate()
+    }
+  });
+  return addRes && addRes._id ? String(addRes._id) : "";
+}
+
 exports.main = async (event) => {
   const tid = traceId();
   try {
@@ -83,19 +89,18 @@ exports.main = async (event) => {
       const cardRes = await cardsCol.doc(cardId).get();
       const card = cardRes && cardRes.data ? cardRes.data : null;
       if (!card) return fail("NOT_FOUND", "名片不存在", tid);
-      if (safeText(card.createdByOpenid) !== openid) return fail("FORBIDDEN", "无权限", tid);
-      if (safeText(card.ownerOpenid)) return fail("BAD_REQUEST", "名片已归属，无法创建领取链接", tid);
-      if (safeText(card.status) !== "draft") return fail("BAD_REQUEST", "请先用草稿卡创建领取链接", tid);
+      const sourceMode = resolveSourceMode(card, openid);
+      if (!sourceMode) return fail("FORBIDDEN", "当前名片不可分享", tid);
 
-      const credit = await consumeCredit(openid);
-      if (!credit.ok) return fail("NO_CREDIT", "今日灵感额度已用完", tid);
-
-      await cardsCol.doc(cardId).update({ data: { status: "active", updatedAt: now, updated_at: db.serverDate() } });
+      if (sourceMode === "giftDraft") {
+        await cardsCol.doc(cardId).update({ data: { status: "active", updatedAt: now, updated_at: db.serverDate() } });
+      }
 
       const addRes = await giftsCol.add({
         data: {
           cardId,
           fromOpenid: openid,
+          sourceMode,
           toOpenid: "",
           method: "link",
           status: "pending",
@@ -107,7 +112,7 @@ exports.main = async (event) => {
         }
       });
       const giftId = addRes && addRes._id ? String(addRes._id) : "";
-      return ok({ giftId, page: "pages/card-claim/index", scene: `giftId=${giftId}`, credit }, tid);
+      return ok({ giftId, page: "pages/card-claim/index", scene: `giftId=${giftId}`, sourceMode }, tid);
     }
 
     if (action === "create_direct") {
@@ -119,25 +124,28 @@ exports.main = async (event) => {
       const cardRes = await cardsCol.doc(cardId).get();
       const card = cardRes && cardRes.data ? cardRes.data : null;
       if (!card) return fail("NOT_FOUND", "名片不存在", tid);
-      if (safeText(card.createdByOpenid) !== openid) return fail("FORBIDDEN", "无权限", tid);
-      if (safeText(card.ownerOpenid)) return fail("BAD_REQUEST", "名片已归属，无法直送", tid);
-      if (safeText(card.status) !== "draft") return fail("BAD_REQUEST", "请先用草稿卡直送", tid);
+      const sourceMode = resolveSourceMode(card, openid);
+      if (!sourceMode) return fail("FORBIDDEN", "当前名片不可赠送", tid);
+      if (toOpenid === openid) return fail("BAD_REQUEST", "不能送给自己", tid);
 
       const recvCount = await countReceivedCards(toOpenid);
       if (recvCount >= 100) return fail("WALLET_FULL", "对方名片夹已满（100）", tid);
       const primary = await hasPrimary(toOpenid);
-
-      const credit = await consumeCredit(openid);
-      if (!credit.ok) return fail("NO_CREDIT", "今日灵感额度已用完", tid);
-
-      await cardsCol.doc(cardId).update({
-        data: { ownerOpenid: toOpenid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
-      });
+      let deliveredCardId = "";
+      if (sourceMode === "self") {
+        deliveredCardId = await cloneCardForRecipient(cardsCol, card, toOpenid, !primary, now);
+      } else {
+        await cardsCol.doc(cardId).update({
+          data: { ownerOpenid: toOpenid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
+        });
+        deliveredCardId = cardId;
+      }
 
       await giftsCol.add({
         data: {
-          cardId,
+          cardId: deliveredCardId || cardId,
           fromOpenid: openid,
+          sourceMode,
           toOpenid,
           method: "direct",
           status: "claimed",
@@ -149,7 +157,7 @@ exports.main = async (event) => {
         }
       });
 
-      return ok({ delivered: true, credit }, tid);
+      return ok({ delivered: true, cardId: deliveredCardId || cardId, sourceMode }, tid);
     }
 
     if (action === "get") {
@@ -166,6 +174,7 @@ exports.main = async (event) => {
       const fromOpenid = safeText(gift.fromOpenid);
       const toOpenid = safeText(gift.toOpenid);
       const claimedByOpenid = safeText(gift.claimedByOpenid);
+      const sourceMode = safeText(gift.sourceMode) || "giftDraft";
       const canViewFullCard = openid && [fromOpenid, toOpenid, claimedByOpenid].includes(openid);
       if (giftStatus !== "pending" && !canViewFullCard) return fail("FORBIDDEN", "无权限查看", tid);
 
@@ -174,6 +183,7 @@ exports.main = async (event) => {
           gift: {
             _id: giftId,
             method: safeText(gift.method),
+            sourceMode,
             status: giftStatus,
             fromOpenid,
             createdAt: gift.createdAt || 0,
@@ -197,12 +207,16 @@ exports.main = async (event) => {
       const gift = giftRes && giftRes.data ? giftRes.data : null;
       if (!gift) return fail("NOT_FOUND", "赠送记录不存在", tid);
       if (safeText(gift.status) !== "pending") return fail("BAD_REQUEST", "该名片已被领取或已取消", tid);
+      if (safeText(gift.fromOpenid) === openid && safeText(gift.sourceMode) === "self") {
+        return fail("BAD_REQUEST", "不能领取自己分享的名片", tid);
+      }
 
       const cardId = safeText(gift.cardId);
       const cardRes = await cardsCol.doc(cardId).get();
       const card = cardRes && cardRes.data ? cardRes.data : null;
       if (!card) return fail("NOT_FOUND", "名片不存在", tid);
-      if (safeText(card.ownerOpenid)) return fail("BAD_REQUEST", "名片已归属，无法重复领取", tid);
+      const sourceMode = safeText(gift.sourceMode) || "giftDraft";
+      if (sourceMode !== "self" && safeText(card.ownerOpenid)) return fail("BAD_REQUEST", "名片已归属，无法重复领取", tid);
 
       const recvCount = await countReceivedCards(openid);
       if (recvCount >= 100) return fail("WALLET_FULL", "你的名片夹已满（100）", tid);
@@ -219,24 +233,35 @@ exports.main = async (event) => {
 
       const primary = await hasPrimary(openid);
       try {
-        const claimCardRes = await cardsCol.where({ _id: cardId, ownerOpenid: "" }).update({
-          data: { ownerOpenid: openid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
-        });
-        const cardUpdated =
-          claimCardRes &&
-          claimCardRes.stats &&
-          typeof claimCardRes.stats.updated === "number" &&
-          claimCardRes.stats.updated === 1;
-        if (!cardUpdated) {
-          await rollbackClaim(giftsCol, giftId, openid, now);
-          return fail("BAD_REQUEST", "名片已归属，无法重复领取", tid);
+        let claimedCardId = cardId;
+        if (sourceMode === "self") {
+          claimedCardId = await cloneCardForRecipient(cardsCol, card, openid, !primary, now);
+          if (!claimedCardId) {
+            await rollbackClaim(giftsCol, giftId, openid, now);
+            return fail("BAD_REQUEST", "名片领取失败，请重试", tid);
+          }
+          await giftsCol.doc(giftId).update({
+            data: { cardId: claimedCardId, updated_at: db.serverDate(), updatedAt: now }
+          });
+        } else {
+          const claimCardRes = await cardsCol.where({ _id: cardId, ownerOpenid: "" }).update({
+            data: { ownerOpenid: openid, status: "active", isPrimary: !primary, updatedAt: now, updated_at: db.serverDate() }
+          });
+          const cardUpdated =
+            claimCardRes &&
+            claimCardRes.stats &&
+            typeof claimCardRes.stats.updated === "number" &&
+            claimCardRes.stats.updated === 1;
+          if (!cardUpdated) {
+            await rollbackClaim(giftsCol, giftId, openid, now);
+            return fail("BAD_REQUEST", "名片已归属，无法重复领取", tid);
+          }
         }
+        return ok({ claimed: true, cardId: claimedCardId, sourceMode }, tid);
       } catch (e) {
         await rollbackClaim(giftsCol, giftId, openid, now);
         throw e;
       }
-
-      return ok({ claimed: true, cardId }, tid);
     }
 
     if (action === "cancel") {
@@ -256,7 +281,8 @@ exports.main = async (event) => {
             card &&
             safeText(card.createdByOpenid) === openid &&
             !safeText(card.ownerOpenid) &&
-            safeText(card.status) === "active"
+            safeText(card.status) === "active" &&
+            safeText(gift.sourceMode) !== "self"
           ) {
             await cardsCol.doc(cardId).update({
               data: { status: "draft", updatedAt: now, updated_at: db.serverDate() }

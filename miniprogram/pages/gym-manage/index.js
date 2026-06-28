@@ -20,6 +20,32 @@ function buildRouteRows(grades, currentMap) {
   }));
 }
 
+function uniqueModes(list) {
+  const out = [];
+  const seen = {};
+  (Array.isArray(list) ? list : []).forEach((item) => {
+    const mode = safeText(item).toLowerCase();
+    if (!mode) return;
+    if (!["boulder", "difficulty", "lead"].includes(mode)) return;
+    if (seen[mode]) return;
+    seen[mode] = true;
+    out.push(mode);
+  });
+  return out;
+}
+
+function buildRouteTabs(modes) {
+  const labels = {
+    boulder: "抱石",
+    difficulty: "难度",
+    lead: "先锋"
+  };
+  return uniqueModes(modes).map((key) => ({
+    key,
+    label: labels[key]
+  }));
+}
+
 const BOULDER_TEMPLATES = [
   {
     key: "v_single",
@@ -56,6 +82,8 @@ const DIFFICULTY_TEMPLATES = [
   }
 ];
 
+const LEAD_TEMPLATES = DIFFICULTY_TEMPLATES;
+
 Page({
   data: {
     gymId: "",
@@ -69,20 +97,23 @@ Page({
       { key: "cycle", label: "周期设置" },
       { key: "routes", label: "线路录入" }
     ],
-    form: { name: "", city: "", address: "" },
+    form: { name: "", city: "", address: "", supportedModes: ["boulder", "difficulty"] },
+    modeOptions: [
+      { key: "boulder", label: "抱石" },
+      { key: "difficulty", label: "难度" },
+      { key: "lead", label: "先锋" }
+    ],
     cycleForm: {
       name: "",
       startDate: today(),
       boulderGrades: "V0,V1,V2,V3,V4,V5,V6,V7+",
-      difficultyGrades: "5.9,5.10a,5.10b,5.10c,5.11a,5.11b"
+      difficultyGrades: "5.9,5.10a,5.10b,5.10c,5.11a,5.11b",
+      leadGrades: "5.9,5.10a,5.10b,5.10c,5.11a,5.11b"
     },
     routeMode: "boulder",
-    routeTabs: [
-      { key: "boulder", label: "抱石" },
-      { key: "difficulty", label: "难度" }
-    ],
+    routeTabs: buildRouteTabs(["boulder", "difficulty"]),
     routeRows: [],
-    routeCounts: { boulder: {}, difficulty: {} },
+    routeCounts: { boulder: {}, difficulty: {}, lead: {} },
     customGrade: ""
   },
   async onLoad(query) {
@@ -104,21 +135,32 @@ Page({
         form: {
           name: gym.name || gym.gymName || gym.title || "",
           city: gym.city || gym.cityName || gym.locationCity || "",
-          address: gym.address || gym.addr || gym.location || ""
+          address: gym.address || gym.addr || gym.location || "",
+          supportedModes: uniqueModes(gym.supportedModes || ["boulder", "difficulty"])
         },
         cycleForm: {
           name: currentCycle.name || currentCycle.cycle_name || "",
           startDate: currentCycle.startDate || currentCycle.start_date || today(),
           boulderGrades: (currentCycle.boulderGrades || currentCycle.boulder_grades || ["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7+"]).join(","),
-          difficultyGrades: (currentCycle.difficultyGrades || currentCycle.rope_grades || currentCycle.difficulty_grades || ["5.9", "5.10a", "5.10b", "5.10c", "5.11a", "5.11b"]).join(",")
+          difficultyGrades: (currentCycle.difficultyGrades || currentCycle.rope_grades || currentCycle.difficulty_grades || ["5.9", "5.10a", "5.10b", "5.10c", "5.11a", "5.11b"]).join(","),
+          leadGrades: (currentCycle.leadGrades || currentCycle.lead_grades || ["5.9", "5.10a", "5.10b", "5.10c", "5.11a", "5.11b"]).join(",")
         },
         cycleEditing: currentCycle && currentCycle._id ? { _id: currentCycle._id, status: currentCycle.status || "" } : null,
         closeEndDate: today(),
+        routeTabs: buildRouteTabs(gym.supportedModes || ["boulder", "difficulty"]),
         routeCounts: {
           boulder: (routes.boulder && (routes.boulder.limits || routes.boulder.counts || routes.boulder)) || {},
-          difficulty: (routes.difficulty && (routes.difficulty.limits || routes.difficulty.counts || routes.difficulty)) || {}
+          difficulty:
+            ((routes.difficulty && (routes.difficulty.limits || routes.difficulty.counts || routes.difficulty)) ||
+              (routes.rope && (routes.rope.limits || routes.rope.counts || routes.rope)) ||
+              {}),
+          lead: (routes.lead && (routes.lead.limits || routes.lead.counts || routes.lead)) || {}
         }
       });
+      const tabs = buildRouteTabs(gym.supportedModes || ["boulder", "difficulty"]);
+      if (tabs.length && !tabs.some((item) => item.key === this.data.routeMode)) {
+        this.setData({ routeMode: tabs[0].key });
+      }
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     }
@@ -139,6 +181,25 @@ Page({
   },
   onAddress(e) {
     this.setData({ form: { ...this.data.form, address: e.detail.value } });
+  },
+  onToggleMode(e) {
+    const mode = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.mode : "";
+    const current = uniqueModes(this.data.form.supportedModes);
+    const has = current.includes(mode);
+    const next = has ? current.filter((item) => item !== mode) : current.concat(mode);
+    const normalized = uniqueModes(next);
+    if (!normalized.length) {
+      wx.showToast({ title: "至少保留一种模式", icon: "none" });
+      return;
+    }
+    const routeTabs = buildRouteTabs(normalized);
+    const routeMode = routeTabs.some((item) => item.key === this.data.routeMode) ? this.data.routeMode : routeTabs[0].key;
+    this.setData({
+      form: { ...this.data.form, supportedModes: normalized },
+      routeTabs,
+      routeMode
+    });
+    this.refreshRouteRows();
   },
   onCycleName(e) {
     this.setData({ cycleForm: { ...this.data.cycleForm, name: e.detail.value } });
@@ -167,6 +228,10 @@ Page({
     this.setData({ cycleForm: { ...this.data.cycleForm, difficultyGrades: e.detail.value } });
     this.refreshRouteRows();
   },
+  onLeadGrades(e) {
+    this.setData({ cycleForm: { ...this.data.cycleForm, leadGrades: e.detail.value } });
+    this.refreshRouteRows();
+  },
   onPickBoulderTemplate() {
     const itemList = BOULDER_TEMPLATES.map((t) => t.label);
     wx.showActionSheet({
@@ -193,6 +258,19 @@ Page({
       }
     });
   },
+  onPickLeadTemplate() {
+    const itemList = LEAD_TEMPLATES.map((t) => t.label);
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const idx = res && typeof res.tapIndex === "number" ? res.tapIndex : -1;
+        const tpl = idx >= 0 ? LEAD_TEMPLATES[idx] : null;
+        if (!tpl) return;
+        this.setData({ cycleForm: { ...this.data.cycleForm, leadGrades: tpl.grades.join(",") } });
+        this.refreshRouteRows();
+      }
+    });
+  },
   onSelectCycle(e) {
     const id = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.id : "";
     const cycles = this.data.cycles || [];
@@ -203,7 +281,8 @@ Page({
         name: c.name || c.cycle_name || "",
         startDate: c.startDate || c.start_date || today(),
         boulderGrades: (c.boulderGrades || c.boulder_grades || []).join(","),
-        difficultyGrades: (c.difficultyGrades || c.rope_grades || c.difficulty_grades || []).join(",")
+        difficultyGrades: (c.difficultyGrades || c.rope_grades || c.difficulty_grades || []).join(","),
+        leadGrades: (c.leadGrades || c.lead_grades || []).join(",")
       },
       cycleEditing: { _id: c._id, status: c.status || "" }
     });
@@ -283,11 +362,20 @@ Page({
   },
   refreshRouteRows() {
     if (this.data.tab !== "routes") return;
-    const mode = this.data.routeMode;
+    const tabs = buildRouteTabs(this.data.form.supportedModes || ["boulder", "difficulty"]);
+    const mode = tabs.some((item) => item.key === this.data.routeMode) ? this.data.routeMode : tabs[0] && tabs[0].key;
+    if (!mode) {
+      this.setData({ routeRows: [], routeTabs: tabs });
+      return;
+    }
     const grades =
-      mode === "boulder" ? splitGrades(this.data.cycleForm.boulderGrades) : splitGrades(this.data.cycleForm.difficultyGrades);
+      mode === "boulder"
+        ? splitGrades(this.data.cycleForm.boulderGrades)
+        : mode === "lead"
+          ? splitGrades(this.data.cycleForm.leadGrades)
+          : splitGrades(this.data.cycleForm.difficultyGrades);
     const rows = buildRouteRows(grades, (this.data.routeCounts && this.data.routeCounts[mode]) || {});
-    this.setData({ routeRows: rows });
+    this.setData({ routeRows: rows, routeTabs: tabs, routeMode: mode });
   },
   onRouteCount(e) {
     const grade = e.currentTarget.dataset.grade;
@@ -305,7 +393,7 @@ Page({
     const g = safeText(this.data.customGrade);
     if (!g) return;
     const mode = this.data.routeMode;
-    const key = mode === "boulder" ? "boulderGrades" : "difficultyGrades";
+    const key = mode === "boulder" ? "boulderGrades" : mode === "lead" ? "leadGrades" : "difficultyGrades";
     const list = splitGrades(this.data.cycleForm[key]);
     if (list.includes(g)) {
       this.setData({ customGrade: "" });
@@ -324,10 +412,15 @@ Page({
       wx.showToast({ title: "请输入岩馆名", icon: "none" });
       return;
     }
+    const supportedModes = uniqueModes(this.data.form.supportedModes);
+    if (!supportedModes.length) {
+      wx.showToast({ title: "至少选择一种模式", icon: "none" });
+      return;
+    }
     try {
       const res = await upsertGym({
         gymId: this.data.gymId || null,
-        gym: { ...this.data.form }
+        gym: { ...this.data.form, supportedModes }
       });
       const gymId = (res && res.gymId) || this.data.gymId;
       this.setData({ gymId });
@@ -347,10 +440,16 @@ Page({
       wx.showToast({ title: "请选择开始日期", icon: "none" });
       return;
     }
+    const supportedModes = uniqueModes(this.data.form.supportedModes);
     const boulderGrades = splitGrades(this.data.cycleForm.boulderGrades);
     const difficultyGrades = splitGrades(this.data.cycleForm.difficultyGrades);
-    if (!boulderGrades.length || !difficultyGrades.length) {
-      wx.showToast({ title: "请填写等级列表", icon: "none" });
+    const leadGrades = splitGrades(this.data.cycleForm.leadGrades);
+    if (
+      (supportedModes.includes("boulder") && !boulderGrades.length) ||
+      (supportedModes.includes("difficulty") && !difficultyGrades.length) ||
+      (supportedModes.includes("lead") && !leadGrades.length)
+    ) {
+      wx.showToast({ title: "请补齐已启用模式的等级列表", icon: "none" });
       return;
     }
     try {
@@ -361,6 +460,7 @@ Page({
           startDate,
           boulderGrades,
           difficultyGrades,
+          leadGrades,
           cycleId:
             this.data.cycleEditing && this.data.cycleEditing._id && this.data.cycleEditing.status !== "archived"
               ? String(this.data.cycleEditing._id)

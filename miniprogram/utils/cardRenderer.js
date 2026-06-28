@@ -6,11 +6,20 @@ function drawFrontCard(ctx, options) {
   const front = (options && options.front) || {};
   const gymsLabel = (options && options.gymsLabel) || "";
   const avatarPath = (options && options.avatarPath) || "";
+  const photoPath = (options && options.photoPath) || "";
   const layout = (options && options.layout) || "responsive";
+  const showFooterBrand = !options || options.showFooterBrand !== false;
+  const showFooterStyle = !options || options.showFooterStyle !== false;
 
   if (layout === "fixed") {
-    ctx.setFillStyle("#0B0D15");
-    ctx.fillRect(0, 0, W, H);
+    if (photoPath) {
+      ctx.drawImage(photoPath, 0, 0, W, H);
+      ctx.setFillStyle("rgba(11,13,21,0.70)");
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.setFillStyle("#0B0D15");
+      ctx.fillRect(0, 0, W, H);
+    }
 
     const g = ctx.createLinearGradient(0, 0, W, 0);
     g.addColorStop(0, "rgba(143,123,255,0.95)");
@@ -53,15 +62,23 @@ function drawFrontCard(ctx, options) {
       ctx.fillText(lines[i], 120, 352 + i * 46);
     }
 
-    ctx.setFillStyle("rgba(255,255,255,0.65)");
-    ctx.setFontSize(22);
-    ctx.fillText("飞岩走壁 · 攀岩名片", 120, H - 88);
-    ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", 120, H - 54);
+    if (showFooterBrand || showFooterStyle) {
+      ctx.setFillStyle("rgba(255,255,255,0.65)");
+      ctx.setFontSize(22);
+      if (showFooterBrand) ctx.fillText("飞岩走壁 · 攀岩名片", 120, H - 88);
+      if (showFooterStyle) ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", 120, H - 54);
+    }
     return;
   }
 
-  ctx.setFillStyle("#0B0D15");
-  ctx.fillRect(0, 0, W, H);
+  if (photoPath) {
+    ctx.drawImage(photoPath, 0, 0, W, H);
+    ctx.setFillStyle("rgba(11,13,21,0.72)");
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.setFillStyle("#0B0D15");
+    ctx.fillRect(0, 0, W, H);
+  }
 
   const barH = Math.max(56, Math.floor(H * 0.14));
   const g = ctx.createLinearGradient(0, 0, W, 0);
@@ -116,10 +133,12 @@ function drawFrontCard(ctx, options) {
     ctx.fillText(lines[i], ox, oy + i * lh);
   }
 
-  ctx.setFillStyle("rgba(255,255,255,0.65)");
-  ctx.setFontSize(Math.floor(H * 0.05));
-  ctx.fillText("飞岩走壁 · 攀岩名片", ox, H - Math.floor(H * 0.12));
-  ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", ox, H - Math.floor(H * 0.06));
+  if (showFooterBrand || showFooterStyle) {
+    ctx.setFillStyle("rgba(255,255,255,0.65)");
+    ctx.setFontSize(Math.floor(H * 0.05));
+    if (showFooterBrand) ctx.fillText("飞岩走壁 · 攀岩名片", ox, H - Math.floor(H * 0.12));
+    if (showFooterStyle) ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", ox, H - Math.floor(H * 0.06));
+  }
 }
 
 function drawBackCard(ctx, options) {
@@ -155,7 +174,7 @@ function drawBackCard(ctx, options) {
 
     ctx.setFillStyle("rgba(255,255,255,0.92)");
     ctx.setFontSize(28);
-    ctx.fillText("背面故事", 120, 208);
+    ctx.fillText("名片故事", 120, 208);
 
     ctx.setFillStyle("rgba(255,255,255,0.95)");
     ctx.setFontSize(30);
@@ -181,7 +200,7 @@ function drawBackCard(ctx, options) {
 
   ctx.setFillStyle("rgba(255,255,255,0.92)");
   ctx.setFontSize(Math.floor(H * 0.065));
-  ctx.fillText("背面故事", tx, pad + Math.floor(H * 0.30));
+  ctx.fillText("名片故事", tx, pad + Math.floor(H * 0.30));
 
   ctx.setFillStyle("rgba(255,255,255,0.95)");
   ctx.setFontSize(Math.floor(H * 0.07));

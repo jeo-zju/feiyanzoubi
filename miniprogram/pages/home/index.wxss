@@ -1,7 +1,20 @@
+.viewport-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewport-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
 .search-row {
   display: flex;
   gap: 14rpx;
-  align-items: center;
+  align-items: stretch;
+  margin-top: 18rpx;
 }
 
 .search-row .input {
@@ -9,20 +22,23 @@
 }
 
 .search-btn {
-  width: 140rpx;
+  width: 132rpx;
   height: 76rpx;
 }
 
-.list {
-  margin-top: 18rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
+.mode-row {
+  margin-top: 16rpx;
 }
 
-.empty {
-  text-align: center;
-  padding: 40rpx 0;
+.list-scroll {
+  margin-top: 18rpx;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding-bottom: 12rpx;
 }
 
 .ph {

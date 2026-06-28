@@ -1,22 +1,31 @@
+.viewport-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewport-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
 .mt {
   margin-top: 18rpx;
 }
 
-.tip {
-  margin-top: 10rpx;
-  font-size: 24rpx;
+.chart-wrap {
+  margin-top: 18rpx;
+  padding-top: 8rpx;
+}
+
+.rec-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .rec {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16rpx 0;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-
-.rec:first-child {
-  border-top: none;
+  gap: 16rpx;
 }
 
 .rec-title {
@@ -29,12 +38,9 @@
 }
 
 .rec-right {
+  min-width: 88rpx;
+  text-align: right;
   font-weight: 900;
   color: #f2c14e;
-}
-
-.empty {
-  text-align: center;
-  padding: 28rpx 0;
 }
 

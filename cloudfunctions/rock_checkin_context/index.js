@@ -42,6 +42,7 @@ function normalizeGym(g) {
     currentCycle,
     routes,
     lines,
+    supportedModes: Array.isArray(g.supportedModes) ? g.supportedModes : [],
     lastCheckinAt: g.lastCheckinAt || g.lastVisitAt || g.last_checkin_at || "",
     visitCount: typeof g.visitCount === "number" ? g.visitCount : typeof g.visit_count === "number" ? g.visit_count : 0,
     updatedAt: g.updatedAt || g.updateTime || g.updated_at || g.createdAt || 0
@@ -74,11 +75,13 @@ function normalizeProgress(doc) {
     cycleKey: doc.cycleKey || doc.cycle_key || doc.cycleId || doc.cycle_id || doc.cycleId || "",
     totals: {
       boulder: rawTotals.boulder || {},
-      difficulty: flattenGradeMap(rawTotals.difficulty || rawTotals.rope || {})
+      difficulty: flattenGradeMap(rawTotals.difficulty || rawTotals.rope || {}),
+      lead: flattenGradeMap(rawTotals.lead || rawTotals.leads || {})
     },
     limits: {
       boulder: rawTargets.boulder || {},
-      difficulty: flattenGradeMap(rawTargets.difficulty || rawTargets.rope || {})
+      difficulty: flattenGradeMap(rawTargets.difficulty || rawTargets.rope || {}),
+      lead: flattenGradeMap(rawTargets.lead || rawTargets.leads || {})
     },
     visitCount: doc.visitCount || doc.visit_count || 0,
     updatedAt: doc.updatedAt || doc.updated_at || doc.createdAt || 0
@@ -93,8 +96,60 @@ function normalizeCycle(c) {
     startDate: c.start_date || c.startDate || "",
     endDate: c.end_date || c.endDate || "",
     boulderGrades: c.boulder_grades || c.boulderGrades || [],
-    difficultyGrades: c.rope_grades || c.difficultyGrades || c.ropes || []
+    difficultyGrades: c.rope_grades || c.difficultyGrades || c.ropes || [],
+    leadGrades: c.lead_grades || c.leadGrades || []
   };
+}
+
+function uniqueModes(list) {
+  const out = [];
+  const seen = {};
+  (Array.isArray(list) ? list : []).forEach((item) => {
+    const mode = safeText(item).toLowerCase();
+    if (!mode) return;
+    if (!["boulder", "difficulty", "lead"].includes(mode)) return;
+    if (seen[mode]) return;
+    seen[mode] = true;
+    out.push(mode);
+  });
+  return out;
+}
+
+function hasModeData(map) {
+  return !!(map && typeof map === "object" && Object.keys(map).length);
+}
+
+function inferSupportedModes(gym, cycle, routeCounts, progress) {
+  const explicit = uniqueModes(gym && gym.supportedModes);
+  if (explicit.length) return explicit;
+
+  const routes = (gym && gym.routes) || {};
+  const out = [];
+  if (routes.boulder || hasModeData(routeCounts && routeCounts.boulder) || hasModeData(progress && progress.totals && progress.totals.boulder)) {
+    out.push("boulder");
+  }
+  if (
+    routes.difficulty ||
+    routes.rope ||
+    hasModeData(routeCounts && routeCounts.difficulty) ||
+    hasModeData(progress && progress.totals && progress.totals.difficulty)
+  ) {
+    out.push("difficulty");
+  }
+  if (routes.lead || hasModeData(routeCounts && routeCounts.lead) || hasModeData(progress && progress.totals && progress.totals.lead)) {
+    out.push("lead");
+  }
+  if (Array.isArray(cycle && cycle.boulderGrades) && cycle.boulderGrades.length) out.push("boulder");
+  if (Array.isArray(cycle && cycle.difficultyGrades) && cycle.difficultyGrades.length) out.push("difficulty");
+  if (Array.isArray(cycle && cycle.leadGrades) && cycle.leadGrades.length) out.push("lead");
+
+  const fromGymType = safeText(gym && gym.gymType).toLowerCase();
+  if (fromGymType === "boulder") out.push("boulder");
+  if (fromGymType === "difficulty") out.push("difficulty");
+  if (fromGymType === "mixed") out.push("boulder", "difficulty");
+
+  const normalized = uniqueModes(out);
+  return normalized.length ? normalized : ["difficulty", "boulder"];
 }
 
 async function resolveCycleByDate(gymId, date, fallbackCycleId) {
@@ -164,6 +219,7 @@ async function resolveCycleByDate(gymId, date, fallbackCycleId) {
 function normalizeMode(category, mode) {
   const c = String(category || mode || "").toLowerCase();
   if (c === "boulder") return "boulder";
+  if (c === "lead") return "lead";
   if (c === "rope") return "difficulty";
   if (c === "difficulty") return "difficulty";
   return "boulder";
@@ -179,7 +235,7 @@ function addCounts(target, src) {
 }
 
 function normalizeTotalsFromRecords(records) {
-  const totals = { boulder: {}, difficulty: {} };
+  const totals = { boulder: {}, difficulty: {}, lead: {} };
   (records || []).forEach((r) => {
     if (!r) return;
     if (r.grade != null && r.count != null) {
@@ -187,19 +243,20 @@ function normalizeTotalsFromRecords(records) {
       const grade = String(r.grade || "").trim();
       const n = Number(r.count || 0);
       if (grade && Number.isFinite(n) && n > 0) {
-        totals[mode][grade] = Number(totals[mode][grade] || 0) + n;
+        if (totals[mode]) totals[mode][grade] = Number(totals[mode][grade] || 0) + n;
       }
       return;
     }
     const deltas = r.deltas || r.delta || null;
     if (deltas && typeof deltas === "object" && !Array.isArray(deltas)) {
-      if (deltas.boulder || deltas.difficulty) {
+      if (deltas.boulder || deltas.difficulty || deltas.lead) {
         addCounts(totals.boulder, deltas.boulder);
         addCounts(totals.difficulty, deltas.difficulty);
+        addCounts(totals.lead, deltas.lead);
         return;
       }
       const mode = r.mode === "rope" ? "difficulty" : r.mode;
-      if (mode === "boulder" || mode === "difficulty") {
+      if (mode === "boulder" || mode === "difficulty" || mode === "lead") {
         addCounts(totals[mode], deltas);
         return;
       }
@@ -207,6 +264,7 @@ function normalizeTotalsFromRecords(records) {
 
     addCounts(totals.boulder, r.boulder_deltas || r.boulder_delta);
     addCounts(totals.difficulty, r.rope_deltas || r.rope_delta || r.difficulty_deltas || r.difficulty_delta);
+    addCounts(totals.lead, r.lead_deltas || r.lead_delta);
   });
   return totals;
 }
@@ -234,12 +292,14 @@ function normalizeRouteCountsFromBlackboard(doc) {
   const boulder = raw.boulder || raw.boulders || null;
   const rope = raw.rope || raw.ropes || null;
   const difficulty = raw.difficulty || null;
-  if (boulder || rope || difficulty) {
+  const lead = raw.lead || raw.leads || null;
+  if (boulder || rope || difficulty || lead) {
     return {
       boulder: (boulder && typeof boulder === "object" ? boulder : {}) || {},
       difficulty: flattenGradeMap(
         ((difficulty && typeof difficulty === "object" ? difficulty : null) || (rope && typeof rope === "object" ? rope : {})) || {}
-      )
+      ),
+      lead: flattenGradeMap((lead && typeof lead === "object" ? lead : {}) || {})
     };
   }
   return { flat: raw };
@@ -326,8 +386,10 @@ exports.main = async (event) => {
         const flat = rc.flat;
         const boulderOut = {};
         const diffOut = {};
+        const leadOut = {};
         const bGrades = (cycle && cycle.boulderGrades) || [];
         const dGrades = (cycle && cycle.difficultyGrades) || [];
+        const lGrades = (cycle && cycle.leadGrades) || [];
         if (Array.isArray(bGrades) && bGrades.length) {
           bGrades.forEach((g) => {
             if (Object.prototype.hasOwnProperty.call(flat, g)) boulderOut[g] = flat[g];
@@ -338,7 +400,12 @@ exports.main = async (event) => {
             if (Object.prototype.hasOwnProperty.call(flat, g)) diffOut[g] = flat[g];
           });
         }
-        if (!Object.keys(boulderOut).length && !Object.keys(diffOut).length) {
+        if (Array.isArray(lGrades) && lGrades.length) {
+          lGrades.forEach((g) => {
+            if (Object.prototype.hasOwnProperty.call(flat, g)) leadOut[g] = flat[g];
+          });
+        }
+        if (!Object.keys(boulderOut).length && !Object.keys(diffOut).length && !Object.keys(leadOut).length) {
           Object.keys(flat).forEach((k) => {
             const key = String(k || "").trim();
             if (!key) return;
@@ -346,7 +413,7 @@ exports.main = async (event) => {
             else diffOut[key] = flat[k];
           });
         }
-        routeCounts = { boulder: boulderOut, difficulty: diffOut };
+        routeCounts = { boulder: boulderOut, difficulty: diffOut, lead: leadOut };
       } else {
         routeCounts = rc;
       }
@@ -365,20 +432,50 @@ exports.main = async (event) => {
     const doc = progressRes && progressRes.data && progressRes.data[0] ? progressRes.data[0] : null;
 
     let progress = normalizeProgress(doc);
-    if (progress && progress.totals && !progress.totals.boulder && !progress.totals.difficulty) {
-      progress.totals = { boulder: progress.totals.boulder || {}, difficulty: progress.totals.difficulty || {} };
+    if (progress && progress.totals && !progress.totals.boulder && !progress.totals.difficulty && !progress.totals.lead) {
+      progress.totals = { boulder: progress.totals.boulder || {}, difficulty: progress.totals.difficulty || {}, lead: {} };
     }
 
-    if (!progress || !progress.totals || (!Object.keys(progress.totals.boulder || {}).length && !Object.keys(progress.totals.difficulty || {}).length)) {
+    if (
+      !progress ||
+      !progress.totals ||
+      (!Object.keys(progress.totals.boulder || {}).length &&
+        !Object.keys(progress.totals.difficulty || {}).length &&
+        !Object.keys(progress.totals.lead || {}).length)
+    ) {
       try {
         const recRes = await db.collection("RockCheckinRecords").where(scopedWhere).limit(200).get();
         const records = (recRes && recRes.data) || [];
         const totals = normalizeTotalsFromRecords(records);
-        progress = progress || { _id: "", gymId, cycleKey: cycleId || "", totals: {}, limits: {}, visitCount: 0, updatedAt: 0 };
+        progress = progress || {
+          _id: "",
+          gymId,
+          cycleKey: cycleId || "",
+          totals: {},
+          limits: {},
+          visitCount: 0,
+          updatedAt: 0
+        };
         progress.totals = totals;
       } catch (e) {}
     }
-    return ok({ gym, progress, routeCounts }, tid);
+    if (progress && progress.totals) {
+      progress.totals = {
+        boulder: progress.totals.boulder || {},
+        difficulty: progress.totals.difficulty || {},
+        lead: progress.totals.lead || {}
+      };
+    }
+    if (progress && progress.limits) {
+      progress.limits = {
+        boulder: progress.limits.boulder || {},
+        difficulty: progress.limits.difficulty || {},
+        lead: progress.limits.lead || {}
+      };
+    }
+    routeCounts = routeCounts || { boulder: {}, difficulty: {}, lead: {} };
+    const supportedModes = inferSupportedModes(gym, cycle, routeCounts, progress);
+    return ok({ gym, progress, routeCounts, supportedModes }, tid);
   } catch (e) {
     return fail("CHECKIN_CONTEXT_FAILED", e && e.message ? e.message : "加载失败", tid);
   }

@@ -25,22 +25,43 @@ function buildViewModel(log) {
 
 Page({
   data: {
+    allLogs: [],
     logs: [],
     total: 0,
     errorCount: 0,
-    cloudCount: 0
+    cloudCount: 0,
+    filterKey: "all",
+    filterLabel: "全部"
   },
   onShow() {
     this.refreshLogs();
   },
+  applyFilter() {
+    const filterKey = this.data.filterKey || "all";
+    const allLogs = Array.isArray(this.data.allLogs) ? this.data.allLogs : [];
+    let logs = allLogs;
+    if (filterKey === "error") logs = allLogs.filter((item) => item && item.type === "error");
+    else if (filterKey === "success") logs = allLogs.filter((item) => item && item.type === "success");
+    else if (filterKey === "cloud") logs = allLogs.filter((item) => item && item.category === "cloud");
+    else if (filterKey === "app") logs = allLogs.filter((item) => item && item.category === "app");
+    this.setData({ logs });
+  },
   refreshLogs() {
     const logs = debugLog.getLogs();
     this.setData({
-      logs: logs.map(buildViewModel),
+      allLogs: logs.map(buildViewModel),
       total: logs.length,
       errorCount: logs.filter((item) => item && item.type === "error").length,
       cloudCount: logs.filter((item) => item && item.category === "cloud").length
-    });
+    }, () => this.applyFilter());
+  },
+  setFilter(e) {
+    const filterKey = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.filter) || "all";
+    const filterLabel = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.label) || "全部";
+    this.setData({ filterKey, filterLabel }, () => this.applyFilter());
+  },
+  clearFilter() {
+    this.setData({ filterKey: "all", filterLabel: "全部" }, () => this.applyFilter());
   },
   onRefresh() {
     this.refreshLogs();

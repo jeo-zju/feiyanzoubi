@@ -1,84 +1,35 @@
-<view class="page">
-  <view class="profile-shell" bindtap="goProfileEdit">
-    <image class="profile-avatar" mode="aspectFill" src="{{user.avatarUrl || defaultAvatar}}"></image>
-    <view class="profile-main">
-      <view class="profile-name">{{user.nickName || "岩友"}}</view>
-      <view class="profile-sub">{{user.projectName || "Project"}}</view>
-      <view class="profile-tip">点击编辑资料</view>
-    </view>
-    <view class="profile-arrow">›</view>
-  </view>
+<import src="../../templates/profile-card.wxml" />
 
-  <view class="card card-soft mt">
-    <view class="card-hd">我的名片</view>
-    <view class="card-bd">
-      <view wx:if="{{myPrimaryCard}}">
-        <view class="mycard" bindtap="goEditMyCard">
-          <view class="mycard-top">
-            <view class="mycard-name">{{myPrimaryCard.displayName}}</view>
-            <view class="mycard-badge">编辑</view>
-          </view>
-          <view class="mycard-meta">{{myPrimaryCard.title}}<text wx:if="{{myPrimaryCard.mbti}}"> · {{myPrimaryCard.mbti}}</text></view>
-          <view class="mycard-one">{{myPrimaryCard.oneLiner}}</view>
-        </view>
-        <view class="action-pills">
-          <view class="action-pill action-pill--warn" bindtap="goGift">送人</view>
-          <view class="action-pill" bindtap="goSaveMyCard">保存</view>
-        </view>
-      </view>
-      <view wx:else>
-        <view class="mycard mycard--empty" style="width: {{myCardCssW}}px; height: {{myCardCssH}}px;" bindtap="goEditMyCard">
-          <view class="mycard-ph">
-            <view class="mycard-ph-bar"></view>
-            <view class="mycard-ph-body">
-              <view class="mycard-ph-top">
-                <view class="mycard-ph-avatar"></view>
-                <view class="mycard-ph-right">
-                  <view class="mycard-ph-name">岩点测试员</view>
-                  <view class="mycard-ph-meta">长臂猿 · ENTP</view>
-                  <view class="mycard-ph-gym">浪迹天涯</view>
-                </view>
-                <view class="mycard-ph-badge">创建</view>
-              </view>
-              <view class="mycard-ph-one">用脚点谈判，用手点签字。</view>
-              <view class="mycard-ph-ft">飞岩走壁 · 攀岩名片</view>
-            </view>
-          </view>
-        </view>
-      </view>
+<view class="page">
+  <view class="mycard-module">
+    <view class="mycard-render-box" style="width: {{shareCanvasCssW}}px; height: {{shareCanvasCssH}}px; margin: 0 auto;" bindtap="goEditMyCard">
+      <template
+        is="profileCard"
+        data="{{name: myCardView.displayName, title: myCardView.title, mbti: myCardView.mbti, gym: myCardView.gymLabel, one: myCardView.oneLiner, avatarSrc: (myCardView.avatarMode==='custom' ? myCardView.avatarFileId : myCardView.avatarUrl), brandText: '飞岩走壁 · 攀岩名片', showEditIcon: true}}"
+      />
+    </view>
+    <view class="mycard-actions">
+      <view class="mycard-action mycard-action--warn" catchtap="goGift">送出</view>
+      <view class="mycard-action" catchtap="openShareActions">分享</view>
     </view>
   </view>
 
   <view class="glance-grid mt">
     <view class="card glance-card" bindtap="goWallet">
       <view class="card-bd glance-bd">
-        <view class="glance-top">
-          <view class="glance-title">名片夹</view>
-          <view class="glance-value">{{receivedCount}}</view>
-        </view>
-        <view class="glance-sub">收到的卡片</view>
-        <view class="thumbs thumbs--compact">
-          <image
-            wx:for="{{receivedThumbs}}"
-            wx:key="cardId"
-            class="thumb thumb--compact"
-            mode="aspectFill"
-            src="{{item.avatarMode==='custom'?item.avatarFileId:item.avatarUrl || defaultAvatar}}"
-          ></image>
-          <view wx:if="{{!receivedThumbs.length}}" class="thumb thumb--ghost"></view>
-          <view wx:if="{{!receivedThumbs.length}}" class="thumb thumb--ghost"></view>
-          <view wx:if="{{!receivedThumbs.length}}" class="thumb thumb--ghost"></view>
+        <view class="glance-title">名片夹</view>
+        <view class="glance-main">
+          <view class="glance-value">{{receivedCount}}<text class="glance-unit">张</text></view>
         </view>
       </view>
     </view>
 
     <view class="card glance-card glance-card--credit">
       <view class="card-bd glance-bd">
-        <view class="glance-top">
-          <view class="glance-title">灵感</view>
-          <view class="glance-value">{{credit.remaining}}</view>
+        <view class="glance-title">灵感</view>
+        <view class="glance-main">
+          <view class="glance-value">{{credit.remaining}}<text class="glance-unit">/{{credit.limit}}</text></view>
         </view>
-        <view class="glance-sub">{{credit.limit}} / 日，0 点刷新</view>
         <view class="credit-bar">
           <view class="credit-bar-fill" style="width: {{creditPercent}}%;"></view>
         </view>
@@ -86,17 +37,40 @@
     </view>
   </view>
 
-  <view class="card mt card-soft">
-    <view class="card-bd">
-      <view class="quick-grid quick-grid--compact">
-        <view class="quick-item" bindtap="goOwner">
-          <view class="quick-mark">馆</view>
-          <view class="quick-label">馆长</view>
-        </view>
-        <view class="quick-item" bindtap="goDebugLogs">
-          <view class="quick-mark">志</view>
-          <view class="quick-label">日志</view>
-        </view>
+  <view class="quick-grid quick-grid--compact mt">
+    <view class="quick-item" bindtap="goOwner">
+      <view class="quick-label">岩馆管理</view>
+    </view>
+    <view class="quick-item" bindtap="goBackstage">
+      <view class="quick-label">开发工具</view>
+    </view>
+  </view>
+
+  <canvas
+    class="share-canvas"
+    canvas-id="myCardCanvas"
+    width="{{shareCanvasW}}"
+    height="{{shareCanvasH}}"
+    style="width: {{shareCanvasCssW}}px; height: {{shareCanvasCssH}}px;"
+  ></canvas>
+
+  <canvas
+    class="share-canvas"
+    canvas-id="shareCanvas"
+    width="{{shareCanvasW}}"
+    height="{{shareCanvasH}}"
+    style="width: {{shareCanvasCssW}}px; height: {{shareCanvasCssH}}px;"
+  ></canvas>
+
+  <view wx:if="{{sharePickerVisible}}" class="mask" catchtouchmove="noop" bindtap="closeSharePicker">
+    <view class="sheet" bindtap="noop">
+      <view class="sheet-hd">
+        <view class="sheet-title">分享名片</view>
+        <view class="action-pill action-pill--ghost mini-pill" bindtap="closeSharePicker">关闭</view>
+      </view>
+      <view class="sheet-bd">
+        <view class="action-pill action-pill--block" bindtap="onSavePreviewImage">保存图片</view>
+        <button class="share-btn mt2" open-type="share">分享给好友</button>
       </view>
     </view>
   </view>

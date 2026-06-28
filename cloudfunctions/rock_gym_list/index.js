@@ -21,6 +21,18 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
+function uniqueModes(list) {
+  const out = [];
+  const seen = {};
+  (Array.isArray(list) ? list : []).forEach((item) => {
+    const mode = safeText(item).toLowerCase();
+    if (!mode || !["boulder", "difficulty", "lead"].includes(mode) || seen[mode]) return;
+    seen[mode] = true;
+    out.push(mode);
+  });
+  return out;
+}
+
 function normalizeGym(g) {
   const name = g.name || g.gymName || g.title || "";
   const city = g.city || g.cityName || g.locationCity || "";
@@ -38,10 +50,27 @@ function normalizeGym(g) {
     currentCycle,
     routes,
     lines,
+    supportedModes: Array.isArray(g.supportedModes) ? g.supportedModes : [],
     lastCheckinAt: g.lastCheckinAt || g.lastVisitAt || g.last_checkin_at || "",
     visitCount: typeof g.visitCount === "number" ? g.visitCount : typeof g.visit_count === "number" ? g.visit_count : 0,
     updatedAt: g.updatedAt || g.updateTime || g.updated_at || g.createdAt || 0
   };
+}
+
+function matchesGym(gym, { city, keyword, mode }) {
+  const source = gym || {};
+  const cityText = safeText(source.city || source.cityName || source.locationCity);
+  const nameText = safeText(source.name || source.gymName || source.title);
+  const addressText = safeText(source.address || source.addr || source.location);
+  const modeList = uniqueModes(source.supportedModes);
+
+  if (city && cityText !== city) return false;
+  if (keyword) {
+    const text = `${nameText} ${addressText}`.toLowerCase();
+    if (!text.includes(keyword.toLowerCase())) return false;
+  }
+  if (mode && !modeList.includes(mode)) return false;
+  return true;
 }
 
 exports.main = async (event) => {
@@ -68,38 +97,22 @@ exports.main = async (event) => {
 
     const city = safeText(event && event.city);
     const keyword = safeText(event && event.keyword);
+    const mode = safeText(event && event.mode).toLowerCase();
     const page = Math.max(1, Number(event && event.page ? event.page : 1));
     const pageSize = Math.max(1, Math.min(20, Number(event && event.pageSize ? event.pageSize : 5)));
     const skip = (page - 1) * pageSize;
 
     const col = db.collection("RockGyms");
-    const whereParts = [];
-    if (city) {
-      whereParts.push({ city });
-      whereParts.push({ cityName: city });
-      whereParts.push({ locationCity: city });
-    }
-    if (keyword) {
-      const re = db.RegExp({ regexp: keyword, options: "i" });
-      whereParts.push({ name: re });
-      whereParts.push({ gymName: re });
-      whereParts.push({ title: re });
-    }
-
-    let where = {};
-    if (whereParts.length === 1) where = whereParts[0];
-    else if (whereParts.length > 1) where = _.or(whereParts);
-
     let res;
     try {
-      res = await col.where(where).orderBy("updatedAt", "desc").skip(skip).limit(pageSize + 1).get();
+      res = await col.where({}).orderBy("updatedAt", "desc").limit(200).get();
     } catch (e) {
-      res = await col.where(where).skip(skip).limit(pageSize + 1).get();
+      res = await col.where({}).limit(200).get();
     }
 
-    const list = (res && res.data) || [];
-    const hasNext = list.length > pageSize;
-    const gyms = list.slice(0, pageSize).map(normalizeGym);
+    const list = ((res && res.data) || []).filter((doc) => matchesGym(doc, { city, keyword, mode }));
+    const hasNext = list.length > skip + pageSize;
+    const gyms = list.slice(skip, skip + pageSize).map(normalizeGym);
 
     const gymIds = gyms.map((g) => g && g._id).filter(Boolean);
     if (gymIds.length) {

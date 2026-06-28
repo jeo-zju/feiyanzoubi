@@ -1,0 +1,82 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">审核队列</view>
+      <view class="search-row">
+        <input class="input flex" placeholder="搜索馆名/城市/地址" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
+        <view class="btn btn-warn search-btn" bindtap="onSearch">搜索</view>
+      </view>
+      <seg-tabs tabs="{{stateTabs}}" value="{{state}}" bind:change="onStateChange" />
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{items.length}}" class="list">
+      <view wx:for="{{items}}" wx:key="_id" class="card mt">
+        <view class="card-bd">
+          <view class="row">
+            <view class="section-title item-title">{{item.name}}</view>
+            <view class="tag">{{item.reviewState}}</view>
+          </view>
+          <view class="section-tip">{{item.city}} {{item.district}}</view>
+          <view class="item-address">{{item.address}}</view>
+          <view class="item-meta">
+            <text>{{item.provider}}</text>
+            <text>{{item.writeAction || '未知动作'}}</text>
+            <text>{{item.modeConfidenceText}}</text>
+            <text>匹配 {{item.matchScore}}</text>
+          </view>
+          <view wx:if="{{item.supportedModesText}}" class="item-meta">
+            <text>识别：{{item.supportedModesText}}</text>
+          </view>
+          <view wx:if="{{item.modeReasons.length}}" class="reason-list">
+            <view wx:for="{{item.modeReasons}}" wx:key="index" class="tag">{{item}}</view>
+          </view>
+          <view wx:if="{{state==='pending'}}" class="mt">
+            <view class="field-label">确认模式</view>
+            <view class="reason-list mt-sm">
+              <block wx:for="{{modeOptions}}" wx:key="key" wx:for-item="option">
+                <view
+                  class="tag {{item.draftModes.indexOf(option.key) >= 0 ? 'tag-warn' : ''}}"
+                  data-id="{{item._id}}"
+                  data-mode="{{option.key}}"
+                  bindtap="onToggleMode"
+                >
+                  {{option.label}}
+                </view>
+              </block>
+            </view>
+            <textarea
+              class="textarea mt"
+              auto-height
+              maxlength="200"
+              placeholder="备注（选填）"
+              placeholder-class="ph"
+              value="{{item.noteDraft}}"
+              data-id="{{item._id}}"
+              bindinput="onNoteInput"
+            ></textarea>
+            <view class="action-row mt">
+              <view class="btn btn-primary flex" data-id="{{item._id}}" bindtap="onApprove">确认模式</view>
+              <view class="btn btn-warn mini ml" data-id="{{item._id}}" bindtap="onReject">驳回记录</view>
+            </view>
+          </view>
+          <view wx:elif="{{item.finalSupportedModesText || item.reviewNote}}" class="item-meta mt">
+            <text wx:if="{{item.finalSupportedModesText}}">已确认：{{item.finalSupportedModesText}}</text>
+            <text wx:if="{{item.reviewNote}}">备注：{{item.reviewNote}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="card mt">
+      <view class="card-bd empty">当前没有符合条件的审核记录。</view>
+    </view>
+
+    <view wx:if="{{hasNext}}" class="card mt">
+      <view class="card-bd">
+        <view class="btn btn-ghost" bindtap="onMore">{{loading ? '加载中' : '加载更多'}}</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>
