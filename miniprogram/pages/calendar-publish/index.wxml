@@ -28,7 +28,7 @@
           </view>
         </view>
         <view wx:if="{{!gymSearched.length && gymKeyword}}" class="empty muted">
-          没有搜索到这个岩馆，换个关键词试试？
+          {{gymSearching ? '搜索中…' : '没有搜索到这个岩馆，换个关键词试试？'}}
         </view>
       </view>
 

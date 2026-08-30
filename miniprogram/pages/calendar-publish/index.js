@@ -31,6 +31,7 @@ Page({
     selectedGymName: "",
     gymKeyword: "",
     gymSearched: [],
+    gymSearching: false,
     dateCells: [],
     selectedDate: "",
     dateRangeLabel: "",
@@ -103,17 +104,45 @@ Page({
     this.recomputeDuration();
   },
 
-  async onGymKeywordInput(e) {
-    const v = (e && e.detail && e.detail.value) || "";
-    this.setData({ gymKeyword: v });
-    if (!v.trim()) {
-      this.setData({ gymSearched: [] });
+  onUnload() {
+    if (this._gymSearchTimer) {
+      clearTimeout(this._gymSearchTimer);
+      this._gymSearchTimer = null;
+    }
+    this._gymSearchToken = (this._gymSearchToken || 0) + 1;
+  },
+
+  onGymKeywordInput(e) {
+    const keyword = safeText(e && e.detail && e.detail.value);
+    this.setData({ gymKeyword: keyword });
+    if (this._gymSearchTimer) {
+      clearTimeout(this._gymSearchTimer);
+      this._gymSearchTimer = null;
+    }
+    this._gymSearchToken = (this._gymSearchToken || 0) + 1;
+    const token = this._gymSearchToken;
+    if (!keyword) {
+      this.setData({ gymSearched: [], gymSearching: false });
       return;
     }
+    this.setData({ gymSearching: true });
+    const self = this;
+    this._gymSearchTimer = setTimeout(() => {
+      self._gymSearchTimer = null;
+      self.loadGymSearch(keyword, token);
+    }, 300);
+  },
+
+  async loadGymSearch(keyword, token) {
     try {
-      const res = await gymApi.list({ page: 1, pageSize: 10, keyword: v, city: this.data.city || undefined });
-      const list = (res && res.list) || [];
+      const res = await gymApi.list(
+        { page: 1, pageSize: 10, keyword, city: safeText(this.data.city) },
+        { loading: false }
+      );
+      if (token !== this._gymSearchToken) return;
+      const list = (res && res.gyms) || [];
       this.setData({
+        gymSearching: false,
         gymSearched: list.map((x) => ({
           _id: x._id,
           name: x.name || x.gymName || "",
@@ -122,7 +151,8 @@ Page({
         }))
       });
     } catch (e) {
-      this.setData({ gymSearched: [] });
+      if (token !== this._gymSearchToken) return;
+      this.setData({ gymSearched: [], gymSearching: false });
     }
   },
 
