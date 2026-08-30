@@ -1,6 +1,7 @@
 const { ensureAppLogin, syncAppLogin } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 const userApi = require("../../services/api/user");
+const cache = require("../../utils/cache");
 
 const BOULDER_LEVELS = ["", "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8+"];
 const ROPE_LEVELS = ["", "5.8", "5.9", "5.10a", "5.10b", "5.10c", "5.10d", "5.11a", "5.11b", "5.11c", "5.11d", "5.12a+"];
@@ -29,7 +30,10 @@ function fileExt(path) {
 }
 function isRemoteAvatar(path) {
   const v = safeText(path);
-  return /^cloud:\/\//.test(v) || /^https?:\/\//.test(v);
+  if (/^cloud:\/\//.test(v)) return true;
+  // 微信 chooseAvatar 返回的本地临时路径（http://tmp/... 或 wxfile://...），不是远程地址
+  if (/^wxfile:\/\//.test(v) || /^http:\/\/tmp\//.test(v)) return false;
+  return /^https?:\/\//.test(v);
 }
 function indexOf(arr, val) {
   for (let i = 0; i < arr.length; i++) if (arr[i] === val) return i;
@@ -205,6 +209,7 @@ Page({
         const app = getApp();
         if (app && app.globalData) app.globalData.me = r.me;
       }
+      try { cache.invalidate(cache.CACHE_KEYS.ME_PROFILE); } catch (_) {}
       wx.showToast({ title: "已保存", icon: "success" });
       setTimeout(() => { wx.navigateBack({ delta: 1 }); }, 500);
     } catch (e) {
