@@ -73,6 +73,8 @@ Page({
     circlePickerVisible: false,
     cityOptions: buildCityOptions(),
     gymOptions: [],
+    gymKeyword: "",
+    _gymPickerState: { page: 0, hasMore: false, loading: false },
     selectedCircleId: "",
     selectedCircleLabel: "全部岩友圈",
     myCircleList: [],
@@ -452,7 +454,7 @@ Page({
       const list = (res && res.gyms) || [];
       const options = toGymOptions(list);
       this.setData({
-        gymList: list.slice(0, 8),
+        gymList: list,
         _gymOptionsCache: options,
         gymOptions: options
       });
@@ -466,7 +468,7 @@ Page({
         const list = (res && res.gyms) || [];
         const options = toGymOptions(list);
         this.setData({
-          gymList: list.slice(0, 8),
+          gymList: list,
           _gymOptionsCache: options,
           gymOptions: options
         });
@@ -508,7 +510,9 @@ Page({
               gymFilterLabel: "全部岩馆",
               gymList: [],
               _gymOptionsCache: [],
-              gymOptions: []
+              gymOptions: [],
+              gymKeyword: "",
+              _gymPickerState: { page: 0, hasMore: false, loading: false }
             });
             self.loadAllHome();
           }
@@ -524,6 +528,8 @@ Page({
       gymList: [],
       _gymOptionsCache: [],
       gymOptions: [],
+      gymKeyword: "",
+      _gymPickerState: { page: 0, hasMore: false, loading: false },
       cityPickerVisible: false,
       circleList: [],
       circleTotal: 0,
@@ -533,30 +539,74 @@ Page({
   },
 
   async onTapGymFilter() {
-    let options = (this.data._gymOptionsCache && this.data._gymOptionsCache.length)
-      ? this.data._gymOptionsCache.slice()
-      : toGymOptions(this.data.gymList || []);
-    if (!options.length) {
-      try {
-        const res = await gymApi.list(
-          { city: safeText(this.data.city), keyword: "", page: 1, pageSize: 20 },
-          { loading: false }
-        );
-        const list = (res && res.gyms) || [];
-        options = toGymOptions(list);
-        this.setData({
-          _gymOptionsCache: options,
-          gymList: list.slice(0, 8)
-        });
-      } catch (e) {
-        console.error("[home] onTapGymFilter lazy load fail", e && e.message);
-        wx.showToast({ title: "加载岩馆失败", icon: "none" });
-      }
-    }
-    this.setData({ gymOptions: options, gymPickerVisible: true });
+    const cached = (this.data._gymOptionsCache || []).slice();
+    this.setData({
+      gymKeyword: "",
+      gymOptions: cached.length ? cached : this.data.gymOptions,
+      gymPickerVisible: true,
+      "_gymPickerState.page": 0,
+      "_gymPickerState.hasMore": false,
+      "_gymPickerState.loading": false
+    });
+    await this.loadGymPicker(true);
   },
   onCloseGymPicker() {
+    if (this._gymKeywordTimer) {
+      clearTimeout(this._gymKeywordTimer);
+      this._gymKeywordTimer = null;
+    }
     this.setData({ gymPickerVisible: false });
+  },
+  onGymKeywordInput(e) {
+    const keyword = safeText(e && e.detail && e.detail.value);
+    this.setData({ gymKeyword: keyword, gymOptions: [], "_gymPickerState.loading": true });
+    if (this._gymKeywordTimer) clearTimeout(this._gymKeywordTimer);
+    const self = this;
+    this._gymKeywordTimer = setTimeout(() => {
+      self._gymKeywordTimer = null;
+      self.loadGymPicker(true);
+    }, 300);
+  },
+  onGymPickerScrollLower() {
+    this.onGymPickerLoadMore();
+  },
+  async onGymPickerLoadMore() {
+    const st = this.data._gymPickerState || {};
+    if (st.loading || !st.hasMore) return;
+    await this.loadGymPicker(false);
+  },
+  async loadGymPicker(reset) {
+    const st = this.data._gymPickerState || { page: 0, hasMore: false, loading: false };
+    if (!reset && (st.loading || !st.hasMore)) return;
+    const keyword = safeText(this.data.gymKeyword);
+    const page = reset ? 1 : Math.max(1, Number(st.page || 0) + 1);
+    this._gymPickerToken = (this._gymPickerToken || 0) + 1;
+    const token = this._gymPickerToken;
+    this.setData({ "_gymPickerState.loading": true });
+    try {
+      const res = await gymApi.list(
+        { city: safeText(this.data.city), keyword, page, pageSize: 20 },
+        { loading: false }
+      );
+      if (token !== this._gymPickerToken) return;
+      const list = (res && res.gyms) || [];
+      const hasMore = !!(res && res.hasNext);
+      const options = toGymOptions(list);
+      const merged = reset ? options : (this.data.gymOptions || []).concat(options);
+      this.setData({
+        gymOptions: merged,
+        "_gymPickerState.page": page,
+        "_gymPickerState.hasMore": hasMore,
+        "_gymPickerState.loading": false
+      });
+      if (reset && !keyword) {
+        this.setData({ _gymOptionsCache: merged, gymList: list });
+      }
+    } catch (e) {
+      if (token !== this._gymPickerToken) return;
+      console.warn("[home] loadGymPicker failed", e && e.message);
+      this.setData({ "_gymPickerState.loading": false });
+    }
   },
   onPickGym(e) {
     const id = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || "";
