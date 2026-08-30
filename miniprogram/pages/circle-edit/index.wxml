@@ -75,18 +75,22 @@
         <text class="sheet__title">选择岩馆</text>
         <view class="sheet__close" bindtap="closeGymSheet">✓</view>
       </view>
-      <scroll-view class="sheet__bd" scroll-y>
-        <view wx:if="{{gymOptions.length===0}}" class="sheet-empty">当前城市暂无岩馆</view>
-        <block wx:else>
+      <view class="sheet__search">
+        <input class="search-input" placeholder="搜索岩馆名称 / 地址" value="{{gymKeyword}}" confirm-type="search" bindinput="onGymKeywordInput" bindconfirm="onGymKeywordInput" />
+      </view>
+      <scroll-view class="sheet__bd" scroll-y lower-threshold="80" bindscrolltolower="onGymPickerScrollLower">
+        <block wx:if="{{gymOptions.length > 0}}">
           <view class="sheet-item" wx:for="{{gymOptions}}" wx:key="_id"
             data-id="{{item._id}}"
             bindtap="toggleGym">
             <text class="sheet-item__label">{{item.name}}</text>
-            <view class="check-box {{gymIds.indexOf(item._id)>=0?'check-box--on':''}}">
-              <text wx:if="{{gymIds.indexOf(item._id)>=0}}" class="check-box__t">✓</text>
+            <view class="check-box {{item.checked ? 'check-box--on' : ''}}">
+              <text wx:if="{{item.checked}}" class="check-box__t">✓</text>
             </view>
           </view>
+          <view wx:if="{{_gymPickerState.hasMore}}" class="sheet-more" bindtap="onGymPickerLoadMore">{{_gymPickerState.loading ? "加载中…" : "加载更多"}}</view>
         </block>
+        <view wx:else class="sheet-empty">{{_gymPickerState.loading ? "加载中…" : (gymKeyword ? "没有找到匹配的岩馆" : "当前城市暂无岩馆")}}</view>
       </scroll-view>
     </view>
   </view>

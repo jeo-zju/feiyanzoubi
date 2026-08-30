@@ -21,6 +21,9 @@ Page({
     gymSheetVisible: false,
     citySheetVisible: false,
     gymOptions: [],
+    gymKeyword: "",
+    _gymOptionsCache: [],
+    _gymPickerState: { page: 0, hasMore: false, loading: false },
     saving: false
   },
 
@@ -46,7 +49,7 @@ Page({
     if (this.data.mode === "edit" && this.data.circleId) {
       await this.loadCircle();
     }
-    await this.refreshGymOptions();
+    await this.refreshGymOptions(true);
   },
 
   noop() {},
@@ -72,29 +75,75 @@ Page({
     }
   },
 
-  async refreshGymOptions() {
+  // 岩馆选择：支持搜索（关键词）+ 翻页（滚动到底/加载更多），对齐首页 loadGymPicker
+  async refreshGymOptions(reset) {
+    const st = this.data._gymPickerState || { page: 0, hasMore: false, loading: false };
+    if (!reset && (st.loading || !st.hasMore)) return;
+    const keyword = safeText(this.data.gymKeyword);
+    const page = reset ? 1 : Math.max(1, Number(st.page || 0) + 1);
+    this._gymPickerToken = (this._gymPickerToken || 0) + 1;
+    const token = this._gymPickerToken;
+    this.setData({ "_gymPickerState.loading": true });
     try {
-      const city = String(safeText(this.data.city) || "").trim().toLowerCase();
-      const cacheKey = `${cache.CACHE_KEYS.GYM_LIST_PREFIX}${city}_n50`;
-      const r = await cache.get(cacheKey, {
-        ttlMin: 120,
-        useL2: true,
-        loader: async () => await gymApi.list(
-          { city: this.data.city, keyword: "", page: 1, pageSize: 50 },
-          { loading: false }
-        )
-      });
+      const loader = async () => await gymApi.list(
+        { city: safeText(this.data.city), keyword, page, pageSize: 20 },
+        { loading: false }
+      );
+      let r;
+      if (reset && !keyword) {
+        const city = String(safeText(this.data.city) || "").trim().toLowerCase();
+        const cacheKey = `${cache.CACHE_KEYS.GYM_LIST_PREFIX}${city}_n20`;
+        r = await cache.get(cacheKey, { ttlMin: 120, useL2: true, loader });
+      } else {
+        r = await loader();
+      }
+      if (token !== this._gymPickerToken) return;
       const gyms = (r && r.gyms) || [];
+      const hasMore = !!(r && r.hasNext);
       const map = {};
       const options = gyms.map((g) => {
         const id = String(g._id || "");
         map[id] = { _id: id, name: safeText(g.name) };
-        return { _id: id, name: safeText(g.name) };
+        return {
+          _id: id,
+          name: safeText(g.name),
+          checked: this.data.gymIds.indexOf(id) >= 0
+        };
       }).filter((o) => o._id);
-      this.setData({ gymOptions: options, gymMap: map });
+      const merged = reset ? options : (this.data.gymOptions || []).concat(options);
+      const patch = {
+        gymOptions: merged,
+        gymMap: Object.assign({}, this.data.gymMap, map),
+        "_gymPickerState.page": page,
+        "_gymPickerState.hasMore": hasMore,
+        "_gymPickerState.loading": false
+      };
+      if (reset && !keyword) patch._gymOptionsCache = merged;
+      this.setData(patch);
     } catch (e) {
-      this.setData({ gymOptions: [], gymMap: {} });
+      if (token !== this._gymPickerToken) return;
+      console.warn("[circle-edit] load gym options failed", e && e.message);
+      this.setData({ "_gymPickerState.loading": false });
     }
+  },
+
+  onGymKeywordInput(e) {
+    const keyword = safeText(e && e.detail && e.detail.value);
+    this.setData({ gymKeyword: keyword, gymOptions: [], "_gymPickerState.loading": true });
+    if (this._gymKeywordTimer) clearTimeout(this._gymKeywordTimer);
+    const self = this;
+    this._gymKeywordTimer = setTimeout(() => {
+      self._gymKeywordTimer = null;
+      self.refreshGymOptions(true);
+    }, 300);
+  },
+  onGymPickerScrollLower() {
+    this.onGymPickerLoadMore();
+  },
+  async onGymPickerLoadMore() {
+    const st = this.data._gymPickerState || {};
+    if (st.loading || !st.hasMore) return;
+    await this.refreshGymOptions(false);
   },
 
   onPickColor(e) {
@@ -125,27 +174,66 @@ Page({
         success(r) {
           if (r.confirm && safeText(r.content)) {
             const newCity = safeText(r.content);
-            self.setData({ city: newCity, gymIds: [], gymMap: {}, gymOptions: [] });
-            self.refreshGymOptions();
+            self.setData({
+              city: newCity,
+              gymIds: [],
+              gymMap: {},
+              gymOptions: [],
+              _gymOptionsCache: [],
+              gymKeyword: "",
+              _gymPickerState: { page: 0, hasMore: false, loading: false }
+            });
+            self.refreshGymOptions(true);
           }
         }
       });
       return;
     }
     if (!name) return;
-    this.setData({ city: name, citySheetVisible: false, gymIds: [], gymMap: {}, gymOptions: [] });
-    this.refreshGymOptions();
+    this.setData({
+      city: name,
+      citySheetVisible: false,
+      gymIds: [],
+      gymMap: {},
+      gymOptions: [],
+      _gymOptionsCache: [],
+      gymKeyword: "",
+      _gymPickerState: { page: 0, hasMore: false, loading: false }
+    });
+    this.refreshGymOptions(true);
   },
 
-  openGymSheet() { this.setData({ gymSheetVisible: true }); },
-  closeGymSheet() { this.setData({ gymSheetVisible: false }); },
+  openGymSheet() {
+    const cached = (this.data._gymOptionsCache || []).slice();
+    this.setData({
+      gymSheetVisible: true,
+      gymKeyword: "",
+      gymOptions: cached.length ? cached : this.data.gymOptions,
+      "_gymPickerState.page": 0,
+      "_gymPickerState.hasMore": false,
+      "_gymPickerState.loading": false
+    });
+    this.refreshGymOptions(true);
+  },
+  closeGymSheet() {
+    if (this._gymKeywordTimer) {
+      clearTimeout(this._gymKeywordTimer);
+      this._gymKeywordTimer = null;
+    }
+    this.setData({ gymSheetVisible: false });
+  },
   toggleGym(e) {
     const id = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id);
     if (!id) return;
     const arr = this.data.gymIds.slice();
     const idx = arr.indexOf(id);
     if (idx >= 0) arr.splice(idx, 1); else arr.push(id);
-    this.setData({ gymIds: arr });
+    const gymOptions = (this.data.gymOptions || []).map((o) => ({
+      _id: o._id,
+      name: o.name,
+      checked: arr.indexOf(o._id) >= 0
+    }));
+    this.setData({ gymIds: arr, gymOptions });
   },
 
   async onSave() {
