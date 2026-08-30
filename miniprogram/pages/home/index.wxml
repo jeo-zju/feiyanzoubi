@@ -129,7 +129,10 @@
         <text class="sheet__title">选择岩馆</text>
         <view class="sheet__close" bindtap="onCloseGymPicker">✕</view>
       </view>
-      <scroll-view class="sheet__bd" scroll-y>
+      <view class="sheet__search">
+        <input class="search-input" placeholder="搜索岩馆名称 / 地址" value="{{gymKeyword}}" confirm-type="search" bindinput="onGymKeywordInput" bindconfirm="onGymKeywordInput" />
+      </view>
+      <scroll-view class="sheet__bd" scroll-y lower-threshold="80" bindscrolltolower="onGymPickerScrollLower">
         <view class="sheet-item" data-id="" data-name="全部岩馆" bindtap="onPickGym">
           <text class="sheet-item__label">全部岩馆</text>
           <text wx:if="{{!gymId}}" class="sheet-item__check">✓</text>
@@ -143,8 +146,9 @@
             <text class="sheet-item__label">{{item.name}}</text>
             <text wx:if="{{gymId === item._id}}" class="sheet-item__check">✓</text>
           </view>
+          <view wx:if="{{_gymPickerState.hasMore}}" class="sheet-more" bindtap="onGymPickerLoadMore">{{_gymPickerState.loading ? "加载中…" : "加载更多"}}</view>
         </block>
-        <view wx:else class="sheet-empty">当前城市暂无岩馆</view>
+        <view wx:else class="sheet-empty">{{_gymPickerState.loading ? "加载中…" : (gymKeyword ? "没有找到匹配的岩馆" : "当前城市暂无岩馆")}}</view>
       </scroll-view>
     </view>
   </view>
