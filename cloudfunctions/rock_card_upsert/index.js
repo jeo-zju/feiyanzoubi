@@ -125,7 +125,7 @@ exports.main = async (event) => {
     if (normalized.front.avatarMode === "wechat" && !normalized.front.avatarFileId) {
       if (!normalized.front.avatarUrl && userAvatarUrl) normalized.front.avatarUrl = userAvatarUrl;
     }
-    if (!normalized.back.story) return fail("BAD_REQUEST", "名片素材不能为空", tid);
+    if (!normalized.back.story) return fail("BAD_REQUEST", "背面故事不能为空", tid);
 
     const now = Date.now();
     const cardsCol = db.collection("RockCards");
@@ -150,11 +150,8 @@ exports.main = async (event) => {
       }
     }
 
-    let credit = null;
-    if (mode === "giftDraft" && !existing) {
-      credit = await consumeCredit(openid);
-      if (!credit.ok) return fail("NO_CREDIT", "今日灵感额度已用完", tid);
-    }
+    const credit = await consumeCredit(openid);
+    if (!credit.ok) return fail("NO_CREDIT", "今日灵感额度已用完", tid);
 
     let outId = cardId;
     if (!existing) {

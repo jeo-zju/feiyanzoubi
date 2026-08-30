@@ -77,15 +77,26 @@
             <view class="stat-label">更新</view>
           </view>
           <view class="panel stat-card">
-            <view class="stat-number">{{syncStats.sourceSaved}}</view>
-            <view class="stat-label">来源</view>
+            <view class="stat-number">{{syncStats.skipped}}</view>
+            <view class="stat-label">跳过</view>
           </view>
         </view>
         <view class="stat-grid mt-sm">
           <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.sourceSaved}}</view>
+            <view class="stat-label">来源</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{syncStats.filteredIrrelevant}}</view>
+            <view class="stat-label">过滤</view>
+          </view>
+          <view class="panel stat-card">
             <view class="stat-number">{{syncStats.reviewQueued}}</view>
             <view class="stat-label">待审核</view>
           </view>
+        </view>
+        <view wx:if="{{syncStats.skipReasons.deleted_match}}" class="section-tip mt-sm">
+          其中命中已删除岩馆并跳过：{{syncStats.skipReasons.deleted_match}}
         </view>
 
         <view wx:if="{{syncRequests.length}}" class="mt">
@@ -105,9 +116,12 @@
           <view class="section-title">预览</view>
           <view class="list mt-sm">
             <view wx:for="{{syncItems}}" wx:key="providerPoiId" class="panel panel-soft mt-sm">
-              <view class="row">
+              <view class="row item-head">
                 <view class="section-title item-title">{{item.name}}</view>
-                <view wx:if="{{item.supportedModesText}}" class="tag">{{item.supportedModesText}}</view>
+                <view class="row item-actions">
+                  <view class="btn btn-ghost mini" data-name="{{item.name}}" bindtap="onCopyGymName">复制</view>
+                  <view wx:if="{{item.supportedModesText}}" class="tag ml">{{item.supportedModesText}}</view>
+                </view>
               </view>
               <view class="section-tip">{{item.city}} {{item.district}}</view>
               <view class="item-address">{{item.address}}</view>
@@ -125,9 +139,13 @@
             <view wx:for="{{syncWriteResults}}" wx:key="providerPoiId" class="list-row">
               <view>
                 <view>{{item.name}}</view>
-                <view class="section-tip">{{item.action === 'insert' ? '新增' : '更新'}} · {{item.gymId}}</view>
+                <view class="section-tip">{{item.actionText}} · {{item.gymId || '无馆ID'}}</view>
+                <view wx:if="{{item.reasonText}}" class="section-tip">{{item.reasonText}}</view>
+                <view wx:if="{{item.reason === 'merged_target_update' && item.matchedGymName}}" class="section-tip">
+                  原命中已合并岩馆：{{item.matchedGymName}}{{item.matchedGymId ? ' · ' + item.matchedGymId : ''}}
+                </view>
               </view>
-              <view class="tag">{{item.action}}</view>
+              <view class="tag">{{item.actionText}}</view>
             </view>
           </view>
         </view>

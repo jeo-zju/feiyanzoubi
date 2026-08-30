@@ -4,6 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 const _ = db.command;
+const BOOTSTRAP_ADMIN_IDS = ["42098a0769e3423400183ddf36230f95"];
 
 function traceId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -21,6 +22,28 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
+function isBootstrapAdminId(value) {
+  return BOOTSTRAP_ADMIN_IDS.includes(String(value == null ? "" : value).trim());
+}
+
+function isBootstrapAdminUser(openid, userDoc) {
+  return isBootstrapAdminId(openid) || !!(userDoc && isBootstrapAdminId(userDoc._id));
+}
+
+async function isAdmin(openid) {
+  if (!openid) return false;
+  if (isBootstrapAdminId(openid)) return true;
+  const res = await db
+    .collection("RockUsers")
+    .where(_.or([{ openid }, { _openid: openid }, { uid: openid }]))
+    .limit(1)
+    .get();
+  const user = res && res.data && res.data[0] ? res.data[0] : null;
+  if (isBootstrapAdminUser(openid, user)) return true;
+  if (!user) return false;
+  return user.role === "admin" || user.isAdmin === true;
+}
+
 function normalizeGym(g) {
   const name = g.name || g.gymName || g.title || "";
   const city = g.city || g.cityName || g.locationCity || "";
@@ -34,6 +57,8 @@ function normalizeGym(g) {
     name,
     city,
     address,
+    status: safeText(g.status) || "active",
+    mergedIntoGymId: safeText(g.mergedIntoGymId),
     currentCycleId,
     currentCycle,
     routes,
@@ -62,6 +87,9 @@ function normalizeCycle(c) {
 exports.main = async (event) => {
   const tid = traceId();
   try {
+    const wxctx = cloud.getWXContext();
+    const openid = wxctx.OPENID;
+    if (!(await isAdmin(openid))) return fail("FORBIDDEN", "无权限", tid);
     const gymId = safeText(event && event.gymId);
     if (!gymId) return fail("BAD_REQUEST", "缺少 gymId", tid);
     const res = await db.collection("RockGyms").doc(gymId).get();

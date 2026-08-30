@@ -1,8 +1,8 @@
 <view class="page">
-  <view class="card card-hero">
+  <view class="card hero">
     <view class="card-bd">
-      <view class="section-title-lg">有人送你一张名片</view>
-      <view class="section-desc">领下之后，就会收进你的名片夹。</view>
+      <view class="hero-title">有人把名片塞给你了</view>
+      <view class="muted hero-sub">领了就是你的：可设为主卡，也可保存成图片</view>
     </view>
   </view>
 
@@ -17,9 +17,9 @@
         </view>
         <view class="one">{{card.front.oneLiner}}</view>
       </view>
-      <view wx:else class="empty-state">加载中…</view>
+      <view wx:else class="muted">加载中…</view>
     </view>
   </view>
 
-  <view class="btn btn-primary mt2" bindtap="onClaim">领取名片</view>
+  <view class="btn btn-primary mt2" bindtap="onClaim">领取并保存</view>
 </view>

@@ -1,4 +1,5 @@
 const backstageApi = require("../../services/api/backstage");
+const { ensureAdminPageAccess } = require("../../utils/session");
 
 const MODE_OPTIONS = [
   { key: "boulder", label: "抱石" },
@@ -28,6 +29,8 @@ function modeText(list) {
 
 function decorateItem(item) {
   const next = { ...(item || {}) };
+  next.reviewType = String(next.reviewType || "gym_mode_review");
+  next.isCycleSubmission = next.reviewType === "gym_cycle_submission";
   next.supportedModes = uniqueModes(next.supportedModes);
   next.finalSupportedModes = uniqueModes(next.finalSupportedModes);
   next.draftModes = uniqueModes(next.finalSupportedModes.length ? next.finalSupportedModes : next.supportedModes);
@@ -55,7 +58,9 @@ Page({
     ],
     modeOptions: MODE_OPTIONS
   },
-  onShow() {
+  async onShow() {
+    const user = await ensureAdminPageAccess();
+    if (!user) return;
     this.loadList({ reset: true });
   },
   onStateChange(e) {
@@ -125,6 +130,20 @@ Page({
     const id = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.id : "";
     const item = (this.data.items || []).find((entry) => String(entry._id) === String(id));
     if (!item) return;
+    if (item.isCycleSubmission) {
+      try {
+        await backstageApi.reviewQueueItem({
+          id,
+          decision: "approved",
+          note: item.noteDraft || ""
+        });
+        wx.showToast({ title: "已通过", icon: "success" });
+        this.loadList({ reset: true });
+      } catch (e) {
+        wx.showToast({ title: (e && e.message) || "提交失败", icon: "none" });
+      }
+      return;
+    }
     const modes = uniqueModes(item.draftModes);
     if (!modes.length) {
       wx.showToast({ title: "请至少选择一种模式", icon: "none" });

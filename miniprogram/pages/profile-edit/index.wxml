@@ -1,0 +1,86 @@
+<view class="page">
+  <view class="card">
+    <view class="card-bd">
+      <view class="head-row">
+        <view class="avatar-wrap">
+          <image class="compact-avatar" mode="aspectFill" src="{{form.avatarUrl || defaultAvatar}}"></image>
+          <button class="btn btn-ghost compact-avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">更换</button>
+        </view>
+        <view class="head-right">
+          <view class="inline-col">
+            <view class="inline-label">昵称</view>
+            <input class="compact-input" type="nickname" placeholder="请输入昵称" value="{{form.nickName}}" bindinput="onNickNameInput" />
+          </view>
+          <view class="inline-col">
+            <view class="inline-label">城市</view>
+            <picker mode="selector" range="{{cities}}" value="{{cityIdx}}" bindchange="onCityChange">
+              <view class="compact-picker-val">{{cities[cityIdx] || '选择常居城市'}}</view>
+            </picker>
+          </view>
+        </view>
+      </view>
+
+      <view class="inline-row mt2">
+        <view class="inline-col">
+          <view class="inline-label">名片名</view>
+          <input class="compact-input" placeholder="同昵称可留空" value="{{displayName}}" bindinput="onDisplayNameInput" />
+        </view>
+        <view class="inline-col">
+          <view class="inline-label">头衔</view>
+          <picker mode="selector" range="{{titleOptions}}" value="{{titleIdx}}" bindchange="onTitleChange">
+            <view class="compact-picker-val">{{titleOptions[titleIdx] || '选择头衔'}}</view>
+          </picker>
+        </view>
+        <view class="inline-col">
+          <view class="inline-label">MBTI</view>
+          <picker mode="selector" range="{{mbtiOptions}}" value="{{mbtiIdx}}" bindchange="onMbtiChange">
+            <view class="compact-picker-val">{{mbtiOptions[mbtiIdx] || '未选择'}}</view>
+          </picker>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-bd">
+      <view class="inline-row">
+        <view class="inline-col">
+          <view class="inline-label">抱石</view>
+          <picker mode="selector" range="{{boulderLevels}}" value="{{boulderIdx}}" bindchange="onBoulderChange">
+            <view class="compact-picker-val">{{boulderLevels[boulderIdx] || '未选择'}}</view>
+          </picker>
+        </view>
+        <view class="inline-col">
+          <view class="inline-label">顶绳</view>
+          <picker mode="selector" range="{{ropeLevels}}" value="{{topropeIdx}}" bindchange="onTopropeChange">
+            <view class="compact-picker-val">{{ropeLevels[topropeIdx] || '未选择'}}</view>
+          </picker>
+        </view>
+        <view class="inline-col">
+          <view class="inline-label">先锋</view>
+          <picker mode="selector" range="{{ropeLevels}}" value="{{leadIdx}}" bindchange="onLeadChange">
+            <view class="compact-picker-val">{{ropeLevels[leadIdx] || '未选择'}}</view>
+          </picker>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-bd">
+      <view class="inline-row">
+        <view class="inline-col">
+          <view class="inline-label">身高（cm）</view>
+          <input class="compact-input" type="digit" placeholder="如 178" value="{{heightCm}}" bindinput="onHeightInput" maxlength="3" />
+        </view>
+        <view class="inline-col">
+          <view class="inline-label">臂展（cm）</view>
+          <input class="compact-input" type="digit" placeholder="如 180" value="{{armspanCm}}" bindinput="onArmspanInput" maxlength="3" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <button class="btn btn-primary save-btn mt2" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">保存资料</button>
+  <view style="height: 40rpx;"></view>
+</view>

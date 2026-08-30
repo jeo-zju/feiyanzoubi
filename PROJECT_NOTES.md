@@ -51,7 +51,7 @@
 - 抽出 `miniprogram/utils/session.js`，统一 `ensureAppLogin()` 登录兜底逻辑
 - 简化 `miniprogram/services/cloud.js`，移除只服务于日志页的全局调用日志缓存
 - 抽出 `miniprogram/utils/cardCanvas.js`，统一名片页的文本裁剪、自动换行和图片路径解析逻辑
-- 抽出 `miniprogram/utils/cardRenderer.js`，统一名片绘制主体，减少 `card-edit` / `card-view` 的重复布局代码
+- 抽出 `miniprogram/utils/cardRenderer.js`，统一名片正反面绘制主体，减少 `card-edit` / `card-view` 的重复布局代码
 - 修复 `card-view` 保存图片依赖固定延时的问题，改为等待 canvas 真正绘制完成后再导出，降低空白图或导错面的风险
 - 抽出 `miniprogram/utils/pageState.js`，统一 `home`、`stats`、`owner` 三页的分页翻页与加载状态处理
 - 简化 `paginator` 组件输入，上一页可用性改为由当前页号自动判断
@@ -61,7 +61,7 @@
 - 修复 `rock_checkin_context` 跨周期取进度的问题，打卡上下文现在按目标 `cycleId` 过滤周期进度和历史记录
 - 修复 `stats_summary` 同一天多次打卡时图表被覆盖的问题，按日期改为累加而不是覆盖
 - 修复 `stats_summary` 最近记录分页提前截断的问题，改为分批拉取原始记录并按需累积，减少老用户“提前没有下一页”的概率
-- 修复名片赠送链路中的 3 个问题：取消链接后恢复草稿、直送首张名片自动设主卡、领取页未领取状态不再暴露额外故事内容
+- 修复名片赠送链路中的 3 个问题：取消链接后恢复草稿、直送首张名片自动设主卡、领取页未领取状态不再暴露背面内容
 - 对名片领取增加基于 `gift.status = pending` 的条件更新，缩小同一链接被并发重复领取的窗口
 - 继续强化名片领取一致性：卡片归属写入改为 `ownerOpenid` 为空时才允许更新，若卡片更新失败则把 gift 从 `claimed` 回滚回 `pending`
 - 新增前端调试日志页 `pages/debug-logs`，并把云函数调用日志、运行错误、未处理 Promise 异常、本地页面不存在错误统一落到本地日志存储中，入口位于“我的 > 管理 > 调试日志”
@@ -71,39 +71,6 @@
 - 已完成 `wx.getUserProfile` 迁移：新增极简资料编辑页 `pages/profile-edit`，通过 `chooseAvatar` + `type="nickname"` 获取资料，头像会先上传到云存储再调用 `auth_login` 持久化；`miniprogram/utils/session.js` 新增 `syncAppLogin()`，用于统一“登录/更新资料后回写 `app.globalData.user`”的逻辑
 - 开始统一页面视觉骨架：在 `miniprogram/app.wxss` 新增共享的 `card-hero`、`section-kicker`、`section-title-lg`、`section-desc`、`panel`、`stat-grid`、`list-row`、`empty-state` 等样式，并已用于 `profile-edit`、`owner`、`stats`、`wall`，让标题区、统计卡、列表行和空态文案更统一、更简洁
 - 第二轮视觉收敛继续落到高频业务页：`card-wallet`、`card-gift` 已接入统一的 Hero/统计卡/列表行/面板样式；`checkin` 保持原有打卡逻辑不变，仅统一头部信息层级和表格外层容器，让高频页面的节奏更接近同一产品
-- 名片编辑与保存页已从“双面切换”交互收敛为单面名片：照片不再单独预览，而是作为同一张名片的背景氛围图参与渲染；`card-edit` / `card-view` 已同步改单面文案与保存逻辑，避免“选照片后预览错乱”的体验问题
-- 名片相关页面的产品口径已继续统一为单面名片，`card-wallet` 的保存按钮、`rock_llm_one_liner` 的提示词和底层渲染中的历史文案也已同步清理，避免继续出现“正面 / 反面 / 背面”的残留表达
-- 名片产品线又做了一轮文案收敛：`card-wallet`、`card-gift`、`card-claim`、`card-view`、`card-edit`、`wall` 的按钮、提示语和空态文案继续压缩，减少解释句和步骤感，统一成更简洁、更克制的语气
-- 非名片页也继续统一产品语言：`owner`、`stats`、`home`、`checkin` 的标题、空态、按钮文案和离开/保存提示继续收敛，减少口语化长句和说明堆叠，让全局语气更一致
-- 又做了一轮轻量视觉统一：`home` 顶部搜索卡接入 `card-hero` 风格，`owner` 的新增按钮、`checkin` 顶部辅助按钮改为更接近统一的 mini 密度，`stats` 图表区增加留白，整体页面间距和层级进一步对齐
-- 再做了一轮细节收口：`home` 顶部搜索区正式改成 Hero 结构，补齐 `section-kicker / title / desc` 的层级；通用 `paginator` 组件也同步收细，按钮高度、圆角、间距和页码宽度都更接近全局次级操作的密度
-- 为适配不同移动端屏幕高度，继续收敛了页面纵向布局：`home`、`owner`、`stats` 改成“首屏固定 + 内部列表滚动”的视口布局，避免整页被列表顶出一屏；`checkin` 去掉了过大的底部留白；`window.js` 新增 `getWindowHeight()` / `isCompactScreen()`，`me` 页会根据屏幕高度自动缩小名片尺寸，减少小屏设备首屏溢出
-- `rock_llm_one_liner` 继续增强兼容性：修正 `gyms` 对象数组提示词拼接，兼容 `message.content` 为数组等返回格式；当 DeepSeek 返回空内容时，自动回退到本地 mock 文案，避免前端直接看到“未返回可用文案”
-- 调试日志页新增筛选交互：顶部总数/错误/云调用统计卡和每条日志上的类型、分类标签都可点击筛选，并新增当前筛选状态提示，提升排查错误时的可用性
-- `profile-edit` 继续收敛为更窄更稳的一张编辑卡：减少说明文案，只保留头像和昵称两项核心资料，统一卡片宽度和节奏，避免宽窄不一的拼装感
-- `me` 页又做了一轮减法：去掉“我的名片”标题和外层卡框后，继续清掉顶部 `Project` 占位副标题、把名片角标改成更轻的箭头、把“名片夹/灵感”收成单行数据表达、把“馆长/日志”入口压成单行轻按钮，页面层级更少、更像一屏内的自然信息流
-- 继续清理用户侧占位残留：`auth_login` 不再给 `projectName` 回填英文默认值 `Project`，避免“我的”页昵称下方再次出现无业务含义的占位副标题
-- 继续清理前端示例占位：`me` 空名片与 `card-edit` 预览中的“岩点测试员 / 长臂猿 / ENTP / 用脚点谈判”已换成更中性的“你的名字 / 攀岩爱好者 / 写一句介绍自己 / 常去的馆”，避免测试感过强的示例直接暴露给用户
-- `me` 页空名片又按真实产品语义调整了一轮：默认姓名优先使用微信昵称，绰号和一句话改为从既有内置词库里随机生成，避免再次回到“攀岩爱好者”这种直白占位；空名片角标文案也从“创建”改成了更符合当前操作的“编辑”
-- `me` 与 `card-edit` 的默认名片内容现已完全共用 `miniprogram/utils/cardDefaults.js`：统一从同一套绰号/一句话词库生成，并按用户 `openid/nickName` 稳定计算默认展示，避免“我的页看到一套、点进编辑又变另一套”
-- “编辑资料” 与 “名片” 的重复信息已合并：`me` 页去掉了独立资料条，直接在名片卡片里展示头像与名字；`profile-edit` 页面从路由中移除并删除文件，头像与昵称的同步逻辑改为内聚到 `card-edit`，在名片编辑页里直接点头像走 `chooseAvatar`、点名字走 `type="nickname"`，保存名片时一并同步用户资料，同时仍保留自定义头像/自定义昵称能力
-- `card-edit` 又做了一轮更轻的交互收束：去掉“头像和名字”独立卡片、去掉“素材”独立卡片，改成直接在名片预览上点击头像/昵称进入编辑，并把素材收成预览下方一行摘要，右侧用小笔图标进入编辑面板；照片选择与“生成一句”改为跟随素材摘要的轻按钮，而不再占一整张卡
-- `card-edit` 继续去重后，素材摘要也从卡片下方移除，只保留名片上的最终展示内容；小笔图标改为直接浮在名片右下角，作为唯一的素材编辑入口，避免“卡片里有一句、卡片下又重复一遍”的双重表达
-- `card-edit` 顶部原“单面预览”标签已替换成真正的分享入口：点击会先静默保存当前名片、生成领取链接，再弹出“保存图片 / 分享给好友”的选择；分享使用当前页面生成的名片预览图作为 `imageUrl`，保存图片也直接复用当前预览图，不再额外跳去 `card-view`
-- 之后又按交互收口把分享入口从 `card-edit` 移回 `me` 页名片操作区：`我的` 页现为“送出 / 分享”，分享会在该页直接生成预览图并弹出“保存图片 / 分享给好友”；`card-edit` 顶部不再保留分享按钮，避免编辑页和我的页双入口重复。空名片上的“点击编辑名片”提示也已删除，只保留卡面本身与“编辑”角标
-- 因用户反馈 `me` 页名片与 `card-edit` 视觉不一致，`me` 页主名片已改为通过隐藏 canvas 使用同一个 `drawFrontCard()` 渲染后显示，不再用单独拼装的简化 DOM 卡片；`送出 / 分享` 也改为直接浮在卡面右下角，避免此前落在卡片下方时不明显或难以被看到
-- 随后复查发现前一版“未生效”的直接原因有两处：一是 `me/index.wxml` 同时存在两个 `canvas-id="myCardCanvas"`，导致绘制目标混乱；二是 `setData` 切出主名片分支后立即绘制 canvas，节点尚未真正挂载时就调用了 `createCanvasContext()`。现已删除重复 canvas，并在 `me/index.js` 中新增 `afterViewReady()`，确保主名片节点渲染完成后再绘制，从而让 `我的` 页卡面和右下角“送出 / 分享”真正生效
-- 之后再次核对发现 `card-edit` 实际显示层并不是可见 canvas，而是“隐藏 canvas 生成临时图 + `<image>` 展示”。`me` 页此前曾误切到可见 canvas，和 `card-edit` 的显示路径并不一致。现已改回与 `card-edit` 完全同型：隐藏 `myCardCanvas` 出图，写入 `myCardPreviewImage` 后显示 `<image>`；卡面右下角 `送出 / 分享` 覆盖在该图层上
-- 为提升 Tab 切换体验，新增 `miniprogram/utils/pageCache.js` 轻量页面缓存层，并接入 `home`、`stats`、`me` 三个 Tab：进入页面时先读短时本地缓存秒开旧数据，再静默刷新云函数结果；同时 `services/api/gym.js`、`stats.js`、`card.js` 支持按调用场景关闭全局 loading，避免“切换 Tab 总要转圈一下”的阻塞感
-- 缓存策略继续扩展到高频非 Tab 页面：`owner` 馆长页支持列表与汇总的短时缓存；`checkin` 页按“用户 + 岩馆 + 日期”缓存 `rock_checkin_context` 返回值，进入最近使用的岩馆或切日期时可先显示旧上下文，再静默刷新，减少每次进入都等初始化数据的体感
-- 名片赠送口径已重新梳理：自己的主名片现在视为“可无限分发的源名片”，分享/送出只生成领取记录，不再转移原卡所有权，也不再消耗灵感；领取自己的分享时会复制一张给对方收进名片夹。`giftDraft` 继续作为“帮别人制作名片”的独立模式，仅在新建草稿时消耗一次灵感，后续编辑与送出不再重复扣减
-- `card-wallet` 已改为同页区分“收到的 / 送出的”两类记录，并把“保存图片”收口为当前页直接保存；领取成功也不再跳 `card-view`，而是直接回名片夹，减少名片夹内部的次级页面层数
-- `我的` 页与 `card-edit` 页的可视名片已收口为共享模板 `miniprogram/templates/profile-card.wxml` 与共享样式 `miniprogram/styles/profile-card.wxss`。后续若要调整名片顶部渐变条、头像区、标题、一句话等结构，必须优先修改这两处，避免再次出现“我的页一套 / 编辑页一套 / canvas 导图又一套”的分叉回归
-
-## 当前环境注意事项
-- 当前工程实际位于 VMware 共享目录 `/mnt/hgfs/trae_projects/feiyanzoubi`，不是本机本地磁盘目录。
-- 在这个共享挂载环境下，IDE 的文件删除能力会尝试“移动到废纸篓”，但 `/mnt/hgfs` 不满足对应废纸篓目录要求，因此 `DeleteFile` 类删除操作会稳定失败，并提示“未能将文件移动到废纸篓”。
-- 后续如果需要删除文件或目录，默认改用命令行真实删除回退方案处理；不要把删除失败误判为授权问题。
 
 ## 当前仍建议后续处理的优化点
 - `card-edit` 与 `card-view` 的名片绘制已抽出主体，但仍可继续统一尺寸、间距和文案常量，减少两套布局参数分散
@@ -117,3 +84,118 @@
 - 当前正式业务线更聚焦在“打卡 + 统计 + 馆长后台 + 名片”
 - 调试代码和模板残留已经收口，页面路由与服务层更贴近实际业务
 - 后续新开窗口时，优先阅读本文件，再按需要展开到对应业务目录
+
+---
+
+## §9 数据库集合对照表（20 当前 + 2 未来新增 F-2/F-4）
+
+| # | 集合名 | 使用云函数数 | 状态 | 备注 |
+|---|---|---|---|---|
+| 1 | RockUsers | 13+ | 🔵 核心表 | 用户基础信息：openid/uid/nickname/avatar/role/… |
+| 2 | RockGyms | 10+ | 🔵 核心表 | 岩馆元数据：名称/城市/ownerOpenid/gymType/hardness/status |
+| 3 | RockGymCycles | 3 | 🔵 核心表 | 岩馆的每期线路周期（14天）+ lines[] 等级/计数/delta |
+| 4 | RockCheckinRecords | 3 | 🔵 核心表 | 打卡明细；openid + gymId + cycleId + dateKey + items[] + totalDelta |
+| 5 | RockUserDailyProgress | 2 | 🔵 核心表 | 同一 openid+dateKey 的当日汇总（boulderCount/boulderDelta/difficulty*）|
+| 6 | RockUserCycleProgress | 2 | 🔵 核心表 | 同一 openid+cycleId 的周期累计值 |
+| 7 | RockCards | 8+ | 🔵 核心表 | 名片：ownerOpenid / oneLiner / level / styles / layout / isPrimary |
+| 8 | RockCardCredits | 3 | 🔵 核心表 | 灵感额度 remaining/total |
+| 9 | RockCardGifts | 1（gift_manage） | 🔵 核心表 | 名片赠送 link/direct；status=pending/claimed/canceled |
+| 10 | RockCircles | 1（circle_manage） | 🔵 核心表 | 岩友圈 name/description/city/memberCount/pendingCount/gymIds[] |
+| 11 | RockCircleMembers | 1（circle_manage） | 🔵 核心表 | 圈成员 role=admin/member；status=accepted/pending/rejected |
+| 12 | RockCalendarPlans | 3 | 🔵 核心表 | 约爬计划 openid+dateKey+startAt/endAt+visibility+needPartner |
+| 13 | RockFriendships | 3 | 🔵 核心表 | 好友双向：from/to/status=accepted/rejected/pending |
+| 14 | RockGymWallCards | 1（wall_manage） | 🔵 核心表 | 名片上墙槽位 gymId/cardId/slot/hungAt |
+| 15 | RockGymReviewQueue | 3 | 🟠 后台 | 新馆审核队列：待审核/approved/rejected |
+| 16 | RockGymSyncRuns | 1（rock_sync_gyms） | 🟠 后台 | 同步执行记录（runId/startedAt/endedAt/inserted/updated）|
+| 17 | RockGymSourceRecords | 1（rock_sync_gyms） | 🟠 后台 | 同步源原始快照 |
+| 18 | RockComments | 0 | 🔴 死代码（已从 admin_manage DOC_COLLECTIONS 移除） | 仅 admin_manage 备份白名单引用过，无任何 CRUD；真实集合可控制台手动删 |
+| 19 | RockBlackTalkDictionary | 0 | 🔴 死代码（已从 admin_manage DOC_COLLECTIONS 移除） | 同上；0 业务代码读写 |
+| 20 | RockCirclePosts | 0 | 🟡 未来新增（对应 Backlog F-4） | 圈帖动态 circleName + openid + content + images[] + createdAt |
+| 21 | RockCheckinRevocationLog | 0 | 🟡 未来新增（对应 Backlog F-2） | 打卡撤销审计 log：撤销哪条 record/谁操作/时间/原因 |
+
+## §10 29 云函数对外 action 协议速查
+
+> 所有响应统一：`{ ok, data?, error?{code,message}, traceId }`
+> 调用：前端 services/api/* 薄代理 → services/cloud.js callCloud → wx.cloud.callFunction
+
+| 云函数(29) | 对外 action | 错误码示例 |
+|---|---|---|
+| user_manage | login / me / update | NO_PERMISSION / BAD_INPUT |
+| friendship_manage | request / accept / reject / remove / search | ALREADY_FRIENDS / NOT_FOUND |
+| rock_gym_list | —（按 query） | — |
+| rock_gym_get | —（按 gymId） | NOT_FOUND |
+| gym_owner_list | —（按 openid） | — |
+| gym_owner_upsert | upsert_info / upsert_cycle / upsert_lines / delete_cycle | NOT_OWNER |
+| gym_owner_manage | merge_propose / merge_apply / list_merges / manage_merge / delete_gym / transfer_owner / list_all / list_orphan | NOT_ADMIN / NOT_OWNER / SAME_GYM |
+| rock_gym_hardness_upsert | —（按 gymId+hardness） | — |
+| rock_checkin_context | —（按 gymId?cycleId?） | NOT_FOUND |
+| checkin_create | create（**缺 F-2: revert_last**） | EMPTY_SUBMIT / NO_SUCH_CYCLE / OUTSIDE_REVOCATION_WINDOW |
+| calendar_query | —（start/end/gymId/visibility） | RANGE_TOO_LARGE |
+| calendar_mine | —（openid） | — |
+| calendar_plan_publish | create / update / cancel（**缺 F-1: join_plan / unjoin_plan / get_joiners / remove_joiner**） | NOT_OWNER / DATE_PAST |
+| circle_manage | create / update / disband / list / myList / getDetail / apply / approve / reject / remove / leave（**缺 F-4: post_list/post_create/post_delete**） | NOT_ADMIN / NOT_MEMBER / CIRCLE_NOT_FOUND |
+| rock_card_upsert | —（upsert） | INSUFFICIENT_CREDIT |
+| rock_card_get | —（cardId） | NOT_FOUND / NO_PERMISSION |
+| rock_card_list_my | —（created/received/wall 三段） | — |
+| rock_card_manage | set_primary / remove_received（**缺 F-3: remove_created**） | NOT_OWNER |
+| rock_card_gift_manage | create_link / create_direct / get / claim / cancel | GIFT_CLAIMED / NOT_RECIPIENT |
+| rock_gym_wall_manage | get / list_cards / hang / unhang | SLOT_OCCUPIED / NOT_OWNER |
+| share_card_render | render（返回 fileID） | RENDER_FAILED |
+| rock_llm_one_liner | —（prompt + 额度判断） | LLM_FAIL / INSUFFICIENT_CREDIT |
+| stats_summary | —（30 天趋势 + topGym + 最近分页） | — |
+| rock_sync_gyms | sync | NOT_ADMIN |
+| admin_manage | health / list_users / auth_debug / doc_backup_list / doc_backup_export / doc_backup_import（DOC_COLLECTIONS 已撤 2） | NOT_ADMIN |
+| rock_gym_review_queue_manage | list / review | NOT_ADMIN |
+| **test_seed_data**（新增） | **seed / cleanup / status** | BAD_ACTION / (cleanup 必须 confirm:true 才执行删除) |
+
+## §11 清理决策（本次执行结果汇总）
+
+| 类别 | 数量 | 结果 |
+|---|---|---|
+| 云函数冗余可删？ | 28 个扫前端引用 | **0 个删除**：28 个云函数全部被 miniprogram/services/api/* 引用，一个不少 |
+| 数据库集合（业务写读为 0）可撤备份白名单 | 20 个集合全扫 `collection(...)` | **2 个从 admin_manage DOC_COLLECTIONS 移除：RockComments / RockBlackTalkDictionary**。真实集合在控制台保留（避免立即物理删风险），等下一次手工清 |
+| 数据库真实集合删除 | — | **0 个真实删除**：不碰控制台真实集合实体，交由用户上线前核对后手动删 |
+| 功能入口去重（UI） | 33 页 WXML + 跳转全扫 | **删 3 行**：① home/index.wxml 「无岩馆+圈模式」空态创建圈按钮；② home/index.wxml 选圈 sheet 右上＋；③ me/index.wxml 抽屉里的「🐞 调试日志」一行（保留工具箱入口仅管理员能到）|
+| 双入口但不删的 | 6 组（发布日历/岩友圈列表/馆长后台/时间轴/打卡/岩馆合并） | **全部保留**：场景和用户心智不同 |
+
+## §12 测试数据规范（test_seed_data 云函数）
+
+1. **命名一律 _v 后缀**：用户名 `test_user_1_v ~ test_user_10_v`；昵称 `攀岩小v…馆长v`；馆名 `飞岩测试馆A_v / B_v`；圈名 `深圳抱石交流_v…`
+2. **三 action 协议**（统一 OK: `{ok, data, traceId}`）：
+   - `action: "status"` → `{ counts:{ RockUsers:10, RockGyms:2, ... }, total: X }`
+   - `action: "seed"` → 首次插入 10 用户 + 2 馆 + 4 周期 + 3 圈 + ~23 成员 + 3 好友 + ~20 打卡 + ~12 DP + ~8 CP + 8 约爬 + 6 卡 + 6 Credits + 1 赠 + 3 上墙 = 约 80 条；若检测到已有数据则返回 `mode: "idempotent_skip"` 防重复
+   - `action: "cleanup"` + **不传 confirm → preview_only 返回 willDelete 预览，DB 零改动**；`confirm:true` 才真删；匹配严格正则 `openid /^test_user_.*_v$/`；集合里其他字段用 `name/_v$`、`gymName/_v$`、`circleName/_v$` 等
+3. **cleanup 删除顺序（从外键到内）**：WallCards → Gifts → Credits → Cards → CalendarPlans → CycleProg → DailyProg → Records → Friendships → Members → Circles → Cycles → Gyms → Users，避免外键悬挂
+4. **幂等性保证**：seed 前先 `count RockUsers openid 正则` 和 `count RockGyms name 正则`；两者任意 >0 直接 skip，不会无限堆数据
+5. **部署位置**：`cloudfunctions/test_seed_data/` 含 `package.json`（wx-server-sdk ~2.4.0）+ `index.js`；需要管理员权限或全部用户可写权限（测试环境推荐）
+
+## §13 功能入口去重记录
+
+**入口地图（33 页跳转全扫 → 按目标页聚合入口数）：**
+
+| 目标页面 | 入口数 | 决策 |
+|---|---|---|
+| 创建岩友圈 circle-edit | 4 入口（卡片 ＋/无岩馆空态/有岩馆空态/选圈 sheet＋） | 🔴 删 2，剩 2：保留「有岩馆空态引导」+「卡片 header 右 ＋」；删「无岩馆＋圈模式空态引导（逻辑矛盾：圈模式依赖 gymId）」和「选圈弹窗右上＋（用户心智：选圈就是选，不是创建）」 |
+| 调试日志 debug-logs | 2 入口（我的页 ⚙抽屉 / 工具箱首页） | 🟡 删 1，剩 1：仅工具箱保留；普通用户看不到我的页抽屉里的 🐞 |
+| 发布日历 publish | 2 入口（首页浮动 + 时间轴右上 ＋） | 🟢 保留 2：全局快速 + 上下文快捷（看某天直接加） |
+| 岩友圈列表 circle-list | 2 入口（我的页卡片 / 首页 › 更多） | 🟢 保留 2：「我的圈」vs「当前岩馆更多圈」心智不同 |
+| 馆长后台 owner | 2 入口（我的页抽屉 / 工具箱首页） | 🟢 保留 2：馆长本人 vs 管理员代查 |
+| 打卡 checkin | 1 入口（首页浮动 📌） | 🟢 |
+| 时间轴 timeline | 2 入口（点日期 / 无岩馆兜底跳转） | 🟢（后者是 fallback 不冗余）|
+| 岩馆合并 gym-merge | 2 入口（我的页抽屉 / gym-manage 上下文 ⋯） | 🟢 保留 2：全局操作 vs 馆长操作岩馆内页上下文 |
+
+## §14 功能 Backlog（F-1~F-4 确定缺失；O-1/O-2 可选；本文件只登记 + 写 TC，不补代码）
+
+### 必补（高优先级；已在 tests/e2e_test_cases.md 有 🔶 预期失败用例）
+
+| ID | 缺失功能 | 影响范围 | 建议修复云函数新增 action | 建议前端修改位置 |
+|---|---|---|---|---|
+| **F-1** | 约爬计划报名/取消报名/查看名单/移除报名人（四件套） | 目前约爬发了之后只能"看"，没有"我要去"的确认动作 → 约爬的社交闭环只完成一半 | calendar_plan_publish 加 4 个：join_plan / unjoin_plan / get_joiners / remove_joiner；calendar_query 返回字段扩 `joinedCount:number / meJoined:boolean` | pages/calendar-timeline：右上「＋发布日历」旁加报名按钮；pages/calendar-mine：加「我报名的」段 |
+| **F-2** | 撤销最近 30 分钟最后一条打卡（三表回滚） | 高频误操作：误点 +3 V5 后 delta 算错；当前用户只能去数据库手工删三条表；体验很差 | checkin_create 新增 `action: "revert_last"`，用 `createdAt >= now()-1800000` 取最后一条，按 Records.totalCount/totalDelta 反减去 UserDailyProgress + UserCycleProgress + 删除 Records（或置 revoked=true）+ 写 RockCheckinRevocationLog 审计 | checkin 提交成功页顶部加「撤销」按钮（30 min 内高亮；超时变灰 disabled） |
+| **F-3** | 删除自己创建的名片（含级联：若上墙先下墙；若赠未领取先取消） | 名片写错 / 隐私需要删 / 内容过期：目前只能改封面改不了"创建过"这一事实，会被人在墙上或老链接打开看到 | rock_card_manage 新增 `action: "remove_created"`：仅 ownerOpenid 匹配；先查 RockGymWallCards[cardId] 批量 unhang；再查 RockCardGifts[cardId] pending → cancel；最后删 RockCards | card-view 右上 ⋯ 加「删除名片」菜单；若检测到有 gift/wall，弹二次确认「同时下墙并取消 2 条赠送 → 删除」 |
+| **F-4** | 岩友圈发帖 / 列表 / 删除动态（帖子） | 当前圈 11 action 全是成员管理；用户心智"进圈能聊天/发图"不满足；圈只剩一个社交标签，用途虚 | circle_manage 扩 3 action：post_list（分页，按圈过滤，按时间倒序）/ post_create（成员才能发）/ post_delete（自己发的 or admin 任意删）；新增集合 RockCirclePosts（circleId/name + openid/nickname + content + images[] + createdAt/status） | circle-detail 底部 TabBar 加「信息 / 成员 / 动态」；动态 Tab 右上 ＋ 发新帖 |
+
+### 可选增强（非阻塞，建议但不强制；未加 TC）
+- **O-1**：用户拉黑 / 屏蔽（friendship_manage 加 block/unblock + blocked list；对方发请求 403）→ 目前小程序投诉渠道也可处理，非阻塞
+- **O-2**：名片夹「我收到的」分页 + 按等级筛选（rock_card_list_my 加 page/limit/grade）→ 老用户 100+ 张才会卡，非阻塞
+

@@ -1,0 +1,41 @@
+<view class="page page--circle-list">
+  <view class="topbar">
+    <view class="topbar__back" bindtap="goBack">‹</view>
+    <view class="topbar__title">岩友圈 {{gymName ? '· '+gymName : ''}}</view>
+    <view class="topbar__plus" bindtap="onCreate">＋</view>
+  </view>
+
+  <view class="list-stage">
+    <view wx:if="{{current}}" class="big-card" bindtap="onTapCard">
+      <view class="big-card__header">
+        <view class="big-card__color" style="background:{{current.avatarColor}};"></view>
+        <view class="big-card__title-wrap">
+          <view class="big-card__title">{{current.name}}</view>
+          <view class="big-card__meta">
+            <text>{{current.memberCount}} 人</text>
+            <text wx:if="{{current.gymIds.length>0}}"> · {{current.gymIds.length}} 馆</text>
+            <text wx:if="{{current.city}}"> · {{current.city}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{current.description}}" class="big-card__desc">{{current.description}}</view>
+      <view class="big-card__foot">
+        <view class="big-card__badge">点卡片进入详情 ›</view>
+        <block wx:if="{{myMembership && (myMembership.status==='accepted' || myMembership.status==='pending')}}">
+          <view class="big-card__tag big-card__tag--in">已在</view>
+        </block>
+        <block wx:else>
+          <view class="big-card__btn" catchtap="onTapApply">申请</view>
+        </block>
+      </view>
+    </view>
+
+    <view wx:else class="empty-stage">暂无可展示的岩友圈</view>
+  </view>
+
+  <view class="pager">
+    <view class="pager__btn {{page<=1?'pager__btn--off':''}}" bindtap="onPrev">‹ 上一个</view>
+    <view class="pager__num">{{page}} / {{totalPages}}</view>
+    <view class="pager__btn {{page>=totalPages?'pager__btn--off':''}}" bindtap="onNext">下一个 ›</view>
+  </view>
+</view>

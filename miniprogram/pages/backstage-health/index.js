@@ -1,4 +1,5 @@
 const backstageApi = require("../../services/api/backstage");
+const { ensureAdminPageAccess } = require("../../utils/session");
 
 Page({
   data: {
@@ -6,7 +7,9 @@ Page({
     healthError: "",
     healthChecks: []
   },
-  onShow() {
+  async onShow() {
+    const user = await ensureAdminPageAccess();
+    if (!user) return;
     if (!this.data.healthChecks.length && !this.data.healthLoading) {
       this.onCheckHealth();
     }

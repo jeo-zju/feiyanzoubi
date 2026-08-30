@@ -1,0 +1,70 @@
+<view class="page">
+  <view class="panel">
+    <view class="title">源岩馆</view>
+    <view class="gym-name">{{sourceGym.name || sourceGym.gymName || '加载中'}}</view>
+    <view class="gym-city" wx:if="{{sourceGym.city}}">{{sourceGym.city}}</view>
+  </view>
+
+  <view class="panel">
+    <view class="title">选择目标岩馆</view>
+    <view class="hint">会尽量加载全部可管理岩馆，并支持按名称、城市、地址筛选。</view>
+    <input class="search-input" placeholder="搜索目标岩馆" value="{{targetKeyword}}" bindinput="onTargetKeyword" />
+    <view wx:if="{{!filteredTargetGyms.length && !loading}}" class="empty">暂无匹配的目标岩馆</view>
+    <view
+      wx:for="{{filteredTargetGyms}}"
+      wx:key="_id"
+      class="target-item {{targetGymId===item._id?'target-item--active':''}}"
+      data-id="{{item._id}}"
+      bindtap="onPickTarget"
+    >
+      <view class="target-name">{{item.name}}</view>
+      <view class="target-meta">{{item.city || '未设置城市'}}</view>
+    </view>
+    <view wx:if="{{targetGym}}" class="summary-card">
+      <view class="summary-label">当前目标馆</view>
+      <view class="summary-value">{{targetGym.name}}</view>
+      <view class="target-meta">{{targetGym.city || '未设置城市'}} {{targetGym.address || ''}}</view>
+    </view>
+    <view class="btn btn-primary" bindtap="onPreviewMerge" loading="{{loadingPreview}}">查看合并预览</view>
+  </view>
+
+  <view wx:if="{{preview}}" class="panel">
+    <view class="title">合并预览</view>
+    <view class="summary-card">
+      <view class="summary-label">源岩馆</view>
+      <view class="summary-value">{{preview.summary.sourceText || '无数据'}}</view>
+    </view>
+    <view class="summary-card">
+      <view class="summary-label">目标岩馆</view>
+      <view class="summary-value">{{preview.summary.targetText || '无数据'}}</view>
+    </view>
+    <view class="summary-card">
+      <view class="summary-label">周期冲突</view>
+      <view class="summary-value">{{preview.cyclePlan.conflictCount || 0}} 个</view>
+    </view>
+    <view wx:if="{{preview.warnings && preview.warnings.length}}" class="warning-box">
+      <view wx:for="{{preview.warnings}}" wx:key="*this" class="warning-text">{{item}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{preview && cycleMappings.length}}" class="panel">
+    <view class="title">周期映射</view>
+    <view class="hint">为每个重叠的源周期选择要并入的目标周期。</view>
+    <view wx:for="{{cycleMappings}}" wx:key="sourceCycleId" class="mapping-item">
+      <view class="mapping-source">{{item.sourceCycleName}} {{item.sourceRange}}</view>
+      <view class="mapping-target">{{item.targetCycleName ? item.targetCycleName + ' ' + item.targetRange : '未选择目标周期'}}</view>
+      <view class="mini-btn" data-index="{{index}}" bindtap="onPickCycleMapping">选择目标周期</view>
+    </view>
+    <view class="summary-card">
+      <view class="summary-label">映射确认</view>
+      <view class="summary-value mapping-summary">{{mappingSummaryText}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{preview}}" class="panel">
+    <view class="hint">{{canSubmit ? '条件已满足，可以执行合并。' : '请先补齐目标馆选择和周期映射。'}}</view>
+    <view class="btn btn-primary {{!canSubmit?'btn-disabled':''}}" bindtap="onSubmitMerge">
+      确认执行合并
+    </view>
+  </view>
+</view>

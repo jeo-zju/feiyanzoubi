@@ -1,78 +1,118 @@
-<import src="../../templates/profile-card.wxml" />
-
 <view class="page">
-  <view class="mycard-module">
-    <view class="mycard-render-box" style="width: {{shareCanvasCssW}}px; height: {{shareCanvasCssH}}px; margin: 0 auto;" bindtap="goEditMyCard">
-      <template
-        is="profileCard"
-        data="{{name: myCardView.displayName, title: myCardView.title, mbti: myCardView.mbti, gym: myCardView.gymLabel, one: myCardView.oneLiner, avatarSrc: (myCardView.avatarMode==='custom' ? myCardView.avatarFileId : myCardView.avatarUrl), brandText: '飞岩走壁 · 攀岩名片', showEditIcon: true}}"
-      />
-    </view>
-    <view class="mycard-actions">
-      <view class="mycard-action mycard-action--warn" catchtap="goGift">送出</view>
-      <view class="mycard-action" catchtap="openShareActions">分享</view>
-    </view>
-  </view>
-
-  <view class="glance-grid mt">
-    <view class="card glance-card" bindtap="goWallet">
-      <view class="card-bd glance-bd">
-        <view class="glance-title">名片夹</view>
-        <view class="glance-main">
-          <view class="glance-value">{{receivedCount}}<text class="glance-unit">张</text></view>
+  <view class="card card-soft card--card">
+    <view class="card-bd">
+      <view class="card-block">
+        <view class="mycard mycard-render-box" style="width: {{myCardCssW}}px; height: {{myCardCssH}}px;">
+          <image wx:if="{{myCardPreviewImage}}" class="mycard-render" src="{{myCardPreviewImage}}" mode="aspectFit" binderror="onCardPreviewImgError"></image>
+          <view wx:else class="mycard-skeleton">
+            <view class="sk-bar"></view>
+            <view class="sk-row sk-row--1">
+              <view class="sk-avatar"></view>
+              <view class="sk-right">
+                <view class="sk-line sk-line--w1"></view>
+                <view class="sk-line sk-line--w2"></view>
+                <view class="sk-line sk-line--w3"></view>
+              </view>
+            </view>
+            <view class="sk-row sk-row--2">
+              <view class="sk-chip"></view>
+              <view class="sk-chip sk-chip--m"></view>
+              <view class="sk-chip sk-chip--s"></view>
+              <view class="sk-chip sk-chip--ok"></view>
+            </view>
+            <view class="sk-row sk-row--3">
+              <view class="sk-meta"></view>
+              <view class="sk-meta sk-meta--m"></view>
+              <view class="sk-meta sk-meta--push"></view>
+            </view>
+            <view class="sk-row sk-row--4">
+              <view class="sk-line sk-line--full"></view>
+              <view class="sk-line sk-line--med"></view>
+            </view>
+            <view class="sk-ft">飞岩走壁 · 攀岩名片</view>
+          </view>
+        </view>
+        <view class="mycard-foot-actions mycard-foot-actions--3">
+          <view class="action-pill" catchtap="goSaveMyCard">保存</view>
+          <view class="action-pill" catchtap="goProfileEdit">编辑资料</view>
+          <view class="action-pill action-pill--gear" catchtap="onOpenDrawer">⚙</view>
         </view>
       </view>
     </view>
+  </view>
 
-    <view class="card glance-card glance-card--credit">
+  <view class="glance-grid glance-grid--single mt-card">
+    <view class="card glance-card glance-card--credit glance-card--btn" bindtap="goGift">
       <view class="card-bd glance-bd">
-        <view class="glance-title">灵感</view>
-        <view class="glance-main">
-          <view class="glance-value">{{credit.remaining}}<text class="glance-unit">/{{credit.limit}}</text></view>
+        <view class="glance-top">
+          <view class="glance-title">灵感</view>
+          <view class="glance-value">{{credit.remaining}}</view>
         </view>
+        <view class="glance-sub">消耗灵感生成名片上的一句话</view>
         <view class="credit-bar">
           <view class="credit-bar-fill" style="width: {{creditPercent}}%;"></view>
         </view>
+        <view class="glance-cta">去写一句话 ›</view>
       </view>
     </view>
   </view>
 
-  <view class="quick-grid quick-grid--compact mt">
-    <view class="quick-item" bindtap="goOwner">
-      <view class="quick-label">岩馆管理</view>
+  <view class="glance-grid mt-card">
+    <view class="card glance-card glance-card--btn" bindtap="goFriendList">
+      <view class="card-bd glance-bd">
+        <view class="glance-top">
+          <view class="glance-title">岩友</view>
+          <view class="glance-mark glance-mark--friends">👥</view>
+        </view>
+        <view class="glance-cta mt-md">去列表 ›</view>
+      </view>
     </view>
-    <view class="quick-item" bindtap="goBackstage">
-      <view class="quick-label">开发工具</view>
+    <view class="card glance-card glance-card--btn" bindtap="goCircleList">
+      <view class="card-bd glance-bd">
+        <view class="glance-top">
+          <view class="glance-title">岩友圈</view>
+          <view class="glance-mark glance-mark--circles">🪢</view>
+        </view>
+        <view class="glance-cta mt-md">去列表 ›</view>
+      </view>
     </view>
   </view>
 
-  <canvas
-    class="share-canvas"
-    canvas-id="myCardCanvas"
-    width="{{shareCanvasW}}"
-    height="{{shareCanvasH}}"
-    style="width: {{shareCanvasCssW}}px; height: {{shareCanvasCssH}}px;"
-  ></canvas>
+  <view class="page-footpad"></view>
 
-  <canvas
-    class="share-canvas"
-    canvas-id="shareCanvas"
-    width="{{shareCanvasW}}"
-    height="{{shareCanvasH}}"
-    style="width: {{shareCanvasCssW}}px; height: {{shareCanvasCssH}}px;"
-  ></canvas>
-
-  <view wx:if="{{sharePickerVisible}}" class="mask" catchtouchmove="noop" bindtap="closeSharePicker">
-    <view class="sheet" bindtap="noop">
-      <view class="sheet-hd">
-        <view class="sheet-title">分享名片</view>
-        <view class="action-pill action-pill--ghost mini-pill" bindtap="closeSharePicker">关闭</view>
-      </view>
-      <view class="sheet-bd">
-        <view class="action-pill action-pill--block" bindtap="onSavePreviewImage">保存图片</view>
-        <button class="share-btn mt2" open-type="share">分享给好友</button>
-      </view>
+  <view class="drawer-mask {{drawerOpen?'drawer-mask--on':''}}" bindtap="onCloseDrawer"></view>
+  <view class="drawer-panel {{drawerOpen?'drawer-panel--on':''}}" catchtap="noop">
+    <view class="drawer-hd">
+      <view class="drawer-hd__t">更多</view>
+      <view class="drawer-hd__c" bindtap="onCloseDrawer">关闭</view>
     </view>
+    <scroll-view scroll-y class="drawer-bd">
+      <view class="drawer-grp">
+        <view class="drawer-grp__t">岩馆相关</view>
+        <view class="drawer-row" bindtap="goOwner">
+          <text class="drawer-row__ic">🏔</text>
+          <text class="drawer-row__t">馆长后台</text>
+          <text class="drawer-row__arrow">›</text>
+        </view>
+        <view class="drawer-row" bindtap="goGymMerge">
+          <text class="drawer-row__ic">🔗</text>
+          <text class="drawer-row__t">岩馆合并</text>
+          <text class="drawer-row__arrow">›</text>
+        </view>
+      </view>
+      <view class="drawer-grp">
+        <view class="drawer-grp__t">开发 & 管理</view>
+        <view wx:if="{{canSeeToolbox}}" class="drawer-row" bindtap="goBackstage">
+          <text class="drawer-row__ic">🛠</text>
+          <text class="drawer-row__t">工具箱（管理员后台）</text>
+          <text class="drawer-row__arrow">›</text>
+        </view>
+      </view>
+      <view class="drawer-bottom-spacer"></view>
+    </scroll-view>
+  </view>
+
+  <view class="offscreen-canvas">
+    <canvas canvas-id="myCardPreviewCanvas" class="offscreen-canvas__inner" width="960" height="606"></canvas>
   </view>
 </view>
-

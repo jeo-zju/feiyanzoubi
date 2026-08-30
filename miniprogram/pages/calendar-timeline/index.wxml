@@ -1,0 +1,126 @@
+<view class="page page--tl">
+  <view class="tl-header">
+    <view class="tl-header__title">
+      <text class="tl-header__date">{{dateLabel}}</text>
+      <text class="tl-header__week">{{weekLabel}}</text>
+    </view>
+    <view class="btn btn-mini btn-primary" bindtap="onTapPublish">
+      <text class="ic-plus">+</text>
+      <text>发布日历</text>
+    </view>
+  </view>
+
+  <view class="crumb card-soft panel">
+    <text class="crumb__item">{{city || "全部城市"}}</text>
+    <text class="crumb__sep">·</text>
+    <text class="crumb__item crumb__item--click" bindtap="onTapGymFilter">{{gymLabel}}</text>
+    <text class="crumb__sep">·</text>
+    <text class="crumb__item crumb__item--click" bindtap="onToggleVisibility">{{visibilityLabel}}</text>
+  </view>
+
+  <scroll-view scroll-x class="pill-row" enhanced show-scrollbar="{{false}}">
+    <view class="pill pill--static">{{publicityPillLabel}}</view>
+  </scroll-view>
+
+  <view class="card mt-sm">
+    <view class="card-hd">
+      <view>
+        <view class="section-kicker">岩友</view>
+        <view class="section-title-lg section-title-lg--tight">{{userCount}} 位岩友</view>
+      </view>
+    </view>
+    <view class="card-bd card-bd--pt0">
+      <scroll-view scroll-x class="avatar-row" enhanced show-scrollbar="{{false}}">
+        <block wx:for="{{userList}}" wx:key="_openid">
+          <view class="avatar-item" data-uid="{{item._openid}}" bindtap="onTapAvatar">
+            <image class="avatar-item__img" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+            <text class="avatar-item__name">{{item.displayName || item.nickName || '岩友'}}</text>
+          </view>
+        </block>
+        <view wx:if="{{!userList.length}}" class="empty-line muted">暂无岩友在这天发布计划，先做第一个吧 🧗</view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="card mt-sm">
+    <view class="card-bd tl-card-bd">
+      <view class="tl-wrap" style="width: {{tlWidth}}rpx;">
+        <view class="tl-timecol">
+          <view wx:for="{{hourTicks}}" wx:key="h" class="tl-tick">{{item.label}}</view>
+          <view class="tl-tick tl-tick--ghost"></view>
+        </view>
+        <scroll-view scroll-x class="tl-cols-scroll" enhanced show-scrollbar="{{false}}">
+          <view class="tl-cols" style="width: {{colsWidth}}rpx;">
+            <view wx:for="{{colList}}" wx:for-index="colIdx" wx:key="uid" class="tl-col" style="width: {{colWidth}}rpx;">
+              <view wx:for="{{item.bars}}" wx:key="id" class="tl-bar {{item.colorIdx>0?'tl-bar--c'+item.colorIdx:''}}" style="top:{{item.topPx}}rpx;height:{{item.hPx}}rpx;" data-uid="{{colList[colIdx].uid}}" data-rawplanid="{{item.rawPlanId}}" catchtap="onTapBar">
+                <view class="tl-bar__time">{{item.rangeText}}</view>
+                <view class="tl-bar__gym">{{item.gymName || item.outdoorName || '攀岩'}}</view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </view>
+
+  <view class="mt-lg"></view>
+
+  <view wx:if="{{selectedPlan}}" class="plan-modal-mask" catchtouchmove="noop" bindtap="onClosePlan">
+    <view class="plan-modal" catchtap="noop">
+      <view class="plan-modal__hd">
+        <image class="plan-modal__avatar" src="{{selectedPlan.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <view class="plan-modal__info">
+          <view class="plan-modal__name">{{selectedPlan.displayName || selectedPlan.nickName || '岩友'}}</view>
+          <view class="plan-modal__meta muted">{{selectedPlan.rangeText}} · {{selectedPlan.date}}</view>
+        </view>
+        <view class="plan-modal__close" bindtap="onClosePlan">×</view>
+      </view>
+      <view class="plan-modal__bd">
+        <view class="plan-row">
+          <text class="plan-row__k">岩馆</text>
+          <text class="plan-row__v">{{selectedPlan.gymName || selectedPlan.outdoorName || '-'}}</text>
+        </view>
+        <view wx:if="{{selectedPlan.note}}" class="plan-row">
+          <text class="plan-row__k">备注</text>
+          <text class="plan-row__v">{{selectedPlan.note}}</text>
+        </view>
+        <view wx:if="{{selectedPlan.needPartner}}" class="plan-row plan-row--warn">
+          <text class="plan-row__k">求搭子</text>
+          <text class="plan-row__v">希望 {{selectedPlan.skillText || '一起爬'}}</text>
+        </view>
+        <view class="divider divider--soft mt-sm"></view>
+        <view class="plan-section">
+          <view class="section-kicker section-kicker--sm">已报名 {{joinCount || selectedPlan.joinedCount || 1}} 人</view>
+          <view class="join-list">
+            <block wx:if="{{joinOwner}}">
+              <view class="join-row">
+                <image class="join-row__img" src="{{joinOwner.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+                <view class="join-row__bd">
+                  <text class="join-row__name">{{joinOwner.displayName || joinOwner.nickName || '发起者'}}</text>
+                  <text class="join-row__sub muted">{{joinOwner.title || '发起者'}}</text>
+                </view>
+                <text class="pill pill--xs pill--tag">发起者</text>
+              </view>
+            </block>
+            <block wx:for="{{joinList}}" wx:key="joinId">
+              <view class="join-row">
+                <image class="join-row__img" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+                <view class="join-row__bd">
+                  <text class="join-row__name">{{item.displayName || item.nickName || '岩友'}}</text>
+                  <text class="join-row__sub muted">{{item.title || '报名啦'}}</text>
+                </view>
+                <view wx:if="{{selectedPlan.isMe}}" class="btn btn-xs btn-ghost-danger" data-uid="{{item.openid}}" catchtap="onTapRemoveJoiner">移除</view>
+              </view>
+            </block>
+            <view wx:if="{{!joinOwner && !joinList.length}}" class="empty-line muted">加载中…</view>
+          </view>
+        </view>
+      </view>
+      <view class="plan-modal__ft">
+        <view wx:if="{{!selectedPlan.isMe && !selectedPlan.isFriend}}" class="btn btn-ghost plan-modal__btn" bindtap="onTapAddFriend">加为岩友</view>
+        <view wx:if="{{!selectedPlan.isMe}}" class="btn plan-modal__btn {{selectedPlanJoined || selectedPlan.meJoined ? 'btn-ghost' : 'btn-primary'}}" bindtap="onTapJoin">{{selectedPlanJoined || selectedPlan.meJoined ? '取消报名' : '我要去'}}</view>
+        <view wx:if="{{selectedPlan.isMe}}" class="btn btn-warn plan-modal__btn" bindtap="onTapCancelMine">取消我的计划</view>
+      </view>
+    </view>
+  </view>
+</view>

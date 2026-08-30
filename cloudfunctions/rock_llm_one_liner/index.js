@@ -35,11 +35,13 @@ function pick(list, seed) {
   return arr[seed % arr.length];
 }
 
+const QUOTE_RE = /^[\u0022\u0027\u2018\u2019\u201C\u201D\u300C\u300D\u300E\u300F\uFF02\u00AB\u00BB\u2039\u203A]+|[\u0022\u0027\u2018\u2019\u201C\u201D\u300C\u300D\u300E\u300F\uFF02\u00AB\u00BB\u2039\u203A]+$/g;
+
 function normalizeOneLiner(s) {
   const t = safeText(s);
   if (!t) return "";
   const line = t.split(/\r?\n/).map((x) => safeText(x)).filter(Boolean)[0] || "";
-  const cleaned = line.replace(/^["“”]+|["“”]+$/g, "").trim();
+  const cleaned = line.replace(QUOTE_RE, "").trim();
   if (cleaned.length <= 40) return cleaned;
   return cleaned.slice(0, 40);
 }
@@ -71,14 +73,7 @@ function buildPrompt(payload) {
   const title = safeText(payload && payload.title) || "攀岩爱好者";
   const mbti = safeText(payload && payload.mbti);
   const gyms = Array.isArray(payload && payload.gyms)
-    ? payload.gyms
-        .map((item) => {
-          if (!item) return "";
-          if (typeof item === "string") return safeText(item);
-          return safeText(item.name || item.gymName || item.title || item.gymId);
-        })
-        .filter(Boolean)
-        .slice(0, 5)
+    ? payload.gyms.map((item) => safeText(item)).filter(Boolean).slice(0, 5)
     : [];
 
   const persona =
@@ -89,7 +84,7 @@ function buildPrompt(payload) {
     "请只输出一句中文，不要解释。",
     "长度控制在 8 到 24 个汉字内，绝对不要超过 40 个字符。",
     "不要带引号、书名号、emoji、换行、序号。",
-    "不要复述用户原文的大段内容，要提炼成适合名片展示的短句。",
+    "不要复述用户原文的大段内容，要提炼成适合名片正面的短句。",
     "内容要像攀岩人会说的话，允许少量攀岩语感，但不要太生硬。"
   ].join("\n");
   const profile = [
@@ -172,25 +167,6 @@ function postJson(url, headers, body) {
   });
 }
 
-function extractMessageContent(message) {
-  if (!message) return "";
-  const direct = message.content;
-  if (typeof direct === "string") return direct;
-  if (Array.isArray(direct)) {
-    const text = direct
-      .map((item) => {
-        if (!item) return "";
-        if (typeof item === "string") return item;
-        if (typeof item === "object") return safeText(item.text || item.content || item.value);
-        return "";
-      })
-      .filter(Boolean)
-      .join(" ");
-    if (text) return text;
-  }
-  return safeText(message.reasoning_content || message.reasoning || message.output_text);
-}
-
 async function callDeepSeek(payload, config) {
   const base = safeText(config && config.baseUrl).replace(/\/+$/, "");
   const endpoint = `${base}/chat/completions`;
@@ -207,8 +183,9 @@ async function callDeepSeek(payload, config) {
     res &&
     res.choices &&
     res.choices[0] &&
-    res.choices[0].message
-      ? extractMessageContent(res.choices[0].message)
+    res.choices[0].message &&
+    res.choices[0].message.content
+      ? res.choices[0].message.content
       : "";
   return normalizeOneLiner(content);
 }
@@ -264,10 +241,9 @@ exports.main = async (event) => {
       return fail("LLM_NOT_CONFIGURED", "未配置 DeepSeek API Key，请设置 DEEPSEEK_API_KEY", tid);
     }
 
-    let oneLiner = await callDeepSeek(event || {}, config);
+    const oneLiner = await callDeepSeek(event || {}, config);
     if (!oneLiner) {
-      oneLiner = normalizeOneLiner(mockOneLiner(style, story));
-      return ok({ oneLiner, style, mocked: true, provider: "mock_fallback", model: config.model }, tid);
+      return fail("EMPTY_RESULT", "DeepSeek 未返回可用文案", tid);
     }
     return ok({ oneLiner, style, mocked: false, provider: "deepseek", model: config.model }, tid);
   } catch (e) {

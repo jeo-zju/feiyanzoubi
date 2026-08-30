@@ -1,0 +1,9 @@
+{
+  "name": "circle_manage",
+  "version": "1.0.0",
+  "description": "岩友圈管理",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

@@ -1,0 +1,86 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">岩馆权限</view>
+      <view class="section-desc">输入岩馆 ID，查看 owner / manager 相关字段和基础信息。</view>
+
+      <view class="field-block mt">
+        <view class="field-label">岩馆 ID</view>
+        <input
+          class="input"
+          placeholder="输入 RockGyms._id"
+          placeholder-class="ph"
+          value="{{gymId}}"
+          bindinput="onGymIdInput"
+        />
+      </view>
+
+      <view class="action-row">
+        <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始查询'}}</view>
+        <view class="btn btn-ghost mini ml" bindtap="onCopyResult">复制原始数据</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{error}}" class="card mt">
+      <view class="card-bd">
+        <view class="tag tag-warn">{{error}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{searched}}" class="card mt">
+      <view class="card-hd">查询结果</view>
+      <view class="card-bd">
+        <view class="row">
+          <view class="section-title">{{gym.name || gymId || '未知岩馆'}}</view>
+          <view class="tag {{found ? '' : 'tag-warn'}}">{{found ? '已找到' : '未找到'}}</view>
+        </view>
+        <view wx:if="{{found && gym}}" class="details">
+          <view class="section-tip">{{gym.city || '-'}} {{gym.address || ''}}</view>
+          <view class="meta-stack">
+            <text>馆 ID: {{gym._id}}</text>
+            <text>ownerOpenid: {{gym.ownerOpenid || '-'}}</text>
+            <text>owner_uid: {{gym.owner_uid || '-'}}</text>
+            <text>managers: {{gym.managers.length ? gym.managers.join(', ') : '-'}}</text>
+            <text>managerOpenids: {{gym.managerOpenids.length ? gym.managerOpenids.join(', ') : '-'}}</text>
+            <text>manager_uids: {{gym.manager_uids.length ? gym.manager_uids.join(', ') : '-'}}</text>
+          </view>
+          <view class="json-block mt">{{rawGymText || 'null'}}</view>
+        </view>
+        <view wx:else class="section-tip mt">没有查到这个岩馆文档。</view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && gym}}" class="card mt">
+      <view class="card-hd">编辑权限</view>
+      <view class="card-bd">
+        <view class="field-block">
+          <view class="field-label">ownerOpenid</view>
+          <input class="input" value="{{draft.ownerOpenid}}" data-key="ownerOpenid" bindinput="onDraftInput" />
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">owner_uid</view>
+          <input class="input" value="{{draft.owner_uid}}" data-key="owner_uid" bindinput="onDraftInput" />
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">managers</view>
+          <textarea class="textarea" auto-height value="{{draft.managers}}" data-key="managers" bindinput="onDraftInput"></textarea>
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">managerOpenids</view>
+          <textarea class="textarea" auto-height value="{{draft.managerOpenids}}" data-key="managerOpenids" bindinput="onDraftInput"></textarea>
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">manager_uids</view>
+          <textarea class="textarea" auto-height value="{{draft.manager_uids}}" data-key="manager_uids" bindinput="onDraftInput"></textarea>
+        </view>
+        <view class="section-tip mt">数组字段支持换行或逗号分隔。</view>
+        <view class="action-row">
+          <view class="tag tag-warn">保存后会直接写入 `RockGyms`</view>
+          <view class="btn btn-primary save-btn" bindtap="onSave">{{saving ? '保存中' : '保存权限'}}</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,5 +1,6 @@
 const { get } = require("../../services/api/gym");
-const { upsertGym } = require("../../services/api/gymOwner");
+const { upsertGym, manageGym } = require("../../services/api/gymOwner");
+const { ensureAppLogin, ensureAdminPageAccess, isAdminUser } = require("../../utils/session");
 const { today } = require("../../utils/date");
 const { safeText } = require("../../utils/format");
 
@@ -84,10 +85,49 @@ const DIFFICULTY_TEMPLATES = [
 
 const LEAD_TEMPLATES = DIFFICULTY_TEMPLATES;
 
+function buildDeleteSummary(relations) {
+  const info = relations || {};
+  return [
+    `周期 ${Number(info.cycleCount || 0)} 个`,
+    `打卡 ${Number(info.checkinCount || 0)} 条`,
+    `日进度 ${Number(info.dailyProgressCount || 0)} 条`,
+    `周期进度 ${Number(info.cycleProgressCount || 0)} 条`,
+    `评分 ${Number(info.hardnessRatingCount || 0)} 条`,
+    `上墙 ${Number(info.wallCardCount || 0)} 条`,
+    `评论 ${Number(info.commentCount || 0)} 条`
+  ].join("，");
+}
+
+function formatDateTime(ts) {
+  const value = Number(ts || 0) || 0;
+  if (!value) return "";
+  const d = new Date(value);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day} ${hh}:${mm}`;
+}
+
+function normalizeMergeHistory(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((item) => item && item.sourceGymId)
+    .map((item) => ({
+      sourceGymId: safeText(item.sourceGymId),
+      sourceGymName: safeText(item.sourceGymName) || "未命名岩馆",
+      mergedAtText: formatDateTime(item.mergedAt),
+      cycleMappingCount: Number(item.cycleMappingCount || 0) || 0,
+      mappedCycleCount: Number(item.mappedCycleCount || 0) || 0
+    }));
+}
+
 Page({
   data: {
     gymId: "",
     gym: {},
+    user: null,
+    canManageDirectly: false,
     cycles: [],
     cycleEditing: null,
     closeEndDate: today(),
@@ -114,11 +154,37 @@ Page({
     routeTabs: buildRouteTabs(["boulder", "difficulty"]),
     routeRows: [],
     routeCounts: { boulder: {}, difficulty: {}, lead: {} },
-    customGrade: ""
+    customGrade: "",
+    mergeHistory: []
+  },
+  redirectToGym(targetGymId, targetGymName, options = {}) {
+    const id = safeText(targetGymId);
+    if (!id) {
+      wx.showToast({ title: options.fallbackTitle || "目标岩馆不存在", icon: "none" });
+      return;
+    }
+    const title = options.silent ? "" : `已跳转到${safeText(targetGymName) || "目标岩馆"}`;
+    if (title) wx.showToast({ title, icon: "none" });
+    wx.redirectTo({ url: `/pages/gym-manage/index?gymId=${id}` });
   },
   async onLoad(query) {
+    const from = query && query.from ? String(query.from) : "";
+    const preferredTab = query && query.tab ? String(query.tab) : "";
+    let user = null;
+    if (from === "checkin") {
+      user = await ensureAppLogin();
+      if (!user) return;
+    } else {
+      user = await ensureAdminPageAccess();
+      if (!user) return;
+    }
     const gymId = query && query.gymId ? String(query.gymId) : "";
-    this.setData({ gymId });
+    this.setData({
+      gymId,
+      user,
+      canManageDirectly: !!isAdminUser(user),
+      tab: preferredTab || this.data.tab
+    });
     if (gymId) await this.loadGym();
     this.refreshRouteRows();
   },
@@ -131,6 +197,7 @@ Page({
       const routes = gym.routes || {};
       this.setData({
         gym,
+        mergeHistory: [],
         cycles,
         form: {
           name: gym.name || gym.gymName || gym.title || "",
@@ -157,11 +224,28 @@ Page({
           lead: (routes.lead && (routes.lead.limits || routes.lead.counts || routes.lead)) || {}
         }
       });
+      if (this.data.gymId) {
+        try {
+          const historyRes = await manageGym({ action: "get_merge_history", gymId: this.data.gymId });
+          this.setData({ mergeHistory: normalizeMergeHistory(historyRes && historyRes.mergeHistory) });
+        } catch (e3) {}
+      }
       const tabs = buildRouteTabs(gym.supportedModes || ["boulder", "difficulty"]);
       if (tabs.length && !tabs.some((item) => item.key === this.data.routeMode)) {
         this.setData({ routeMode: tabs[0].key });
       }
     } catch (e) {
+      if (e && e.code === "GYM_MERGED") {
+        try {
+          const redirect = await manageGym({ action: "resolve_redirect", gymId: this.data.gymId });
+          this.redirectToGym(
+            (redirect && redirect.targetGymId) || e.targetGymId,
+            (redirect && redirect.targetGymName) || e.targetGymName,
+            { fallbackTitle: "该岩馆已合并" }
+          );
+          return;
+        } catch (e2) {}
+      }
       wx.showToast({ title: "加载失败", icon: "none" });
     }
   },
@@ -453,7 +537,7 @@ Page({
       return;
     }
     try {
-      await upsertGym({
+      const res = await upsertGym({
         gymId: this.data.gymId,
         cycle: {
           name: safeText(this.data.cycleForm.name),
@@ -467,7 +551,11 @@ Page({
               : ""
         }
       });
-      wx.showToast({ title: "已保存", icon: "none" });
+      if (res && res.reviewState === "pending") {
+        wx.showToast({ title: "已提交审核", icon: "none" });
+      } else {
+        wx.showToast({ title: "已保存", icon: "none" });
+      }
       await this.loadGym();
       if (this.data.tab === "routes") this.refreshRouteRows();
     } catch (e) {
@@ -482,18 +570,69 @@ Page({
     const mode = this.data.routeMode;
     const limits = (this.data.routeCounts && this.data.routeCounts[mode]) || {};
     try {
-      await upsertGym({
+      const res = await upsertGym({
         gymId: this.data.gymId,
         routes: {
           mode,
           limits
         }
       });
-      wx.showToast({ title: "已更新", icon: "none" });
+      if (res && res.reviewState === "pending") {
+        wx.showToast({ title: "已提交审核", icon: "none" });
+      } else {
+        wx.showToast({ title: "已更新", icon: "none" });
+      }
       await this.loadGym();
     } catch (e) {
-      wx.showToast({ title: "更新失败", icon: "none" });
+      wx.showToast({ title: (e && e.message) || "更新失败", icon: "none" });
     }
+  },
+  async onDeleteGym() {
+    if (!this.data.gymId) return;
+    const gymName = safeText(this.data.form && this.data.form.name) || safeText(this.data.gym && this.data.gym.name) || "该岩馆";
+    try {
+      const preview = await manageGym({ action: "preview_delete", gymId: this.data.gymId });
+      const warningText = Array.isArray(preview && preview.warnings) ? preview.warnings.join("\n") : "";
+      wx.showModal({
+        title: "删除岩馆",
+        content: `${buildDeleteSummary(preview && preview.relations)}\n${warningText}`,
+        confirmText: "下一步",
+        success: (r1) => {
+          if (!r1 || !r1.confirm) return;
+          wx.showModal({
+            title: "再次确认",
+            content: `确认删除【${gymName}】吗？删除后它将不再出现在列表中。`,
+            confirmText: "确认删除",
+            success: async (r2) => {
+              if (!r2 || !r2.confirm) return;
+              try {
+                await manageGym({
+                  action: "apply_delete",
+                  gymId: this.data.gymId,
+                  mode: "soft",
+                  confirmName: gymName
+                });
+                wx.showToast({ title: "已删除", icon: "none" });
+                wx.navigateBack({
+                  delta: 1,
+                  fail: () => {
+                    wx.redirectTo({ url: "/pages/owner/index" });
+                  }
+                });
+              } catch (e2) {
+                wx.showToast({ title: (e2 && e2.message) || "删除失败", icon: "none" });
+              }
+            }
+          });
+        }
+      });
+    } catch (e) {
+      wx.showToast({ title: (e && e.message) || "删除失败", icon: "none" });
+    }
+  },
+  onMergeGym() {
+    if (!this.data.gymId) return;
+    wx.navigateTo({ url: `/pages/gym-merge/index?sourceGymId=${this.data.gymId}` });
   },
   backOwner() {
     wx.navigateBack({ delta: 1 });

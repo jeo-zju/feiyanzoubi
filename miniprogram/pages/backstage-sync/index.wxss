@@ -83,6 +83,15 @@
   padding-right: 12rpx;
 }
 
+.item-head {
+  align-items: flex-start;
+}
+
+.item-actions {
+  flex-shrink: 0;
+  align-items: center;
+}
+
 .item-address {
   margin-top: 10rpx;
   font-size: 24rpx;

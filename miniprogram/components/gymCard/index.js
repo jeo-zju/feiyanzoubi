@@ -23,12 +23,22 @@ function buildDisplayGym(gym) {
     });
   }
   next.supportedModeLabels = labels;
+  const hardnessCount = Math.max(0, Number(next.hardnessCount || 0) || 0);
+  const hardnessAvg = Number(next.hardnessAvg);
+  next.hardnessText =
+    hardnessCount > 0 && Number.isFinite(hardnessAvg) ? `${hardnessCount} 人打出 ${hardnessAvg.toFixed(1)} 分` : "无人打分";
+  next.recentVisitLabel = next.lastVisitLabel ? "上次去过" : "";
+  const compactMeta = [];
+  if (next.visitLabel) compactMeta.push(next.visitLabel);
+  if (next.recentVisitLabel) compactMeta.push(next.recentVisitLabel);
+  next.compactMetaText = `${compactMeta.length ? `(${compactMeta.join(" / ")}) ` : ""}${next.address || ""}`.trim();
   return next;
 }
 
 Component({
   properties: {
-    gym: { type: Object, value: {} }
+    gym: { type: Object, value: {} },
+    compact: { type: Boolean, value: false }
   },
   data: {
     displayGym: {}
@@ -45,4 +55,3 @@ Component({
     }
   }
 });
-

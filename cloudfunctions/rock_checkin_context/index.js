@@ -21,6 +21,11 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
+function toNumberOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 function isValidYMD(v) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
 }
@@ -33,6 +38,7 @@ function normalizeGym(g) {
   const currentCycle = g.currentCycle || g.cycle || null;
   const routes = g.routes || g.routeConfig || null;
   const lines = g.lines || null;
+  const hardnessAvg = toNumberOrNull(g.hardnessAvg);
   return {
     _id: g._id,
     name,
@@ -43,10 +49,22 @@ function normalizeGym(g) {
     routes,
     lines,
     supportedModes: Array.isArray(g.supportedModes) ? g.supportedModes : [],
+    status: safeText(g.status) || "active",
+    mergedIntoGymId: safeText(g.mergedIntoGymId),
     lastCheckinAt: g.lastCheckinAt || g.lastVisitAt || g.last_checkin_at || "",
     visitCount: typeof g.visitCount === "number" ? g.visitCount : typeof g.visit_count === "number" ? g.visit_count : 0,
+    hardnessAvg,
+    hardnessCount: Math.max(0, Number(g.hardnessCount || 0) || 0),
+    hardnessUpdatedAt: g.hardnessUpdatedAt || g.hardness_updated_at || 0,
     updatedAt: g.updatedAt || g.updateTime || g.updated_at || g.createdAt || 0
   };
+}
+
+function normalizeGymStatus(value) {
+  const status = safeText(value).toLowerCase();
+  if (status === "deleted") return "deleted";
+  if (status === "merged") return "merged";
+  return "active";
 }
 
 function normalizeProgress(doc) {
@@ -317,6 +335,29 @@ exports.main = async (event) => {
     const gymRes = await db.collection("RockGyms").doc(gymId).get();
     const gymRaw = gymRes && gymRes.data ? gymRes.data : null;
     if (!gymRaw) return fail("NOT_FOUND", "岩馆不存在", tid);
+    const gymStatus = normalizeGymStatus(gymRaw.status);
+    if (gymStatus === "deleted") return fail("GYM_INACTIVE", "该岩馆已下线，暂时不能打卡", tid);
+    if (gymStatus === "merged") {
+      const targetGymId = safeText(gymRaw.mergedIntoGymId);
+      let targetGymName = "";
+      if (targetGymId) {
+        try {
+          const targetRes = await db.collection("RockGyms").doc(targetGymId).get();
+          const targetGym = targetRes && targetRes.data ? targetRes.data : null;
+          targetGymName = safeText(targetGym && (targetGym.name || targetGym.gymName || targetGym.title));
+        } catch (e) {}
+      }
+      return {
+        ok: false,
+        error: {
+          code: "GYM_MERGED",
+          message: "该岩馆已合并，正在跳转到目标岩馆",
+          targetGymId,
+          targetGymName
+        },
+        traceId: tid
+      };
+    }
     const gym = normalizeGym(gymRaw);
 
     const userRes = await db
@@ -473,9 +514,15 @@ exports.main = async (event) => {
         lead: progress.limits.lead || {}
       };
     }
+    let myHardnessScore = null;
+    try {
+      const ratingRes = await db.collection("RockGymHardnessRatings").where({ gymId, openid }).limit(1).get();
+      const ratingDoc = ratingRes && ratingRes.data && ratingRes.data[0] ? ratingRes.data[0] : null;
+      myHardnessScore = ratingDoc ? toNumberOrNull(ratingDoc.score) : null;
+    } catch (e) {}
     routeCounts = routeCounts || { boulder: {}, difficulty: {}, lead: {} };
     const supportedModes = inferSupportedModes(gym, cycle, routeCounts, progress);
-    return ok({ gym, progress, routeCounts, supportedModes }, tid);
+    return ok({ gym, progress, routeCounts, supportedModes, myHardnessScore }, tid);
   } catch (e) {
     return fail("CHECKIN_CONTEXT_FAILED", e && e.message ? e.message : "加载失败", tid);
   }

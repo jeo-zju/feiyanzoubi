@@ -1,0 +1,76 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">权限自检</view>
+      <view class="section-desc">查看当前管理员身份、角色字段和可管理岩馆，方便排查授权问题。</view>
+      <view class="action-row">
+        <view class="btn btn-primary flex" bindtap="onRefresh">{{loading ? '读取中' : '重新读取'}}</view>
+        <view class="btn btn-ghost mini ml" bindtap="onCopyUser">复制用户原始数据</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{error}}" class="card mt">
+      <view class="card-bd">
+        <view class="tag tag-warn">{{error}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{user}}" class="card mt">
+      <view class="card-hd">当前身份</view>
+      <view class="card-bd">
+        <view class="list-row">
+          <view>
+            <view class="section-title">openid</view>
+            <view class="section-tip break-all">{{context.openid || user.openid || '-'}}</view>
+          </view>
+          <view class="tag {{user.role === 'admin' ? 'tag-warn' : ''}}">{{user.role || '普通用户'}}</view>
+        </view>
+        <view class="list-row">
+          <view>
+            <view class="section-title">昵称</view>
+            <view class="section-tip">{{user.nickName || '-'}}</view>
+          </view>
+          <view class="tag">{{user.projectName || '未设置项目名'}}</view>
+        </view>
+        <view class="list-row">
+          <view>
+            <view class="section-title">uid</view>
+            <view class="section-tip break-all">{{user.uid || '-'}}</view>
+          </view>
+          <view class="tag">{{user.isAdmin ? 'admin 命中' : '非 admin'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card mt">
+      <view class="card-hd">岩馆权限</view>
+      <view class="card-bd">
+        <view class="tag">可管理 {{managedGymCount}} 个岩馆</view>
+        <view wx:if="{{managedGyms.length}}" class="list mt">
+          <view wx:for="{{managedGyms}}" wx:key="_id" class="gym-item">
+            <view class="row">
+              <view class="section-title item-title">{{item.name || item._id}}</view>
+              <view class="tag">{{item.city || '未知城市'}}</view>
+            </view>
+            <view class="section-tip">{{item.address || '-'}}</view>
+            <view class="meta-stack">
+              <text>馆 ID: {{item._id}}</text>
+              <text>ownerOpenid: {{item.ownerOpenid || '-'}}</text>
+              <text>owner_uid: {{item.owner_uid || '-'}}</text>
+            </view>
+          </view>
+        </view>
+        <view wx:else class="empty mt">当前没有命中 owner / manager 岩馆。</view>
+      </view>
+    </view>
+
+    <view class="card mt">
+      <view class="card-hd">原始用户文档</view>
+      <view class="card-bd">
+        <view class="json-block">{{rawUserText || '暂无数据'}}</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

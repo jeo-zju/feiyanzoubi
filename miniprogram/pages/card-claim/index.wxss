@@ -18,8 +18,10 @@
 .preview {
   padding: 14rpx;
   border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.10);
+  background-color: rgba(255, 255, 255, 0.06);
+  border-width: 1rpx;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
 .meta {
@@ -30,8 +32,10 @@
 }
 
 .tag-purple {
-  background: rgba(143, 123, 255, 0.22);
-  border: 1rpx solid rgba(143, 123, 255, 0.35);
+  background-color: rgba(143, 123, 255, 0.22);
+  border-width: 1rpx;
+  border-style: solid;
+  border-color: rgba(143, 123, 255, 0.35);
   color: rgba(255, 255, 255, 0.92);
 }
 

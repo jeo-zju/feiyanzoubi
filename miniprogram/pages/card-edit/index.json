@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "编辑名片",
-  "usingComponents": {
-    "seg-tabs": "/components/segmentedTabs/index"
-  }
-}
-

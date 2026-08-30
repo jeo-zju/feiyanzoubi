@@ -1,0 +1,252 @@
+<view class="page page--circle-detail" wx:if="{{circle}}">
+  <view class="topbar">
+    <view class="topbar__back" bindtap="goBack">‹</view>
+    <view class="topbar__title">岩友圈</view>
+    <view class="topbar__gear" bindtap="openSettingSheet">⚙</view>
+  </view>
+
+  <view class="hero">
+    <view class="hero__color" style="background:{{circle.color}};"></view>
+    <view class="hero__title">{{circle.name}}</view>
+    <view class="hero__desc">{{circle.description || ' '}}</view>
+    <view class="hero__meta">
+      <view class="hero__meta-item">
+        <text class="hero__meta-num">{{circle.memberCount || 0}}</text>
+        <text class="hero__meta-label">成员</text>
+      </view>
+      <view class="hero__meta-split"></view>
+      <view class="hero__meta-item">
+        <text class="hero__meta-num">{{gyms.length}}</text>
+        <text class="hero__meta-label">岩馆</text>
+      </view>
+      <view class="hero__meta-split"></view>
+      <view class="hero__meta-item">
+        <text class="hero__meta-num">{{circle.city || '-'}}</text>
+        <text class="hero__meta-label">城市</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="rounds">
+    <view class="round-btn" bindtap="openMemberSheet">
+      <view class="round-btn__ic">👥</view>
+      <text class="round-btn__label">成员</text>
+    </view>
+    <view class="round-btn" wx:if="{{isAdmin}}" bindtap="openPendingSheet">
+      <view class="round-btn__ic">⏳</view>
+      <view class="round-btn__badge" wx:if="{{pendingCount>0}}">{{pendingCount>99?'99+':pendingCount}}</view>
+      <text class="round-btn__label">审批</text>
+    </view>
+    <view class="round-btn" bindtap="openGymSheet">
+      <view class="round-btn__ic">🏟️</view>
+      <text class="round-btn__label">岩馆</text>
+    </view>
+    <view wx:if="{{myStatus==='accepted' || isAdmin}}" class="round-btn round-btn--accent" bindtap="openPostSheet">
+      <view class="round-btn__ic">＋</view>
+      <text class="round-btn__label">发帖</text>
+    </view>
+  </view>
+
+  <view class="tabs-wrap">
+    <seg-tabs tabs="{{bottomTabs}}" value="{{bottomTab}}" bind:change="onBottomTabChange" />
+  </view>
+
+  <view class="tab-content">
+    <block wx:if="{{bottomTab==='members'}}">
+      <view class="card mt-sm">
+        <view class="card-bd list list--tight">
+          <view wx:if="{{members.length===0}}" class="empty-state">暂无成员</view>
+          <block wx:else>
+            <view class="list-row row" wx:for="{{members}}" wx:key="openid">
+              <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+              <view class="row-info">
+                <view class="row-title">{{item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
+                <view class="muted row-sub">{{item.rockId || '-'}}</view>
+              </view>
+              <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-xs btn-ghost-danger" data-oid="{{item.openid}}" bindtap="onRemoveMember">移除</view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </block>
+
+    <block wx:if="{{bottomTab==='posts'}}">
+      <view class="card mt-sm">
+        <view class="card-bd list">
+          <view wx:if="{{(myStatus!=='accepted' && !isAdmin) && circle.visibility!=='public'}}" class="empty-state">加入后可查看圈内动态</view>
+          <view wx:elif="{{postsLoading}}" class="empty-state">加载中…</view>
+          <view wx:elif="{{!postsList.length}}" class="empty-state">还没有动态，发第一条吧</view>
+          <block wx:else>
+            <view class="post-row" wx:for="{{postsList}}" wx:key="_id">
+              <view class="post-hd">
+                <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+                <view class="post-info">
+                  <view class="post-name">{{item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
+                  <view class="muted post-time">{{item.createdAtText || item.timeText || ''}}</view>
+                </view>
+                <view wx:if="{{item.canDelete}}" class="post-del" data-pid="{{item._id}}" catchtap="onTapDeletePost">×</view>
+              </view>
+              <view wx:if="{{item.content}}" class="post-content">{{item.content}}</view>
+              <view wx:if="{{item.images && item.images.length}}" class="post-images">
+                <image wx:for="{{item.images}}" wx:for-item="img" wx:for-index="iidx" wx:key="*this"
+                  class="post-img" src="{{img}}" mode="aspectFill"
+                  data-src="{{img}}" catchtap="onTapPostImage" />
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="foot">
+    <view wx:if="{{myStatus!=='accepted' && myStatus!=='admin'}}" class="btn-apply" bindtap="onTapApply">
+      <text wx:if="{{myStatus==='pending'}}">申请中</text>
+      <text wx:else>申请加入</text>
+    </view>
+    <view wx:else class="tag-in">
+      <text wx:if="{{isAdmin}}">· 管理员 ·</text>
+      <text wx:else>· 已在圈内 ·</text>
+    </view>
+  </view>
+
+  <view wx:if="{{postSheetVisible}}" class="sheet-mask" bindtap="closePostSheet" catchtouchmove="noop">
+    <view class="sheet sheet--post" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">发帖</text>
+        <view class="sheet__close" bindtap="onSubmitPost">✓</view>
+      </view>
+      <view class="sheet__bd">
+        <textarea class="post-input" placeholder="分享点什么…（2000字内）" maxlength="2000" value="{{postContent}}" bindinput="onPostInput" auto-height />
+        <view class="post-images-grid">
+          <view wx:for="{{postImages}}" wx:for-item="img" wx:key="*this" class="post-thumb-wrap">
+            <image class="post-thumb" src="{{img}}" mode="aspectFill" />
+            <view class="post-thumb-del" data-i="{{index}}" catchtap="onRemovePostImage">×</view>
+          </view>
+          <view wx:if="{{postImages.length < 9}}" class="post-thumb-add" bindtap="onPickPostImages">
+            <text class="post-thumb-add__ic">＋</text>
+            <text class="post-thumb-add__tx">{{postImages.length}}/9</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{memberSheetVisible}}" class="sheet-mask" bindtap="closeMemberSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">成员 · {{members.length}}</text>
+        <view class="sheet__close" bindtap="closeMemberSheet">✕</view>
+      </view>
+      <scroll-view class="sheet__bd" scroll-y>
+        <view wx:if="{{members.length===0}}" class="sheet-empty">暂无成员</view>
+        <block wx:else>
+          <view class="sheet-item sheet-item--row" wx:for="{{members}}" wx:key="openid">
+            <image class="sheet-item__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+            <view class="sheet-item__info">
+              <text class="sheet-item__name">{{item.nickName || '岩友'}}</text>
+              <text class="sheet-item__sub">{{item.rockId || '-'}}{{item.role==='admin' ? ' · 管理员' : ''}}</text>
+            </view>
+            <view wx:if="{{isAdmin && item.role!=='admin'}}" class="sheet-item__btn sheet-item__btn--danger" data-oid="{{item.openid}}" bindtap="onRemoveMember">移除</view>
+          </view>
+        </block>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{pendingSheetVisible}}" class="sheet-mask" bindtap="closePendingSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">待审批 · {{pendings.length}}</text>
+        <view class="sheet__close" bindtap="closePendingSheet">✕</view>
+      </view>
+      <scroll-view class="sheet__bd" scroll-y>
+        <view wx:if="{{pendings.length===0}}" class="sheet-empty">暂无待审批</view>
+        <block wx:else>
+          <view class="sheet-item sheet-item--row" wx:for="{{pendings}}" wx:key="openid">
+            <image class="sheet-item__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+            <view class="sheet-item__info">
+              <text class="sheet-item__name">{{item.nickName || '岩友'}}</text>
+              <text class="sheet-item__sub">{{item.rockId || '-'}}</text>
+            </view>
+            <view class="sheet-item__actions">
+              <view class="ic-btn ic-btn--ok" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
+              <view class="ic-btn ic-btn--no" data-oid="{{item.openid}}" bindtap="onReject">✕</view>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{gymSheetVisible}}" class="sheet-mask" bindtap="closeGymSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">关联岩馆 · {{gyms.length}}</text>
+        <view class="sheet__close" bindtap="closeGymSheet">✕</view>
+      </view>
+      <scroll-view class="sheet__bd" scroll-y>
+        <view wx:if="{{gyms.length===0}}" class="sheet-empty">暂未关联岩馆</view>
+        <block wx:else>
+          <view class="sheet-item sheet-item--row" wx:for="{{gyms}}" wx:key="_id">
+            <view class="sheet-item__ic">🏟️</view>
+            <view class="sheet-item__info">
+              <text class="sheet-item__name">{{item.name}}</text>
+              <text class="sheet-item__sub">{{item.address || item.city || ''}}</text>
+            </view>
+            <view wx:if="{{isAdmin}}" class="sheet-item__btn sheet-item__btn--danger" data-gid="{{item._id}}" bindtap="onUnlinkGym">移除</view>
+          </view>
+        </block>
+        <view wx:if="{{isAdmin}}" class="sheet-link-add" bindtap="openLinkGymSheet">+ 关联岩馆</view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{settingSheetVisible}}" class="sheet-mask" bindtap="closeSettingSheet" catchtouchmove="noop">
+    <view class="sheet sheet--sm" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">设置</text>
+        <view class="sheet__close" bindtap="closeSettingSheet">✕</view>
+      </view>
+      <view class="sheet__bd">
+        <block wx:if="{{isAdmin}}">
+          <view class="sheet-item" bindtap="goEdit">
+            <text class="sheet-item__label">编辑资料</text>
+            <text class="sheet-item__arrow">›</text>
+          </view>
+          <view class="sheet-divider"></view>
+          <view class="sheet-item sheet-item--danger" bindtap="onConfirmDisband">
+            <text class="sheet-item__label">解散岩友圈</text>
+          </view>
+        </block>
+        <block wx:else>
+          <view class="sheet-item sheet-item--danger" bindtap="onConfirmLeave">
+            <text class="sheet-item__label">退出岩友圈</text>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{linkGymSheetVisible}}" class="sheet-mask sheet-mask--gym" bindtap="closeLinkGymSheet" catchtouchmove="noop">
+    <view class="sheet sheet--gym" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">关联岩馆</text>
+        <view class="sheet__close" bindtap="saveLinkGyms">✓</view>
+      </view>
+      <scroll-view class="sheet__bd" scroll-y>
+        <view wx:if="{{linkGymOptions.length===0}}" class="sheet-empty">当前城市暂无岩馆</view>
+        <block wx:else>
+          <view class="sheet-item" wx:for="{{linkGymOptions}}" wx:key="_id"
+            data-id="{{item._id}}"
+            bindtap="toggleLinkGym">
+            <text class="sheet-item__label">{{item.name}}</text>
+            <view class="check-box {{item.linked?'check-box--on':''}}">
+              <text wx:if="{{item.linked}}" class="check-box__t">✓</text>
+            </view>
+          </view>
+        </block>
+      </scroll-view>
+    </view>
+  </view>
+</view>

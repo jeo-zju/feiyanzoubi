@@ -1,12 +1,12 @@
 .page {
-  padding-bottom: 36rpx;
+  padding-bottom: 180rpx;
 }
 
 .top {
-  padding: 22rpx 22rpx 18rpx;
+  padding: 22rpx;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .top-row {
@@ -32,11 +32,14 @@
 
 .actions {
   display: flex;
-  gap: 12rpx;
+  gap: 14rpx;
 }
 
 .top-btn {
-  min-width: 128rpx;
+  width: 156rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  font-size: 24rpx;
 }
 
 .top-sub {
@@ -58,7 +61,6 @@
   display: flex;
   align-items: center;
   gap: 12rpx;
-  padding: 6rpx 0;
 }
 
 .date-tag {
@@ -158,7 +160,7 @@
 }
 
 .submit {
-  margin-top: 24rpx;
+  margin-top: 26rpx;
   height: 88rpx;
   border-radius: 18rpx;
 }

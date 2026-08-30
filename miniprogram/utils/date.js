@@ -11,6 +11,16 @@ function today() {
   return formatDate(new Date());
 }
 
+function todayYMD() {
+  return formatDate(new Date());
+}
+
+function addDays(ymd, days) {
+  const d = parseYMD(ymd) || new Date();
+  d.setDate(d.getDate() + days);
+  return formatDate(d);
+}
+
 function monthLabel(dateLike) {
   const d = dateLike instanceof Date ? dateLike : new Date(dateLike);
   return `${d.getFullYear()}年${d.getMonth() + 1}月`;
@@ -23,8 +33,11 @@ function parseYMD(ymd) {
 }
 
 module.exports = {
+  pad2,
   formatDate,
   today,
+  todayYMD,
+  addDays,
   monthLabel,
   parseYMD
 };

@@ -1,26 +1,10 @@
-.viewport-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.viewport-scroll {
-  flex: 1;
-  min-height: 0;
-}
-
 .mt {
   margin-top: 18rpx;
 }
 
-.list-bd {
-  padding-bottom: 12rpx;
-}
-
 .add {
-  min-width: 104rpx;
-  padding: 0 18rpx;
-  font-size: 24rpx;
+  width: 84rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
 }
 

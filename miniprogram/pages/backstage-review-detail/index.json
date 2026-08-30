@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "审核详情",
+  "usingComponents": {
+    "seg-tabs": "/components/segmentedTabs/index"
+  }
+}

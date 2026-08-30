@@ -26,6 +26,13 @@
             <text>{{item.modeConfidenceText}}</text>
             <text>匹配 {{item.matchScore}}</text>
           </view>
+          <view wx:if="{{item.isCycleSubmission}}" class="item-meta">
+            <text>类型：周期/线路补录</text>
+            <text wx:if="{{item.submittedByName}}">提交人：{{item.submittedByName}}</text>
+          </view>
+          <view wx:if="{{item.isCycleSubmission && item.submissionSummary}}" class="item-address">
+            {{item.submissionSummary}}
+          </view>
           <view wx:if="{{item.supportedModesText}}" class="item-meta">
             <text>识别：{{item.supportedModesText}}</text>
           </view>
@@ -33,8 +40,8 @@
             <view wx:for="{{item.modeReasons}}" wx:key="index" class="tag">{{item}}</view>
           </view>
           <view wx:if="{{state==='pending'}}" class="mt">
-            <view class="field-label">确认模式</view>
-            <view class="reason-list mt-sm">
+            <view wx:if="{{!item.isCycleSubmission}}" class="field-label">确认模式</view>
+            <view wx:if="{{!item.isCycleSubmission}}" class="reason-list mt-sm">
               <block wx:for="{{modeOptions}}" wx:key="key" wx:for-item="option">
                 <view
                   class="tag {{item.draftModes.indexOf(option.key) >= 0 ? 'tag-warn' : ''}}"
@@ -57,7 +64,7 @@
               bindinput="onNoteInput"
             ></textarea>
             <view class="action-row mt">
-              <view class="btn btn-primary flex" data-id="{{item._id}}" bindtap="onApprove">确认模式</view>
+              <view class="btn btn-primary flex" data-id="{{item._id}}" bindtap="onApprove">{{item.isCycleSubmission ? '通过补录' : '确认模式'}}</view>
               <view class="btn btn-warn mini ml" data-id="{{item._id}}" bindtap="onReject">驳回记录</view>
             </view>
           </view>

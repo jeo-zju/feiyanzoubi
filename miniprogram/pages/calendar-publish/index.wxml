@@ -1,0 +1,131 @@
+<view class="page page--pub">
+  <view class="card">
+    <view class="card-hd">岩馆</view>
+    <view class="card-bd">
+      <view class="search-shell">
+        <text class="search-shell__ic">🔍</text>
+        <input
+          class="search-shell__input"
+          placeholder="输入岩馆名称搜索"
+          placeholder-class="ph"
+          value="{{gymKeyword}}"
+          bindinput="onGymKeywordInput"
+        />
+      </view>
+
+      <view class="mt-sm">
+        <view wx:if="{{gymSearched.length}}" class="gym-list">
+          <view
+            wx:for="{{gymSearched}}"
+            wx:key="_id"
+            class="gym-row {{item._id === selectedGymId ? 'gym-row--active':''}}"
+            data-gymid="{{item._id}}"
+            data-gymname="{{item.name}}"
+            bindtap="onSelectGym"
+          >
+            <view class="gym-row__name">{{item.name}}</view>
+            <view class="muted">{{item.city}}{{item.address ? ' · '+item.address : ''}}</view>
+          </view>
+        </view>
+        <view wx:if="{{!gymSearched.length && gymKeyword}}" class="empty muted">
+          没有搜索到这个岩馆，换个关键词试试？
+        </view>
+      </view>
+
+      <view wx:if="{{selectedGymName}}" class="panel mt-sm">
+        <view class="panel-row">
+          <text class="panel-row__k">已选：</text>
+          <text class="panel-row__v">{{selectedGymName}}</text>
+          <text class="panel-row__op" bindtap="onClearGym">清除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd">日期</view>
+    <view class="card-bd">
+      <view class="panel panel-soft date-head">
+        <text class="date-head__label">未来14天</text>
+        <text class="date-head__range muted">{{dateRangeLabel}}</text>
+      </view>
+      <view class="cal-grid mt-sm">
+        <view wx:for="{{dateCells}}" wx:key="date"
+          class="cal-cell {{item.isToday ? 'cal-cell--today' : ''}} {{item.selected ? 'cal-cell--selected' : ''}}"
+          data-date="{{item.date}}"
+          bindtap="onSelectDate"
+        >
+          <view wx:if="{{item.selected}}" class="cal-cell__check">✓</view>
+          <view class="cal-cell__md">{{item.label}}</view>
+          <view wx:if="{{item.selected}}" class="cal-cell__tag">已选</view>
+          <view wx:if="{{!item.selected && item.weekdayShort}}" class="cal-cell__wd muted">{{item.weekdayShort}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-hd card-hd--row">
+      <view style="font-weight:700;">时间段</view>
+      <view class="tag tag-warn">已选择 {{durationHourText}}</view>
+    </view>
+    <view class="card-bd">
+      <view class="time-shell">
+        <view class="time-fade">
+          <text wx:for="{{ghostTicksTop}}" wx:key="*this" class="time-fade__item">{{item}}</text>
+        </view>
+        <view class="time-range" bindtap="onTapStartTime">
+          <view class="time-range__start">{{startTime}}</view>
+          <view class="time-range__dash">—</view>
+          <view class="time-range__end" bindtap="onTapEndTime">{{endTime}}</view>
+        </view>
+        <view class="time-fade time-fade--bottom">
+          <text wx:for="{{ghostTicksBottom}}" wx:key="*this" class="time-fade__item">{{item}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-bd">
+      <seg-tabs tabs="{{visibilityTabs}}" value="{{visibility}}" bind:change="onVisibilityChange" />
+    </view>
+  </view>
+
+  <view class="card mt">
+    <view class="card-bd card-bd--py18">
+      <view class="accordion" bindtap="onToggleAdvanced">
+        <view class="accordion__label">高级选项</view>
+        <text class="accordion__arrow">{{advancedOpen ? '∧' : '›'}}</text>
+      </view>
+      <view wx:if="{{advancedOpen}}" class="advanced">
+        <view class="advanced-row">
+          <view class="advanced-row__label">备注</view>
+          <input class="input" placeholder="想对岩友说的话（可选）" placeholder-class="ph" value="{{note}}" bindinput="onNoteInput" />
+        </view>
+        <view class="advanced-row advanced-row--switch">
+          <view class="advanced-row__label">
+            <view>求搭子</view>
+            <view class="muted" style="font-size:20rpx;">开启后，岩友可在时间轴上看到你的求搭子信息</view>
+          </view>
+          <switch checked="{{needPartner}}" bindchange="onTogglePartner" color="#8f7bff" />
+        </view>
+        <view wx:if="{{needPartner}}" class="advanced-row">
+          <view class="advanced-row__label">能力偏好</view>
+          <view class="tag-grid">
+            <view wx:for="{{skillTags}}" wx:key="key"
+              class="tag {{item.on ? (item.warn?'tag-warn':'') : 'tag--off'}}"
+              data-key="{{item.key}}"
+              bindtap="onToggleSkillTag"
+            >{{item.label}}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="pub-bottom">
+    <view class="btn btn-primary pub-bottom__btn" bindtap="onPublish">发布日历</view>
+  </view>
+  <view style="height: 40rpx;"></view>
+</view>

@@ -4,6 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 const _ = db.command;
+const BOOTSTRAP_ADMIN_IDS = ["42098a0769e3423400183ddf36230f95"];
 
 function traceId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -15,6 +16,28 @@ function ok(data, tid) {
 
 function fail(code, message, tid) {
   return { ok: false, error: { code, message }, traceId: tid };
+}
+
+function isBootstrapAdminId(value) {
+  return BOOTSTRAP_ADMIN_IDS.includes(String(value == null ? "" : value).trim());
+}
+
+function isBootstrapAdminUser(openid, userDoc) {
+  return isBootstrapAdminId(openid) || !!(userDoc && isBootstrapAdminId(userDoc._id));
+}
+
+async function isAdmin(openid) {
+  if (!openid) return false;
+  if (isBootstrapAdminId(openid)) return true;
+  const res = await db
+    .collection("RockUsers")
+    .where(_.or([{ openid }, { _openid: openid }, { uid: openid }]))
+    .limit(1)
+    .get();
+  const user = res && res.data && res.data[0] ? res.data[0] : null;
+  if (isBootstrapAdminUser(openid, user)) return true;
+  if (!user) return false;
+  return user.role === "admin" || user.isAdmin === true;
 }
 
 function normalizeGym(g) {
@@ -41,6 +64,31 @@ function normalizeGym(g) {
   };
 }
 
+function normalizeGymStatus(value) {
+  const status = String(value == null ? "" : value).trim().toLowerCase();
+  if (status === "deleted") return "deleted";
+  if (status === "merged") return "merged";
+  return "active";
+}
+
+function isGymVisible(gym) {
+  return normalizeGymStatus(gym && gym.status) === "active";
+}
+
+function containsKeyword(gym, keyword) {
+  const text = String(keyword == null ? "" : keyword).trim().toLowerCase();
+  if (!text) return true;
+  const merged = [
+    gym && (gym.name || gym.gymName || gym.title || ""),
+    gym && (gym.city || gym.cityName || gym.locationCity || ""),
+    gym && (gym.address || gym.addr || gym.location || ""),
+    ...(Array.isArray(gym && gym.aliasNames) ? gym.aliasNames : [])
+  ]
+    .join(" ")
+    .toLowerCase();
+  return merged.includes(text);
+}
+
 function sumLines(gyms) {
   const list = Array.isArray(gyms) ? gyms : [];
   return list.reduce(
@@ -60,51 +108,46 @@ exports.main = async (event) => {
   try {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
+    const adminAllowed = await isAdmin(openid);
+    if (!adminAllowed) return fail("FORBIDDEN", "无权限", tid);
 
     const page = Math.max(1, Number(event && event.page ? event.page : 1));
     const pageSize = Math.max(1, Math.min(20, Number(event && event.pageSize ? event.pageSize : 5)));
+    const keyword = String(event && event.keyword ? event.keyword : "").trim();
     const skip = (page - 1) * pageSize;
 
-    const where = _.or([
-      { owner_uid: openid },
-      { ownerOpenid: openid },
-      { owner_uid: _.in([openid]) },
-      { managerOpenids: _.in([openid]) },
-      { managers: _.in([openid]) }
-    ]);
+    const where = {};
 
-    const totalRes = await db.collection("RockGyms").where(where).count();
-    const total = totalRes && typeof totalRes.total === "number" ? totalRes.total : 0;
-
-    let summary = { gymCount: total, boulderLines: 0, diffLines: 0, leadLines: 0 };
-    if (total > 0) {
-      const batchSize = 100;
-      const batches = Math.ceil(total / batchSize);
-      const allGyms = [];
-      for (let i = 0; i < batches; i++) {
-        let batchRes;
-        try {
-          batchRes = await db.collection("RockGyms").where(where).skip(i * batchSize).limit(batchSize).get();
-        } catch (e) {
-          batchRes = { data: [] };
-        }
-        const rows = (batchRes && batchRes.data) || [];
-        allGyms.push(...rows);
+    const countRes = await db.collection("RockGyms").where(where).count();
+    const managedTotal = countRes && typeof countRes.total === "number" ? countRes.total : 0;
+    const batchSize = 100;
+    const batches = Math.ceil(managedTotal / batchSize);
+    const allGyms = [];
+    for (let i = 0; i < batches; i++) {
+      let batchRes;
+      try {
+        batchRes = await db.collection("RockGyms").where(where).skip(i * batchSize).limit(batchSize).get();
+      } catch (e) {
+        batchRes = { data: [] };
       }
-      summary = { gymCount: total, ...sumLines(allGyms) };
+      const rows = (batchRes && batchRes.data) || [];
+      allGyms.push(...rows);
     }
 
-    let res;
-    try {
-      res = await db.collection("RockGyms").where(where).orderBy("updatedAt", "desc").skip(skip).limit(pageSize + 1).get();
-    } catch (e) {
-      res = await db.collection("RockGyms").where(where).skip(skip).limit(pageSize + 1).get();
-    }
-
-    const list = (res && res.data) || [];
-    const hasNext = list.length > pageSize;
-    const gyms = list.slice(0, pageSize).map(normalizeGym);
-    return ok({ gyms, hasNext, page, total, summary }, tid);
+    const visibleGyms = allGyms
+      .filter(isGymVisible)
+      .filter((item) => containsKeyword(item, keyword))
+      .sort((a, b) => {
+        const updatedA = Number((a && a.updatedAt) || (a && a.updated_at) || 0) || 0;
+        const updatedB = Number((b && b.updatedAt) || (b && b.updated_at) || 0) || 0;
+        return updatedB - updatedA;
+      });
+    const total = visibleGyms.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const summary = { gymCount: total, ...sumLines(visibleGyms) };
+    const hasNext = total > skip + pageSize;
+    const gyms = visibleGyms.slice(skip, skip + pageSize).map(normalizeGym);
+    return ok({ gyms, hasNext, page, total, totalPages, keyword, summary }, tid);
   } catch (e) {
     return fail("GYM_OWNER_LIST_FAILED", e && e.message ? e.message : "查询失败", tid);
   }

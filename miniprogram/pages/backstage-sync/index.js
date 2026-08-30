@@ -1,4 +1,5 @@
 const backstageApi = require("../../services/api/backstage");
+const { ensureAdminPageAccess } = require("../../utils/session");
 const debugLog = require("../../utils/debugLog");
 
 const MODE_LABELS = {
@@ -8,7 +9,7 @@ const MODE_LABELS = {
 };
 
 const DEFAULT_CITIES = ["杭州市", "北京市", "上海市", "广州市", "深圳市", "成都市", "重庆市", "武汉市", "南京市"];
-const DEFAULT_KEYWORDS = ["攀岩馆", "抱石馆", "攀石馆", "攀岩训练馆", "攀岩俱乐部", "攀岩中心", "室内攀岩"];
+const DEFAULT_KEYWORDS = ["攀岩", "攀岩馆", "抱石馆", "攀岩训练馆"];
 
 function safeText(v) {
   return v == null ? "" : String(v).trim();
@@ -27,6 +28,22 @@ function formatModes(modes) {
   return labels.join(" / ");
 }
 
+function formatWriteAction(action) {
+  const key = safeText(action).toLowerCase();
+  if (key === "insert") return "新增";
+  if (key === "update") return "更新";
+  if (key === "skip") return "跳过";
+  return "未知";
+}
+
+function formatWriteReason(reason) {
+  const key = safeText(reason).toLowerCase();
+  if (!key) return "";
+  if (key === "deleted_match") return "命中已删除岩馆";
+  if (key === "merged_target_update") return "命中已合并目标馆";
+  return key;
+}
+
 function countKeywords(value) {
   return String(value || "")
     .split(/\r?\n|,|，|;/)
@@ -42,17 +59,24 @@ function buildSyncState(result) {
     ...(item || {}),
     supportedModesText: formatModes(item && item.supportedModes)
   }));
-  const writeResults = Array.isArray(data.writeResults) ? data.writeResults : [];
+  const writeResults = (Array.isArray(data.writeResults) ? data.writeResults : []).map((item) => ({
+    ...(item || {}),
+    actionText: formatWriteAction(item && item.action),
+    reasonText: formatWriteReason(item && item.reason)
+  }));
   return {
     syncResult: data,
     syncStats: {
       requests: Number(stats.requests) || 0,
       fetched: Number(stats.fetched) || 0,
       unique: Number(stats.unique) || 0,
+      filteredIrrelevant: Number(stats.filteredIrrelevant) || 0,
       inserted: Number(stats.inserted) || 0,
       updated: Number(stats.updated) || 0,
+      skipped: Number(stats.skipped) || 0,
       sourceSaved: Number(stats.sourceSaved) || 0,
-      reviewQueued: Number(stats.reviewQueued) || 0
+      reviewQueued: Number(stats.reviewQueued) || 0,
+      skipReasons: stats.skipReasons || {}
     },
     syncRequests: requests,
     syncItems: items,
@@ -67,7 +91,7 @@ Page({
     keywordText: DEFAULT_KEYWORDS.join("\n"),
     keywordCount: DEFAULT_KEYWORDS.length,
     keywordCollapsed: true,
-    pageLimitText: "1",
+    pageLimitText: "2",
     pageSizeText: "10",
     syncLoading: false,
     syncError: "",
@@ -76,14 +100,20 @@ Page({
       requests: 0,
       fetched: 0,
       unique: 0,
+      filteredIrrelevant: 0,
       inserted: 0,
       updated: 0,
+      skipped: 0,
       sourceSaved: 0,
-      reviewQueued: 0
+      reviewQueued: 0,
+      skipReasons: {}
     },
     syncRequests: [],
     syncItems: [],
     syncWriteResults: []
+  },
+  async onShow() {
+    await ensureAdminPageAccess();
   },
   onCityChange(e) {
     const cityIndex = clampInt(e && e.detail ? e.detail.value : 0, 0, this.data.cityOptions.length - 1, 0);
@@ -125,7 +155,7 @@ Page({
       syncRequests: [],
       syncItems: [],
       syncWriteResults: [],
-      syncStats: { requests: 0, fetched: 0, unique: 0, inserted: 0, updated: 0, sourceSaved: 0, reviewQueued: 0 }
+      syncStats: { requests: 0, fetched: 0, unique: 0, filteredIrrelevant: 0, inserted: 0, updated: 0, skipped: 0, sourceSaved: 0, reviewQueued: 0, skipReasons: {} }
     });
     try {
       const res = await backstageApi.syncGyms({
@@ -197,7 +227,7 @@ Page({
         type: "success",
         category: "app",
         title: "后台岩馆同步写入成功",
-        summary: `新增 ${Number(res && res.stats && res.stats.inserted) || 0} 条，更新 ${Number(res && res.stats && res.stats.updated) || 0} 条`,
+        summary: `新增 ${Number(res && res.stats && res.stats.inserted) || 0} 条，更新 ${Number(res && res.stats && res.stats.updated) || 0} 条，跳过 ${Number(res && res.stats && res.stats.skipped) || 0} 条`,
         detail: res
       });
       wx.showToast({ title: "写入完成", icon: "success" });
@@ -217,6 +247,19 @@ Page({
     }
     wx.setClipboardData({
       data: JSON.stringify(this.data.syncResult, null, 2)
+    });
+  },
+  onCopyGymName(e) {
+    const name = safeText(e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.name : "");
+    if (!name) {
+      wx.showToast({ title: "暂无馆名", icon: "none" });
+      return;
+    }
+    wx.setClipboardData({
+      data: name,
+      success: () => {
+        wx.showToast({ title: "馆名已复制", icon: "success" });
+      }
     });
   }
 });

@@ -13,9 +13,37 @@
           <view class="section-title">批量同步</view>
           <view class="btn btn-ghost mini">进入</view>
         </view>
+        <view class="list-row" bindtap="goAuthDebug">
+          <view class="section-title">权限自检</view>
+          <view class="btn btn-ghost mini">查看</view>
+        </view>
+        <view class="list-row" bindtap="goDataDebug">
+          <view class="section-title">数据检索</view>
+          <view class="btn btn-ghost mini">查询</view>
+        </view>
+        <view class="list-row" bindtap="goGymAuthDebug">
+          <view class="section-title">岩馆权限</view>
+          <view class="btn btn-ghost mini">检索</view>
+        </view>
+        <view class="list-row" bindtap="goUserDetail">
+          <view class="section-title">用户详情</view>
+          <view class="btn btn-ghost mini">联查</view>
+        </view>
+        <view class="list-row" bindtap="goReviewDetail">
+          <view class="section-title">审核详情</view>
+          <view class="btn btn-ghost mini">修正</view>
+        </view>
+        <view class="list-row" bindtap="goCardDetail">
+          <view class="section-title">名片归属</view>
+          <view class="btn btn-ghost mini">修正</view>
+        </view>
         <view class="list-row" bindtap="goReviewQueue">
           <view class="section-title">审核队列</view>
           <view class="btn btn-ghost mini">处理</view>
+        </view>
+        <view class="list-row" bindtap="goUserAdmin">
+          <view class="section-title">用户权限</view>
+          <view class="btn btn-ghost mini">进入</view>
         </view>
         <view class="list-row" bindtap="goOwner">
           <view class="section-title">岩馆管理</view>

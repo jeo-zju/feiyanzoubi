@@ -8,20 +8,25 @@ async function get(payload) {
   return callCloud("rock_card_get", payload || {}, { loading: true, loadingTitle: "加载中" });
 }
 
-async function listMy(payload, options) {
-  return callCloud("rock_card_list_my", payload || {}, {
-    loading: false,
-    ...(options || {})
-  });
+async function listMy(payload) {
+  return callCloud("rock_card_list_my", payload || {}, { loading: false });
 }
 
 async function generateOneLiner(payload) {
   return callCloud("rock_llm_one_liner", payload || {}, { loading: true, loadingTitle: "生成中" });
 }
 
+async function removeCreated(cardId, dryRun) {
+  const args = { action: "remove_created", cardId };
+  if (dryRun) args.dryRun = true;
+  return callCloud("rock_card_manage", args, { loading: true, loadingTitle: dryRun ? "检查中" : "删除中" });
+}
+
 module.exports = {
   upsert,
   get,
   listMy,
-  generateOneLiner
+  generateOneLiner,
+  removeCreated
 };
+

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "岩友时间轴",
+  "usingComponents": {
+    "seg-tabs": "../../components/segmentedTabs/index"
+  }
+}

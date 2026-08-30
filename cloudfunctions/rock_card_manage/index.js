@@ -53,6 +53,32 @@ exports.main = async (event) => {
       return ok({ removed: true }, tid);
     }
 
+    if (action === "remove_created") {
+      if (safeText(card.createdByOpenid || card.ownerOpenid) !== openid) return fail("FORBIDDEN", "只能删除自己创建的名片", tid);
+      let hasActiveGift = false;
+      let hasWallPlacements = false;
+      try {
+        const giftRaw = await db.collection("RockCardGifts").where({ cardId, status: _.in(["pending", "sent", "gifting"]) }).limit(1).get();
+        hasActiveGift = !!(giftRaw && giftRaw.data && giftRaw.data.length);
+      } catch (e) {}
+      try {
+        const wallRaw = await db.collection("RockGymWallCards").where({ cardId, status: _.in(["active", "pinned", ""]) }).limit(1).get();
+        hasWallPlacements = !!(wallRaw && wallRaw.data && wallRaw.data.length);
+      } catch (e) {}
+      const dryRun = !!(event && event.dryRun);
+      if (dryRun) return ok({ hasActiveGift, hasWallPlacements, canRemove: true }, tid);
+      try {
+        const wallBatch = await db.collection("RockGymWallCards").where({ cardId }).limit(1000).get();
+        const wallList = (wallBatch && wallBatch.data) || [];
+        for (let i = 0; i < wallList.length; i++) { try { await db.collection("RockGymWallCards").doc(String(wallList[i]._id)).remove(); } catch (e) {} }
+      } catch (e) {}
+      try {
+        await db.collection("RockCardGifts").where({ cardId, status: _.in(["pending", "gifting"]) }).update({ data: { status: "cancelled", cancelledBy: openid, cancelledAt: Date.now(), cancelled_at: db.serverDate() } });
+      } catch (e) {}
+      await cardsCol.doc(cardId).remove();
+      return ok({ removed: true, hasActiveGift, hasWallPlacements }, tid);
+    }
+
     return fail("BAD_REQUEST", "未知 action", tid);
   } catch (e) {
     return fail("CARD_MANAGE_FAILED", e && e.message ? e.message : "操作失败", tid);

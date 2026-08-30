@@ -52,7 +52,7 @@ exports.main = async (event) => {
     return ok(
       {
         fileID,
-        title: gym ? gym.name : "飞岩走壁",
+        title: gym ? gym.name : "飞岩录",
         subtitle: gym && gym.city ? gym.city : "",
         page,
         scene

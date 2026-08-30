@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "发布日历",
+  "usingComponents": {
+    "seg-tabs": "../../components/segmentedTabs/index"
+  }
+}

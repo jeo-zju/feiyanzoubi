@@ -1,0 +1,292 @@
+.page--mine {
+  min-height: 100vh;
+  max-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  padding-bottom: 36rpx;
+  box-sizing: border-box;
+}
+.mt-lg { margin-top: 20rpx; }
+.mt { margin-top: 18rpx; }
+.muted { color: rgba(231,233,243,0.6); }
+
+.hero-cal {
+  position: relative;
+  overflow: hidden;
+  padding: 14rpx 22rpx 8rpx;
+  border-radius: 28rpx;
+  background:
+    radial-gradient(120% 80% at 90% -10%, rgba(242,193,78,0.18), transparent 60%),
+    radial-gradient(120% 80% at 0% 110%, rgba(124,110,230,0.22), transparent 60%),
+    rgba(255,255,255,0.04);
+  border: 1rpx solid rgba(255,255,255,0.06);
+}
+
+.hero-stats {
+  display: flex;
+  margin-top: 18rpx;
+  padding: 8rpx 4rpx 14rpx;
+  gap: 10rpx;
+}
+.hero-stats--top {
+  margin-top: 8rpx;
+}
+.stat-cell {
+  flex: 1;
+  padding: 14rpx 10rpx;
+  border-radius: 18rpx;
+  background: rgba(255,255,255,0.03);
+  border: 1rpx solid rgba(255,255,255,0.05);
+  text-align: center;
+}
+.stat-cell--mid { border-color: rgba(242,193,78,0.18); }
+.stat-cell__num {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #E7E9F3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-cell__k {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: rgba(231,233,243,0.56);
+}
+
+/* ===== 合并单图 chart-block ===== */
+.chart-block {
+  margin-top: 18rpx;
+  padding: 14rpx 10rpx 14rpx;
+  border-radius: 18rpx;
+  background: rgba(11,13,21,0.22);
+  border: 1rpx solid rgba(255,255,255,0.05);
+}
+.chart-block__kicker {
+  padding: 2rpx 10rpx 10rpx;
+  font-size: 20rpx;
+  letter-spacing: 2rpx;
+  color: #8f7bff;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.chart-block__legend {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 10rpx 14rpx 4rpx;
+  font-size: 20rpx;
+  color: rgba(231,233,243,0.56);
+}
+.legend-dot {
+  display: inline-block;
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  margin-right: 2rpx;
+  vertical-align: middle;
+}
+.legend-dot--actual {
+  background: #f2c14e;
+  box-shadow: 0 0 8rpx rgba(242,193,78,0.7);
+}
+.legend-dot--plan {
+  background: #8f7bff;
+  box-shadow: 0 0 8rpx rgba(143,123,255,0.6);
+}
+.gtl__today-label {
+  margin-left: auto;
+  color: rgba(242,193,78,0.86);
+  font-weight: 600;
+}
+
+/* ===== 攀爬轨迹图（核心画布） ===== */
+.gtl {
+  position: relative;
+  margin: 10rpx 8rpx 6rpx;
+  padding: 0 0 40rpx;
+}
+/* 5 条轨道参考线（淡灰） */
+.gtl__tracks {
+  position: absolute;
+  top: 20rpx;
+  left: 0;
+  right: 0;
+  bottom: 40rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.gtl__track {
+  height: 1rpx;
+  background: rgba(255,255,255,0.06);
+}
+/* 今日金色竖线 */
+.gtl__today {
+  position: absolute;
+  top: 10rpx;
+  bottom: 40rpx;
+  width: 2rpx;
+  background: linear-gradient(180deg, rgba(242,193,78,0.9), rgba(242,193,78,0.1));
+  transform: translateX(-1rpx);
+  pointer-events: none;
+  border-radius: 2rpx;
+}
+.gtl__today::before {
+  content: "";
+  position: absolute;
+  top: -8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #f2c14e;
+  box-shadow: 0 0 12rpx rgba(242,193,78,0.85);
+}
+
+/* 每个事件（点 + 岩馆名） */
+.gtl__ev {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+}
+.gtl__dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-bottom: 4rpx;
+}
+.gtl__dot--actual {
+  background: #f2c14e;
+  box-shadow: 0 0 10rpx rgba(242,193,78,0.75), 0 0 0 4rpx rgba(242,193,78,0.14);
+}
+.gtl__dot--plan {
+  background: #8f7bff;
+  box-shadow: 0 0 10rpx rgba(143,123,255,0.65), 0 0 0 4rpx rgba(143,123,255,0.14);
+}
+.gtl__label {
+  max-width: 150rpx;
+  font-size: 18rpx;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2rpx 8rpx;
+  border-radius: 8rpx;
+  background: rgba(11,13,21,0.65);
+  border: 1rpx solid rgba(255,255,255,0.08);
+  box-sizing: border-box;
+  text-align: center;
+}
+.gtl__label--actual { color: #f2d483; border-color: rgba(242,193,78,0.22); }
+.gtl__label--plan   { color: #c8bbff; border-color: rgba(143,123,255,0.28); }
+
+/* X 轴刻度 */
+.gtl__xrow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30rpx;
+  pointer-events: none;
+}
+.gtl__x {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 18rpx;
+  color: rgba(231,233,243,0.42);
+  white-space: nowrap;
+  line-height: 30rpx;
+}
+
+/* 空轨迹状态 */
+.gtl--empty {
+  padding: 60rpx 20rpx 50rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+}
+.gtl-empty__emoji {
+  font-size: 60rpx;
+  line-height: 1;
+  opacity: 0.92;
+}
+.gtl-empty__text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: rgba(242,193,78,0.9);
+  letter-spacing: 1rpx;
+}
+
+/* 最近打卡列表 */
+.rec-left {
+  flex: 1;
+  min-width: 0;
+}
+.rec {
+  gap: 16rpx;
+}
+.rec-title {
+  font-weight: 800;
+}
+.rec-sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+}
+.rec-right {
+  font-weight: 900;
+  color: #f2c14e;
+}
+.paginator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  gap: 12rpx;
+}
+.pager {
+  flex: 1;
+  height: 60rpx;
+  line-height: 60rpx;
+  text-align: center;
+  font-size: 22rpx;
+  border-radius: 14rpx;
+  background: rgba(255,255,255,0.03);
+  color: rgba(231,233,243,0.4);
+  border: 1rpx solid rgba(255,255,255,0.04);
+}
+.pager--center {
+  flex: 0 0 auto;
+  padding: 0 24rpx;
+  background: transparent;
+  border-color: transparent;
+  color: rgba(231,233,243,0.56);
+}
+.pager--on {
+  color: #E7E9F3;
+  background: rgba(124,110,230,0.18);
+  border-color: rgba(124,110,230,0.3);
+}
+
+.empty-state {
+  padding: 50rpx 0 30rpx;
+  text-align: center;
+  color: rgba(231,233,243,0.4);
+  font-size: 24rpx;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid rgba(255,255,255,0.05);
+}
+.list-row:last-child { border-bottom: none; }

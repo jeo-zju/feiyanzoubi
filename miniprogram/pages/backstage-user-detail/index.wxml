@@ -1,0 +1,106 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">用户详情</view>
+      <view class="section-desc">按用户 ID / openid / uid 联查，并支持直接修改昵称、项目名和 role。</view>
+
+      <view class="field-block mt">
+        <view class="field-label">查询关键词</view>
+        <input
+          class="input"
+          placeholder="输入用户 ID / openid / uid"
+          placeholder-class="ph"
+          value="{{query}}"
+          bindinput="onQueryInput"
+        />
+      </view>
+
+      <view class="action-row">
+        <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始联查'}}</view>
+        <view class="btn btn-ghost mini ml" bindtap="onCopyRaw">复制原始数据</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{error}}" class="card mt">
+      <view class="card-bd">
+        <view class="tag tag-warn">{{error}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{searched}}" class="card mt">
+      <view class="card-hd">查询结果</view>
+      <view class="card-bd">
+        <view class="row">
+          <view class="section-title">{{user.nickName || user.projectName || query || '未知用户'}}</view>
+          <view class="tag {{found ? '' : 'tag-warn'}}">{{found ? '已找到' : '未找到'}}</view>
+        </view>
+        <view wx:if="{{found && user}}" class="details">
+          <view class="meta-stack">
+            <text>用户 ID: {{user._id}}</text>
+            <text>openid: {{user.openid || '-'}}</text>
+            <text>uid: {{user.uid || '-'}}</text>
+            <text>role: {{user.role || '普通用户'}}</text>
+          </view>
+        </view>
+        <view wx:else class="section-tip mt">没有查到这个用户。</view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && user}}" class="card mt">
+      <view class="card-hd">联查统计</view>
+      <view class="card-bd">
+        <view class="stats-grid">
+          <view class="panel stat-card">
+            <view class="stat-number">{{stats.followingCount || 0}}</view>
+            <view class="stat-label">关注数</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{stats.followerCount || 0}}</view>
+            <view class="stat-label">被关注</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{stats.cardCount || 0}}</view>
+            <view class="stat-label">名片数</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{stats.checkinCount || 0}}</view>
+            <view class="stat-label">打卡数</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && user}}" class="card mt">
+      <view class="card-hd">编辑用户</view>
+      <view class="card-bd">
+        <view class="field-block">
+          <view class="field-label">昵称</view>
+          <input class="input" value="{{draft.nickName}}" data-key="nickName" bindinput="onDraftInput" />
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">项目名</view>
+          <input class="input" value="{{draft.projectName}}" data-key="projectName" bindinput="onDraftInput" />
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">role</view>
+          <input class="input" placeholder="留空表示普通用户" placeholder-class="ph" value="{{draft.role}}" data-key="role" bindinput="onDraftInput" />
+        </view>
+        <view class="action-row">
+          <view class="tag {{draft.role !== user.role || draft.nickName !== user.nickName || draft.projectName !== user.projectName ? 'tag-warn' : ''}}">
+            {{draft.role !== user.role || draft.nickName !== user.nickName || draft.projectName !== user.projectName ? '有未保存修改' : '已同步'}}
+          </view>
+          <view class="btn btn-primary save-btn" bindtap="onSave">{{saving ? '保存中' : '保存用户'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && user}}" class="card mt">
+      <view class="card-hd">原始文档</view>
+      <view class="card-bd">
+        <view class="json-block">{{rawUserText || 'null'}}</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

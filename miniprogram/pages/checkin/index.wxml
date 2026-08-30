@@ -1,14 +1,18 @@
 <view class="page">
   <view class="card card-hero">
     <view class="top">
+      <view class="section-kicker">打卡</view>
+      <view wx:if="{{revertAvailable || revertJustNow}}" class="top-action right">
+        <view class="btn {{revertAvailable ? 'btn-warn' : 'btn-ghost btn--disabled'}} top-btn" bindtap="onTapRevert">撤销本次打卡</view>
+      </view>
       <view class="top-row">
         <view class="gym-wrap">
           <view class="gym">{{gym.name}}</view>
-          <view class="section-desc top-desc">记下今天在馆里的完成情况</view>
+          <view class="section-desc top-desc">记录今天在馆里的完成情况</view>
         </view>
         <view class="actions">
-          <view class="btn btn-ghost mini top-btn" bindtap="goWall">看攀岩墙</view>
-          <view class="btn btn-warn mini top-btn" bindtap="goHome">换个馆</view>
+          <view class="btn btn-ghost top-btn" bindtap="goWall">攀岩墙</view>
+          <view class="btn btn-warn top-btn" bindtap="goHome">去爬其他馆</view>
         </view>
       </view>
       <view class="top-sub">
@@ -20,10 +24,7 @@
       </view>
     </view>
     <view class="card-bd">
-      <seg-tabs wx:if="{{modeTabs.length > 1}}" tabs="{{modeTabs}}" value="{{mode}}" bind:change="onModeChange" />
-      <view wx:elif="{{modeTabs.length === 1}}" class="top-sub">
-        <view class="tag cycle-tag">{{modeTabs[0].label}}</view>
-      </view>
+      <seg-tabs tabs="{{modeTabs}}" value="{{mode}}" bind:change="onModeChange" />
       <view class="panel table">
         <view class="thead">
           <view class="th th-grade muted">等级</view>
@@ -61,7 +62,7 @@
     </view>
   </view>
 
-  <view class="btn btn-primary submit" bindtap="onSubmit">保存打卡</view>
+  <view class="btn btn-primary submit" bindtap="onSubmit">今天就爬到这了！</view>
 
   <date-cal
     visible="{{calendarVisible}}"

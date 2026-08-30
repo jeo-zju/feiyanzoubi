@@ -1,0 +1,95 @@
+<view class="page page--fl">
+  <view class="search-shell">
+    <text class="search-shell__ic">🔍</text>
+    <input
+      class="search-shell__input"
+      placeholder="搜索昵称 / 岩友ID（6位大写）"
+      placeholder-class="ph"
+      value="{{searchKeyword}}"
+      bindinput="onKeywordInput"
+      confirm-type="search"
+      bindconfirm="onSearch"
+    />
+    <view wx:if="{{searchKeyword}}" class="search-shell__op" bindtap="onClearKw">清除</view>
+    <view class="btn btn-primary search-shell__btn" bindtap="onSearch">搜索</view>
+  </view>
+
+  <view wx:if="{{searchMode}}" class="search-result mt-sm">
+    <view wx:if="{{searching}}" class="search-state muted">正在搜索…</view>
+    <view wx:elif="{{searchResult.length===0}}" class="search-state muted">没有搜索到这位岩友，换个关键词或岩友ID试试</view>
+    <block wx:else>
+      <view wx:for="{{searchResult}}" wx:key="_openid" class="friend-row">
+        <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <view class="friend-row__main">
+          <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
+          <view class="friend-row__meta muted">
+            <text>ID {{item.rockId || '— — —'}}</text>
+            <text wx:if="{{item.city}}"> · {{item.city}}</text>
+          </view>
+          <view class="friend-row__tags">
+            <view wx:for="{{item.skillBadges}}" wx:for-item="t" wx:key="*this" class="mini-tag">{{t}}</view>
+          </view>
+        </view>
+        <view class="friend-row__op">
+          <view wx:if="{{item.isFriend}}" class="btn btn-ghost btn-xs">已好友</view>
+          <view wx:elif="{{item.outgoing}}" class="btn btn-ghost btn-xs">待对方确认</view>
+          <view wx:elif="{{item.incoming}}" class="btn btn-warn btn-xs" bindtap="onAccept" data-id="{{item._openid}}">通过 TA</view>
+          <view wx:else class="btn btn-primary btn-xs" bindtap="onRequest" data-id="{{item._openid}}">加好友</view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view wx:else class="mt-sm">
+    <seg-tabs tabs="{{listTabs}}" value="{{listTab}}" bind:change="onTabChange" />
+  </view>
+
+  <view wx:if="{{!searchMode && listTab==='incoming'}}" class="mt-sm">
+    <view wx:if="{{!loading && !incoming.length}}" class="empty muted">暂无待处理的申请 👀</view>
+    <view wx:for="{{incoming}}" wx:key="id" class="friend-row">
+      <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+      <view class="friend-row__main">
+        <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
+        <view class="friend-row__meta muted">ID {{item.rockId || '— — —'}} · {{item.createdAtText || ''}}</view>
+      </view>
+      <view class="friend-row__op">
+        <view class="btn btn-primary btn-xs" bindtap="onAccept" data-id="{{item.fromOpenid || item.openid}}">接受</view>
+        <view class="btn btn-danger btn-xs" bindtap="onReject" data-id="{{item.fromOpenid || item.openid}}">拒绝</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!searchMode && listTab==='accepted'}}" class="mt-sm">
+    <view wx:if="{{!loading && !accepted.length}}" class="empty muted">
+      还没有岩友，去约爬时间轴上主动打个招呼吧 🧗
+    </view>
+    <view wx:for="{{accepted}}" wx:key="id" class="friend-row">
+      <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+      <view class="friend-row__main">
+        <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
+        <view class="friend-row__meta muted">ID {{item.rockId || '— — —'}}<text wx:if="{{item.city}}"> · {{item.city}}</text></view>
+        <view class="friend-row__tags">
+          <view wx:for="{{item.skillBadges}}" wx:for-item="t" wx:key="*this" class="mini-tag">{{t}}</view>
+        </view>
+      </view>
+      <view class="friend-row__op">
+        <view class="btn btn-ghost btn-xs" bindtap="onViewCard" data-id="{{item.openid || item._openid}}">名片</view>
+        <view class="btn btn-danger btn-xs" bindtap="onRemove" data-id="{{item.openid || item._openid}}">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!searchMode && listTab==='outgoing'}}" class="mt-sm">
+    <view wx:if="{{!loading && !outgoing.length}}" class="empty muted">暂无已发出的申请</view>
+    <view wx:for="{{outgoing}}" wx:key="id" class="friend-row">
+      <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+      <view class="friend-row__main">
+        <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
+        <view class="friend-row__meta muted">ID {{item.rockId || '— — —'}}</view>
+      </view>
+      <view class="friend-row__op">
+        <view class="btn btn-ghost btn-xs">待确认</view>
+      </view>
+    </view>
+  </view>
+</view>

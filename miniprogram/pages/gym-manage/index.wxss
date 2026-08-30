@@ -11,6 +11,14 @@
   margin-top: 18rpx;
 }
 
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 18rpx;
+  flex-wrap: wrap;
+}
+
 .mt {
   margin-top: 18rpx;
 }
@@ -117,5 +125,55 @@
 
 .ph {
   color: rgba(231, 233, 243, 0.4);
+}
+
+.danger-zone {
+  margin-top: 10rpx;
+}
+
+.danger-btn {
+  display: inline-flex;
+  margin-top: 10rpx;
+  color: #ffb4b4;
+  border-color: rgba(255, 120, 120, 0.25);
+  background: rgba(255, 120, 120, 0.08);
+}
+
+.merge-btn {
+  display: inline-flex;
+  margin-top: 10rpx;
+  margin-right: 12rpx;
+  color: #ffd78a;
+  border-color: rgba(255, 198, 92, 0.25);
+  background: rgba(255, 198, 92, 0.08);
+}
+
+.hero-merge-btn {
+  color: #ffd78a;
+  border-color: rgba(255, 198, 92, 0.28);
+  background: rgba(255, 198, 92, 0.12);
+}
+
+.hero-delete-btn {
+  color: #ffb4b4;
+  border-color: rgba(255, 120, 120, 0.25);
+  background: rgba(255, 120, 120, 0.1);
+}
+
+.merge-history {
+  margin-top: 8rpx;
+  margin-bottom: 18rpx;
+}
+
+.merge-item {
+  margin-top: 10rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.merge-name {
+  font-weight: 800;
 }
 

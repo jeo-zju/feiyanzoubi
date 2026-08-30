@@ -1,0 +1,92 @@
+.viewport-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewport-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-top: 18rpx;
+}
+
+.mt {
+  margin-top: 20rpx;
+}
+
+.mt-sm {
+  margin-top: 12rpx;
+}
+
+.flex {
+  flex: 1;
+}
+
+.item-title {
+  flex: 1;
+  min-width: 0;
+  padding-right: 12rpx;
+}
+
+.search-row {
+  display: flex;
+  gap: 14rpx;
+  align-items: stretch;
+  margin: 18rpx 0;
+}
+
+.search-btn {
+  width: 132rpx;
+  height: 76rpx;
+}
+
+.summary-row {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.meta-stack {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: rgba(231, 233, 243, 0.62);
+  word-break: break-all;
+}
+
+.field-label {
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.72);
+}
+
+.preset-row {
+  margin-top: 12rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.save-btn {
+  min-width: 220rpx;
+}
+
+.ph {
+  color: rgba(231, 233, 243, 0.4);
+}
+
+.empty {
+  text-align: center;
+  color: rgba(231, 233, 243, 0.58);
+}

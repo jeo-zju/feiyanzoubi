@@ -9,7 +9,7 @@
     <seg-tabs tabs="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
   </view>
 
-  <scroll-view scroll-y class="viewport-scroll">
+  <scroll-view scroll-y enhanced="{{true}}" bounces="{{false}}" class="viewport-scroll">
     <view wx:if="{{tab==='info'}}" class="card mt">
       <view class="card-hd">岩馆信息</view>
       <view class="card-bd">
@@ -28,7 +28,23 @@
             {{item.label}}
           </view>
         </view>
+        <view wx:if="{{mergeHistory.length}}" class="merge-history">
+          <view class="hist-title">合并历史</view>
+          <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="merge-item">
+            <view class="merge-name">{{item.sourceGymName}}</view>
+            <view class="muted hist-sub">{{item.mergedAtText}} 合并到当前馆</view>
+            <view class="muted hist-sub">映射周期 {{item.cycleMappingCount}} 个，合并周期 {{item.mappedCycleCount}} 个</view>
+          </view>
+        </view>
         <view class="btn btn-primary" bindtap="saveGym">{{gymId?'保存岩馆':'创建岩馆'}}</view>
+        <view wx:if="{{gymId}}" class="danger-zone">
+          <view class="divider mt2"></view>
+          <view class="hist-title">危险操作</view>
+          <view class="muted field-tip">合并会把当前岩馆的历史数据迁移到目标岩馆，当前仅支持无周期重叠的安全合并。</view>
+          <view class="mini-btn merge-btn" bindtap="onMergeGym">合并到其他岩馆</view>
+          <view class="muted field-tip">删除后该岩馆会从前台和“我的岩馆”列表隐藏，并停止新的打卡。</view>
+          <view class="mini-btn danger-btn" bindtap="onDeleteGym">删除岩馆</view>
+        </view>
         <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
       </view>
     </view>
@@ -36,6 +52,9 @@
     <view wx:if="{{tab==='cycle'}}" class="card mt">
       <view class="card-hd">当前周期</view>
       <view class="card-bd">
+        <view wx:if="{{!canManageDirectly}}" class="muted field-tip mb">
+          当前馆未录入周期时，你提交的周期和线路数量会直接生效；如果该馆已有周期，你的修改会进入管理员审核。
+        </view>
         <view class="muted field-tip">周期名</view>
         <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
         <view class="muted field-tip">开始日期</view>
@@ -92,6 +111,9 @@
     <view wx:if="{{tab==='routes'}}" class="card mt">
       <view class="card-hd">线路录入</view>
       <view class="card-bd">
+        <view wx:if="{{!canManageDirectly}}" class="muted field-tip mb">
+          当前馆未录入周期时，你提交的线路数量会直接生效；如果该馆已有周期，你的修改会进入管理员审核。
+        </view>
         <seg-tabs tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
         <view class="rows">
           <view wx:for="{{routeRows}}" wx:key="grade" class="route-row">

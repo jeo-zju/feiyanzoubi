@@ -2,9 +2,28 @@ const STORAGE_KEY = "debug_logs_v1";
 const MAX_LOGS = 200;
 
 let cache = null;
+let _modalLock = false;
 
 function nowId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function errorToStack(err) {
+  if (!err) return "";
+  if (err instanceof Error) {
+    return [
+      err.name ? `[${err.name}]` : "",
+      err.message ? err.message : "",
+      err.code ? `(code: ${err.code})` : "",
+      err.traceId ? `(traceId: ${err.traceId})` : "",
+      err.stack ? `\n${err.stack}` : ""
+    ].filter(Boolean).join(" ");
+  }
+  try {
+    return JSON.stringify(err, null, 2);
+  } catch (_) {
+    return String(err);
+  }
 }
 
 function safeClone(value, depth) {
@@ -145,6 +164,7 @@ function logCloudSuccess(name, result, meta) {
 }
 
 function logCloudError(name, err, meta) {
+  try { console.error(`[CLOUD ERR] ${name}`, errorToStack(err), meta || ""); } catch (_) {}
   addLog({
     type: "error",
     category: "cloud",
@@ -158,6 +178,7 @@ function logCloudError(name, err, meta) {
 }
 
 function logAppError(title, error, extra) {
+  try { console.error(`[APP ERR] ${title}`, errorToStack(error), extra || ""); } catch (_) {}
   addLog({
     type: "error",
     category: "app",
@@ -169,6 +190,44 @@ function logAppError(title, error, extra) {
   });
 }
 
+function showErrorModal(options) {
+  if (_modalLock) {
+    try { console.error("[MODAL QUEUED]", options && options.title, options && options.message); } catch (_) {}
+    return;
+  }
+  _modalLock = true;
+  const title = (options && options.title) ? String(options.title) : "错误";
+  const msgRaw = (options && options.message) ? String(options.message) : "";
+  const traceId = (options && options.traceId) ? String(options.traceId) : "";
+  const subHint = options && options.subHint ? String(options.subHint) : "";
+  const contentLines = [msgRaw, subHint, traceId ? `追踪 ID:\n${traceId}` : ""].filter(Boolean);
+  const content = contentLines.join("\n\n") || "未知错误";
+  const onConfirmCb = options && typeof options.onConfirm === "function" ? options.onConfirm : null;
+  const onCancelCb = options && typeof options.onCancel === "function" ? options.onCancel : null;
+  try {
+    wx.showModal({
+      title,
+      content,
+      showCancel: !!(options && options.showCancel),
+      cancelText: (options && options.cancelText) || "关闭",
+      confirmText: (options && options.confirmText) || "我知道了",
+      confirmColor: "#7C6EE6",
+      success(res) {
+        try {
+          if (res.confirm && onConfirmCb) onConfirmCb();
+          if (!res.confirm && onCancelCb) onCancelCb();
+        } catch (_) {}
+      },
+      complete() {
+        setTimeout(() => { _modalLock = false; }, 80);
+      }
+    });
+  } catch (e) {
+    _modalLock = false;
+    try { console.error("[MODAL FAIL]", errorToStack(e)); } catch (_) {}
+  }
+}
+
 module.exports = {
   addLog,
   getLogs,
@@ -177,5 +236,7 @@ module.exports = {
   logCloudStart,
   logCloudSuccess,
   logCloudError,
-  logAppError
+  logAppError,
+  errorToStack,
+  showErrorModal
 };

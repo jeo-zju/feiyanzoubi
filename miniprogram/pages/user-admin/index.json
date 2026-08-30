@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "用户权限",
+  "usingComponents": {
+    "seg-tabs": "/components/segmentedTabs/index"
+  }
+}

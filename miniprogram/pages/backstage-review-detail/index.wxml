@@ -1,0 +1,124 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">审核详情</view>
+      <view class="section-desc">按审核记录 ID 联查队列、来源记录和目标岩馆，并支持直接修正审核状态与备注。</view>
+      <view class="field-block mt">
+        <view class="field-label">审核记录 ID</view>
+        <input
+          class="input"
+          placeholder="输入 RockGymReviewQueue._id"
+          placeholder-class="ph"
+          value="{{query}}"
+          bindinput="onQueryInput"
+        />
+      </view>
+      <view class="action-row">
+        <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始联查'}}</view>
+        <view class="btn btn-ghost mini ml" bindtap="onCopyQueue">复制队列</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{error}}" class="card mt">
+      <view class="card-bd">
+        <view class="tag tag-warn">{{error}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{searched}}" class="card mt">
+      <view class="card-hd">查询结果</view>
+      <view class="card-bd">
+        <view class="row">
+          <view class="section-title">{{queue.name || query || '未知审核记录'}}</view>
+          <view class="tag {{found ? '' : 'tag-warn'}}">{{found ? '已找到' : '未找到'}}</view>
+        </view>
+        <view wx:if="{{found && queue}}" class="meta-stack">
+          <text>队列 ID: {{queue._id}}</text>
+          <text>provider: {{queue.provider || '-'}}</text>
+          <text>providerPoiId: {{queue.providerPoiId || '-'}}</text>
+          <text>gymId: {{queue.gymId || '-'}}</text>
+          <text>writeAction: {{queue.writeAction || '-'}}</text>
+          <text>matchScore: {{queue.matchScore}}</text>
+        </view>
+        <view wx:else class="section-tip mt">没有查到这条审核记录。</view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && queue}}" class="card mt">
+      <view class="card-hd">修正审核</view>
+      <view class="card-bd">
+        <seg-tabs tabs="{{stateTabs}}" value="{{draft.reviewState}}" bind:change="onStateChange" />
+        <view class="field-block mt">
+          <view class="field-label">reviewReason</view>
+          <input class="input" value="{{draft.reviewReason}}" data-key="reviewReason" bindinput="onDraftInput" />
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">reviewNote</view>
+          <textarea class="textarea" auto-height value="{{draft.reviewNote}}" data-key="reviewNote" bindinput="onDraftInput"></textarea>
+        </view>
+        <view wx:if="{{draft.reviewState === 'approved'}}" class="field-block mt">
+          <view class="field-label">finalSupportedModes</view>
+          <view class="mode-row">
+            <block wx:for="{{modeOptions}}" wx:key="key" wx:for-item="option">
+              <view
+                class="tag {{draft.finalSupportedModes.indexOf(option.key) >= 0 ? 'tag-warn' : ''}}"
+                data-mode="{{option.key}}"
+                bindtap="onToggleMode"
+              >
+                {{option.label}}
+              </view>
+            </block>
+          </view>
+        </view>
+        <view class="action-row">
+          <view class="tag tag-warn">保存后会直接回写审核记录，`approved` 还会同步更新岩馆模式</view>
+          <view class="btn btn-primary save-btn" bindtap="onSave">{{saving ? '保存中' : '保存修正'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && queue}}" class="card mt">
+      <view class="card-hd">目标岩馆</view>
+      <view class="card-bd">
+        <view wx:if="{{gym}}" class="meta-stack">
+          <text>馆 ID: {{gym._id}}</text>
+          <text>名称: {{gym.name || '-'}}</text>
+          <text>城市: {{gym.city || '-'}}</text>
+          <text>地址: {{gym.address || '-'}}</text>
+          <text>ownerOpenid: {{gym.ownerOpenid || '-'}}</text>
+        </view>
+        <view wx:else class="section-tip">当前未关联岩馆。</view>
+        <view class="action-row">
+          <view class="btn btn-ghost mini" bindtap="onCopyGym">复制岩馆原始数据</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && queue}}" class="card mt">
+      <view class="card-hd">来源记录</view>
+      <view class="card-bd">
+        <view wx:if="{{sourceRecords.length}}" class="list">
+          <view wx:for="{{sourceRecords}}" wx:key="_id" class="source-item">
+            <view class="section-title">{{item.name || item.providerPoiId || item._id}}</view>
+            <view class="meta-stack">
+              <text>source ID: {{item._id}}</text>
+              <text>provider: {{item.provider || '-'}}</text>
+              <text>providerPoiId: {{item.providerPoiId || '-'}}</text>
+              <text>processState: {{item.processState || '-'}}</text>
+            </view>
+          </view>
+        </view>
+        <view wx:else class="section-tip">没有找到关联来源记录。</view>
+      </view>
+    </view>
+
+    <view wx:if="{{found && queue}}" class="card mt">
+      <view class="card-hd">队列原始文档</view>
+      <view class="card-bd">
+        <view class="json-block">{{rawQueueText || 'null'}}</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

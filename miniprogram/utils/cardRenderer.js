@@ -1,84 +1,180 @@
 const { clampText, wrapCanvasText } = require("./cardCanvas");
 
 function drawFrontCard(ctx, options) {
-  const W = Number(options && options.W) || 1080;
-  const H = Number(options && options.H) || 680;
+  const W = Number(options && options.W) || 960;
+  const H = Number(options && options.H) || 606;
   const front = (options && options.front) || {};
+  const me = (options && options.me) || {};
+  const user = (options && options.user) || {};
   const gymsLabel = (options && options.gymsLabel) || "";
   const avatarPath = (options && options.avatarPath) || "";
-  const photoPath = (options && options.photoPath) || "";
   const layout = (options && options.layout) || "responsive";
-  const showFooterBrand = !options || options.showFooterBrand !== false;
-  const showFooterStyle = !options || options.showFooterStyle !== false;
+  const extra = (options && options.extra) || {};
+  const climbSkills = extra.climbSkills || {};
+  const heightCm = extra.heightCm || "";
+  const armspanCm = extra.armspanCm || "";
+  const rockId = extra.rockId || "";
+
+  function drawChip(x, y, text, opts) {
+    const padX = 24, padY = 14;
+    const fs = (opts && opts.fontSize) || 24;
+    ctx.setFontSize(fs);
+    const w = ctx.measureText(text).width + padX * 2;
+    const h = fs + padY * 2 - 4;
+    const bg = (opts && opts.bg) || "rgba(143,123,255,0.18)";
+    const bd = (opts && opts.border) || "rgba(143,123,255,0.4)";
+    const fg = (opts && opts.color) || "#E7E9F3";
+    ctx.setFillStyle(bg);
+    ctx.setStrokeStyle(bd);
+    ctx.setLineWidth(2);
+    const r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.setFillStyle(fg);
+    ctx.setFontSize(fs);
+    ctx.setTextAlign("center");
+    ctx.setTextBaseline("middle");
+    ctx.fillText(text, x + w / 2, y + h / 2 + 1);
+    ctx.setTextAlign("left");
+    ctx.setTextBaseline("alphabetic");
+    return { w, h };
+  }
 
   if (layout === "fixed") {
-    if (photoPath) {
-      ctx.drawImage(photoPath, 0, 0, W, H);
-      ctx.setFillStyle("rgba(11,13,21,0.70)");
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      ctx.setFillStyle("#0B0D15");
-      ctx.fillRect(0, 0, W, H);
-    }
+    const radius = 44;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(W - radius, 0);
+    ctx.arcTo(W, 0, W, radius, radius);
+    ctx.lineTo(W, H - radius);
+    ctx.arcTo(W, H, W - radius, H, radius);
+    ctx.lineTo(radius, H);
+    ctx.arcTo(0, H, 0, H - radius, radius);
+    ctx.lineTo(0, radius);
+    ctx.arcTo(0, 0, radius, 0, radius);
+    ctx.closePath();
+    ctx.clip();
 
-    const g = ctx.createLinearGradient(0, 0, W, 0);
-    g.addColorStop(0, "rgba(143,123,255,0.95)");
-    g.addColorStop(1, "rgba(242,193,78,0.95)");
-    ctx.setFillStyle(g);
-    ctx.fillRect(0, 0, W, 78);
+    const cardBg = ctx.createLinearGradient(0, 0, W, H);
+    cardBg.addColorStop(0, "#13162A");
+    cardBg.addColorStop(1, "#0F1223");
+    ctx.setFillStyle(cardBg);
+    ctx.fillRect(0, 0, W, H);
 
-    ctx.setFillStyle("rgba(255,255,255,0.10)");
-    ctx.fillRect(54, 120, W - 108, H - 210);
+    const topBandH = Math.round(H / 6);
+    const band = ctx.createLinearGradient(0, 0, W, 0);
+    band.addColorStop(0, "rgba(143,123,255,0.95)");
+    band.addColorStop(1, "rgba(242,193,78,0.95)");
+    ctx.setFillStyle(band);
+    ctx.fillRect(0, 0, W, topBandH);
 
-    const ax = 86;
-    const ay = 156;
-    const ar = 72;
+    ctx.save();
+    ctx.setFillStyle("rgba(11,13,21,0.42)");
+    ctx.setFontSize(24);
+    ctx.setTextAlign("center");
+    ctx.fillText("飞岩走壁 · 攀岩名片", W / 2, Math.round(topBandH / 2) + 9);
+    ctx.restore();
+    ctx.setTextAlign("left");
+
+    const pad = 52;
+    const ax = pad;
+    const ay = topBandH - 36;
+    const ar = 94;
     ctx.save();
     ctx.beginPath();
     ctx.arc(ax + ar, ay + ar, ar, 0, Math.PI * 2);
     ctx.clip();
     if (avatarPath) ctx.drawImage(avatarPath, ax, ay, ar * 2, ar * 2);
     ctx.restore();
-    ctx.setStrokeStyle("rgba(242,193,78,0.85)");
-    ctx.setLineWidth(6);
+    ctx.setStrokeStyle("#0F1223");
+    ctx.setLineWidth(8);
     ctx.beginPath();
-    ctx.arc(ax + ar, ay + ar, ar + 3, 0, Math.PI * 2);
+    ctx.arc(ax + ar, ay + ar, ar + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setStrokeStyle("rgba(242,193,78,0.9)");
+    ctx.setLineWidth(3);
+    ctx.beginPath();
+    ctx.arc(ax + ar, ay + ar, ar + 7, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.setFillStyle("#FFFFFF");
-    ctx.setFontSize(48);
-    ctx.fillText(clampText(front.displayName || "岩友", 10), 190, 206);
+    const tx = ax + ar * 2 + 36;
+    const nameY = ay + ar + 4;
+    const nameText = clampText(front.displayName || me.displayName || user.nickName || "岩友", 10);
+    ctx.setFillStyle("#E7E9F3");
+    ctx.setFontSize(50);
+    ctx.fillText(nameText, tx, nameY);
 
-    ctx.setFillStyle("rgba(255,255,255,0.92)");
-    ctx.setFontSize(28);
-    const meta = `${clampText(front.title, 12)}${front.mbti ? ` · ${clampText(front.mbti, 6)}` : ""}`;
-    ctx.fillText(meta, 190, 250);
+    if (rockId) {
+      const nameW = ctx.measureText(nameText).width;
+      ctx.setFillStyle("rgba(231,233,243,0.5)");
+      ctx.setFontSize(26);
+      ctx.fillText(`ID ${rockId}`, tx + nameW + 28, nameY - 2);
+    }
 
-    const one = clampText(front.oneLiner, 40);
-    ctx.setFillStyle("rgba(255,255,255,0.95)");
-    ctx.setFontSize(34);
-    const lines = wrapCanvasText(ctx, one, W - 200);
+    ctx.setFillStyle("rgba(231,233,243,0.65)");
+    ctx.setFontSize(32);
+    const meta = `${clampText(front.title || me.title || "长臂猿", 14)}${(front.mbti || me.mbti) ? ` · ${clampText(front.mbti || me.mbti, 6)}` : ""}`;
+    ctx.fillText(meta, tx, nameY + 44);
+
+    ctx.setFillStyle("rgba(242,193,78,0.9)");
+    ctx.setFontSize(30);
+    ctx.fillText(clampText(gymsLabel, 18), tx, nameY + 86);
+
+    const chipStartY = ay + ar * 2 + 32;
+    let chipX = pad, chipY = chipStartY;
+    const chipGapX = 16, chipGapY = 12;
+    const chipOpts = { fontSize: 30, bg: "rgba(143,123,255,0.25)", border: "rgba(143,123,255,0.42)", color: "#E7E9F3" };
+    const chipOkOpts = { fontSize: 30, bg: "rgba(143,200,111,0.18)", border: "rgba(143,200,111,0.5)", color: "#8FC86F" };
+    const rowH = 58;
+    const chips = [];
+    if (climbSkills.boulder) chips.push({ t: `抱石 ${climbSkills.boulder}` });
+    if (climbSkills.toprope) chips.push({ t: `顶绳 ${climbSkills.toprope}` });
+    if (climbSkills.lead) chips.push({ t: `先锋 ${climbSkills.lead}` });
+    if (climbSkills.protector) chips.push({ t: "保护", ok: true });
+    chips.forEach((c) => {
+      const opts = c.ok ? chipOkOpts : chipOpts;
+      const sz = drawChip(chipX, chipY, c.t, opts);
+      chipX += sz.w + chipGapX;
+      if (chipX > W - pad - 24) { chipX = pad; chipY += rowH + chipGapY; }
+    });
+
+    const metaRowY = chipY + rowH + 24;
+    ctx.setFontSize(30);
+    ctx.setFillStyle("rgba(231,233,243,0.72)");
+    let mx = pad;
+    if (heightCm) {
+      const t = `↕ ${heightCm}cm`;
+      ctx.fillText(t, mx, metaRowY);
+      mx += ctx.measureText(t).width + 40;
+    }
+    if (armspanCm) {
+      const t = `↔ ${armspanCm}cm`;
+      ctx.fillText(t, mx, metaRowY);
+      mx += ctx.measureText(t).width + 40;
+    }
+
+    const oneY = metaRowY + 46;
+    const one = clampText(front.oneLiner || "用脚点谈判，用手点签字。", 48);
+    ctx.setFillStyle("rgba(255,255,255,0.96)");
+    ctx.setFontSize(42);
+    const lines = wrapCanvasText(ctx, one, W - pad * 2);
     for (let i = 0; i < Math.min(2, lines.length); i++) {
-      ctx.fillText(lines[i], 120, 352 + i * 46);
+      ctx.fillText(lines[i], pad, oneY + i * 56);
     }
-
-    if (showFooterBrand || showFooterStyle) {
-      ctx.setFillStyle("rgba(255,255,255,0.65)");
-      ctx.setFontSize(22);
-      if (showFooterBrand) ctx.fillText("飞岩走壁 · 攀岩名片", 120, H - 88);
-      if (showFooterStyle) ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", 120, H - 54);
-    }
+    ctx.restore();
     return;
   }
 
-  if (photoPath) {
-    ctx.drawImage(photoPath, 0, 0, W, H);
-    ctx.setFillStyle("rgba(11,13,21,0.72)");
-    ctx.fillRect(0, 0, W, H);
-  } else {
-    ctx.setFillStyle("#0B0D15");
-    ctx.fillRect(0, 0, W, H);
-  }
+  ctx.setFillStyle("#0B0D15");
+  ctx.fillRect(0, 0, W, H);
 
   const barH = Math.max(56, Math.floor(H * 0.14));
   const g = ctx.createLinearGradient(0, 0, W, 0);
@@ -122,23 +218,10 @@ function drawFrontCard(ctx, options) {
   ctx.setFontSize(Math.floor(H * 0.055));
   ctx.fillText(clampText(gymsLabel, 14), tx, ay + Math.floor(H * 0.33));
 
-  const one = clampText(front.oneLiner, 40);
-  ctx.setFillStyle("rgba(255,255,255,0.95)");
-  ctx.setFontSize(Math.floor(H * 0.075));
-  const lines = wrapCanvasText(ctx, one, W - pad * 2 - Math.floor(W * 0.08));
-  const ox = pad + Math.floor(W * 0.06);
-  const oy = ay + ar * 2 + Math.floor(H * 0.06);
-  const lh = Math.floor(H * 0.10);
-  for (let i = 0; i < Math.min(2, lines.length); i++) {
-    ctx.fillText(lines[i], ox, oy + i * lh);
-  }
-
-  if (showFooterBrand || showFooterStyle) {
-    ctx.setFillStyle("rgba(255,255,255,0.65)");
-    ctx.setFontSize(Math.floor(H * 0.05));
-    if (showFooterBrand) ctx.fillText("飞岩走壁 · 攀岩名片", ox, H - Math.floor(H * 0.12));
-    if (showFooterStyle) ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", ox, H - Math.floor(H * 0.06));
-  }
+  ctx.setFillStyle("rgba(255,255,255,0.65)");
+  ctx.setFontSize(Math.floor(H * 0.05));
+  ctx.fillText("飞岩走壁 · 攀岩名片", pad + Math.floor(W * 0.06), H - Math.floor(H * 0.12));
+  ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", pad + Math.floor(W * 0.06), H - Math.floor(H * 0.06));
 }
 
 function drawBackCard(ctx, options) {
@@ -174,7 +257,7 @@ function drawBackCard(ctx, options) {
 
     ctx.setFillStyle("rgba(255,255,255,0.92)");
     ctx.setFontSize(28);
-    ctx.fillText("名片故事", 120, 208);
+    ctx.fillText("背面故事", 120, 208);
 
     ctx.setFillStyle("rgba(255,255,255,0.95)");
     ctx.setFontSize(30);
@@ -200,7 +283,7 @@ function drawBackCard(ctx, options) {
 
   ctx.setFillStyle("rgba(255,255,255,0.92)");
   ctx.setFontSize(Math.floor(H * 0.065));
-  ctx.fillText("名片故事", tx, pad + Math.floor(H * 0.30));
+  ctx.fillText("背面故事", tx, pad + Math.floor(H * 0.30));
 
   ctx.setFillStyle("rgba(255,255,255,0.95)");
   ctx.setFontSize(Math.floor(H * 0.07));

@@ -4,6 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 const _ = db.command;
+const BOOTSTRAP_ADMIN_IDS = ["42098a0769e3423400183ddf36230f95"];
 
 function traceId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -19,6 +20,44 @@ function fail(code, message, tid) {
 
 function safeText(v) {
   return v == null ? "" : String(v).trim();
+}
+
+function isBootstrapAdminId(value) {
+  return BOOTSTRAP_ADMIN_IDS.includes(String(value == null ? "" : value).trim());
+}
+
+function isBootstrapAdminUser(openid, userDoc) {
+  return isBootstrapAdminId(openid) || !!(userDoc && isBootstrapAdminId(userDoc._id));
+}
+
+async function isAdmin(openid) {
+  if (!openid) return false;
+  if (isBootstrapAdminId(openid)) return true;
+  const res = await db
+    .collection("RockUsers")
+    .where(_.or([{ openid }, { _openid: openid }, { uid: openid }]))
+    .limit(1)
+    .get();
+  const user = res && res.data && res.data[0] ? res.data[0] : null;
+  if (isBootstrapAdminUser(openid, user)) return true;
+  if (!user) return false;
+  return user.role === "admin" || user.isAdmin === true;
+}
+
+async function getUserByOpenid(openid) {
+  if (!openid) return null;
+  const res = await db
+    .collection("RockUsers")
+    .where(_.or([{ openid }, { _openid: openid }, { uid: openid }]))
+    .limit(1)
+    .get();
+  return res && res.data && res.data[0] ? res.data[0] : null;
+}
+
+async function getGymDoc(gymId) {
+  if (!gymId) return null;
+  const res = await db.collection("RockGyms").doc(gymId).get();
+  return res && res.data ? res.data : null;
 }
 
 function isValidYMD(v) {
@@ -123,6 +162,96 @@ function uniqueModes(list) {
   return out;
 }
 
+function normalizeGymStatus(value) {
+  const status = safeText(value).toLowerCase();
+  if (status === "deleted") return "deleted";
+  if (status === "merged") return "merged";
+  return "active";
+}
+
+function getGymName(gym) {
+  return safeText(gym && (gym.name || gym.gymName || gym.title));
+}
+
+function hasExistingCycleData(gym, cycles) {
+  const list = Array.isArray(cycles) ? cycles : [];
+  if (list.some((item) => normalizeCycleRange(item).start)) return true;
+  const currentCycle = gym && (gym.currentCycle || gym.cycle);
+  const startDate = safeText(currentCycle && (currentCycle.startDate || currentCycle.start_date));
+  return !!safeText(gym && (gym.current_cycle_id || gym.currentCycleId)) || isValidYMD(startDate);
+}
+
+function detectSubmissionModes(gym, cyclePatch, routesPatch) {
+  const guessed = [].concat(Array.isArray(gym && gym.supportedModes) ? gym.supportedModes : []);
+  if (cyclePatch) {
+    if (Array.isArray(cyclePatch.boulderGrades) && cyclePatch.boulderGrades.length) guessed.push("boulder");
+    if (Array.isArray(cyclePatch.difficultyGrades) && cyclePatch.difficultyGrades.length) guessed.push("difficulty");
+    if (Array.isArray(cyclePatch.leadGrades) && cyclePatch.leadGrades.length) guessed.push("lead");
+  }
+  if (routesPatch && routesPatch.mode) guessed.push(routesPatch.mode);
+  return uniqueModes(guessed);
+}
+
+function buildSubmissionSummary(cyclePatch, routesPatch) {
+  const parts = [];
+  if (cyclePatch) {
+    const cycleName = safeText(cyclePatch.name) || "默认周期";
+    const startDate = safeText(cyclePatch.startDate);
+    parts.push(`周期：${cycleName}${startDate ? `（${startDate} 起）` : ""}`);
+  }
+  if (routesPatch && routesPatch.mode && routesPatch.limits) {
+    const total = Object.keys(routesPatch.limits || {}).reduce((sum, key) => sum + Number(routesPatch.limits[key] || 0), 0);
+    const modeLabel = routesPatch.mode === "boulder" ? "抱石" : routesPatch.mode === "lead" ? "先锋" : "难度";
+    parts.push(`线路：${modeLabel} ${Number.isFinite(total) ? total : 0} 条`);
+  }
+  return parts.join("；");
+}
+
+async function createCycleReview({ gymId, gym, openid, userDoc, cyclePatch, routesPatch, now }) {
+  const supportedModes = detectSubmissionModes(gym, cyclePatch, routesPatch);
+  const reviewDoc = {
+    reviewType: "gym_cycle_submission",
+    reviewState: "pending",
+    gymId,
+    name: getGymName(gym),
+    city: safeText(gym && gym.city),
+    address: safeText(gym && gym.address),
+    writeAction: "user_submit_cycle_routes",
+    supportedModes,
+    finalSupportedModes: [],
+    modeConfidence: 0,
+    modeReasons: [],
+    reviewReason: "",
+    reviewNote: "",
+    submittedByOpenid: openid,
+    submittedByUserId: safeText(userDoc && userDoc._id),
+    submittedByName: safeText(userDoc && (userDoc.nickName || userDoc.nickname || userDoc.name)),
+    submissionSummary: buildSubmissionSummary(cyclePatch, routesPatch),
+    submissionPatch: {
+      cycle: cyclePatch
+        ? {
+            cycleId: safeText(cyclePatch.cycleId),
+            name: safeText(cyclePatch.name),
+            startDate: safeText(cyclePatch.startDate),
+            boulderGrades: Array.isArray(cyclePatch.boulderGrades) ? cyclePatch.boulderGrades : [],
+            difficultyGrades: Array.isArray(cyclePatch.difficultyGrades) ? cyclePatch.difficultyGrades : [],
+            leadGrades: Array.isArray(cyclePatch.leadGrades) ? cyclePatch.leadGrades : []
+          }
+        : null,
+      routes: routesPatch && routesPatch.mode && routesPatch.limits
+        ? {
+            mode: routesPatch.mode === "boulder" ? "boulder" : routesPatch.mode === "lead" ? "lead" : "difficulty",
+            limits: normalizeLimits(routesPatch.limits)
+          }
+        : null
+    },
+    createdAt: now,
+    updatedAt: now
+  };
+  const addRes = await db.collection("RockGymReviewQueue").add({ data: reviewDoc });
+  return addRes && addRes._id ? String(addRes._id) : "";
+}
+
 async function canManageGym(openid, gymId) {
   const res = await db.collection("RockGyms").doc(gymId).get();
   const gym = res && res.data ? res.data : null;
@@ -143,6 +272,8 @@ exports.main = async (event) => {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
     const now = Date.now();
+    const admin = await isAdmin(openid);
+    const userDoc = admin ? null : await getUserByOpenid(openid);
 
     const gymId = event && event.gymId ? String(event.gymId) : "";
     const gymPatch = event && event.gym ? event.gym : null;
@@ -154,6 +285,7 @@ exports.main = async (event) => {
     const gymsCol = db.collection("RockGyms");
 
     if (!gymId) {
+      if (!admin) return fail("FORBIDDEN", "仅管理员可创建岩馆", tid);
       const name = safeText(gymPatch && gymPatch.name);
       if (!name) return fail("BAD_REQUEST", "缺少岩馆名", tid);
       const city = safeText(gymPatch && gymPatch.city);
@@ -174,6 +306,13 @@ exports.main = async (event) => {
         city,
         address,
         supportedModes,
+        status: "active",
+        deletedAt: 0,
+        deletedByOpenid: "",
+        deleteReason: "",
+        mergedIntoGymId: "",
+        mergedAt: 0,
+        mergedByOpenid: "",
         ownerOpenid: openid,
         owner_uid: openid,
         managers: [openid],
@@ -198,8 +337,44 @@ exports.main = async (event) => {
       return ok({ gymId: addRes && addRes._id ? addRes._id : null }, tid);
     }
 
-    const perm = await canManageGym(openid, gymId);
-    if (!perm.ok) return fail("FORBIDDEN", "无权限", tid);
+    let gymDoc = null;
+    if (admin) {
+      gymDoc = await getGymDoc(gymId);
+      if (!gymDoc) return fail("NOT_FOUND", "岩馆不存在", tid);
+    } else {
+      gymDoc = await getGymDoc(gymId);
+      if (!gymDoc) return fail("NOT_FOUND", "岩馆不存在", tid);
+      if (gymPatch || closeCycle || deleteCycle) {
+        return fail("FORBIDDEN", "你可以补录当前周期和线路数量，其他操作请联系管理员", tid);
+      }
+      if (!cyclePatch && !(routesPatch && routesPatch.limits)) {
+        return fail("FORBIDDEN", "你可以补录当前周期和线路数量，其他操作请联系管理员", tid);
+      }
+    }
+    const gymStatus = normalizeGymStatus(gymDoc && gymDoc.status);
+    if (gymStatus === "deleted") return fail("GYM_INACTIVE", "岩馆已删除，不能继续编辑", tid);
+    if (gymStatus === "merged") return fail("GYM_INACTIVE", "岩馆已合并，不能继续编辑", tid);
+
+    if (!admin) {
+      const cycles = await listCyclesForGym(gymId, 200);
+      const hasExistingCycle = hasExistingCycleData(gymDoc, cycles);
+      if (!hasExistingCycle && !cyclePatch) {
+        return fail("BAD_REQUEST", "当前岩馆还没有周期，请先补录当前周期，再录入线路数量", tid);
+      }
+      if (hasExistingCycle) {
+        const reviewId = await createCycleReview({
+          gymId,
+          gym: gymDoc,
+          openid,
+          userDoc,
+          cyclePatch,
+          routesPatch,
+          now
+        });
+        return ok({ gymId, reviewState: "pending", applied: false, reviewId }, tid);
+      }
+    }
+
     const patch = { updatedAt: now, updated_at: db.serverDate() };
 
     if (deleteCycle) {
@@ -223,7 +398,6 @@ exports.main = async (event) => {
       await removeAllByWhere("RockUserCycleProgress", whereByCycle, 20);
       await removeAllByWhere("RockGymBlackboards", whereByCycle, 20);
 
-      const gymDoc = perm.gym || null;
       const currentId = gymDoc ? String(gymDoc.current_cycle_id || gymDoc.currentCycleId || "") : "";
       if (currentId && currentId === cycleId) {
         patch.current_cycle_id = "";
@@ -414,9 +588,9 @@ exports.main = async (event) => {
 
     if (routesPatch && routesPatch.limits) {
       const mode = routesPatch.mode === "boulder" ? "boulder" : routesPatch.mode === "lead" ? "lead" : "difficulty";
-      patch.routes = perm.gym.routes && typeof perm.gym.routes === "object" ? perm.gym.routes : {};
+      patch.routes = gymDoc && gymDoc.routes && typeof gymDoc.routes === "object" ? gymDoc.routes : {};
       patch.routes[mode] = { ...(patch.routes[mode] || {}), limits: normalizeLimits(routesPatch.limits) };
-      patch.lines = patch.lines || perm.gym.lines || { boulder: 0, difficulty: 0, lead: 0 };
+      patch.lines = patch.lines || (gymDoc && gymDoc.lines) || { boulder: 0, difficulty: 0, lead: 0 };
       const sum = Object.keys(patch.routes[mode].limits).reduce((s, k) => s + Number(patch.routes[mode].limits[k] || 0), 0);
       patch.lines[mode] = sum;
     }

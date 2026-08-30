@@ -1,6 +1,7 @@
 const giftApi = require("../../services/api/cardGift");
 const shareApi = require("../../services/api/share");
 const { safeText } = require("../../utils/format");
+const cache = require("../../utils/cache");
 
 Page({
   data: {
@@ -16,7 +17,7 @@ Page({
     this.setData({ draftCardId });
   },
   goMake() {
-    wx.navigateTo({ url: "/pages/card-edit/index?mode=giftDraft" });
+    wx.showToast({ title: "赠礼草稿制作中", icon: "none" });
   },
   goSaveDraft() {
     const id = this.data.draftCardId;
@@ -34,6 +35,7 @@ Page({
 
       const qr = await shareApi.render({ page, scene });
       const qrFileId = qr && qr.fileID ? qr.fileID : "";
+      try { cache.invalidate(cache.CACHE_KEYS.CARD_SUMMARY); } catch (_) {}
       this.setData({ qrFileId });
     } catch (e2) {
       wx.showToast({ title: e2 && e2.message ? e2.message : "生成失败", icon: "none" });

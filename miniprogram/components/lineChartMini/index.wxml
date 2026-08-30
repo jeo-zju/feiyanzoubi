@@ -1,9 +1,9 @@
 <canvas
   wx:if="{{canvasId}}"
+  id="{{canvasId}}"
+  type="2d"
   class="lc"
-  canvas-id="{{canvasId}}"
+  disable-scroll="true"
   style="width: 690rpx; height: {{heightRpx}}rpx;"
-  width="{{canvasWidth}}"
-  height="{{canvasHeight}}"
 ></canvas>
 

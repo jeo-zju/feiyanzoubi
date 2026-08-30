@@ -1,7 +1,0 @@
-{
-  "usingComponents": {
-    "line-chart": "../../components/lineChartMini/index",
-    "paginator": "../../components/paginator/index"
-  }
-}
-

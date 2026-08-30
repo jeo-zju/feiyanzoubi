@@ -115,14 +115,11 @@ exports.main = async (event) => {
         else sentRes = await cardsCol.where({ createdByOpenid: openid, status: "active" }).limit(200).get();
       }
       const sent = (sentRes && sentRes.data) || [];
-      const sentCards = sent
+      payload.myCreatedGiftedCards = sent
         .filter((c) => !!c && safeText(c.ownerOpenid) && safeText(c.ownerOpenid) !== openid)
         .slice(0, 50)
         .map((c) => ({ ...pickCardSnapshot(c, userAvatarUrl), createdAt: c && c.createdAt ? c.createdAt : 0 }))
         .filter((x) => x && x.cardId);
-      payload.sentCards = sentCards;
-      payload.sentCount = sentCards.length;
-      payload.myCreatedGiftedCards = sentCards;
     }
 
     return ok(payload, tid);

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "岩友",
+  "usingComponents": {
+    "seg-tabs": "../../components/segmentedTabs/index"
+  }
+}

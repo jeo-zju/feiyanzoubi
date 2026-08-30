@@ -1,0 +1,81 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">用户权限</view>
+      <view class="section-desc">支持拉取全部用户、按关键词和角色筛选，并直接修改 role。</view>
+      <view class="search-row">
+        <input class="input flex" placeholder="搜索昵称 / 项目名 / openid / uid" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
+        <view class="btn btn-warn search-btn" bindtap="onSearch">搜索</view>
+      </view>
+      <seg-tabs tabs="{{roleTabs}}" value="{{role}}" bind:change="onRoleChange" />
+      <view class="summary-row">
+        <view class="tag">命中 {{filteredTotal}}</view>
+        <view class="tag">总用户 {{total}}</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <view wx:if="{{items.length}}" class="list">
+      <view wx:for="{{items}}" wx:key="_id" class="card mt">
+        <view class="card-bd">
+          <view class="row">
+            <view class="section-title item-title">{{item.nickName || item.projectName || item.openid || '未命名用户'}}</view>
+            <view class="tag {{item.role === 'admin' ? 'tag-warn' : ''}}">{{item.roleText}}</view>
+          </view>
+
+          <view wx:if="{{item.projectName}}" class="section-tip">{{item.projectName}}</view>
+          <view class="meta-stack">
+            <text>openid: {{item.openid || '-'}}</text>
+            <text wx:if="{{item.uid}}">uid: {{item.uid}}</text>
+          </view>
+
+          <view class="mt">
+            <view class="field-label">快捷设置</view>
+            <view class="preset-row">
+              <block wx:for="{{presetRoles}}" wx:key="key" wx:for-item="option">
+                <view
+                  class="tag {{item.roleDraft === option.key ? 'tag-warn' : ''}}"
+                  data-id="{{item._id}}"
+                  data-role="{{option.key}}"
+                  bindtap="onPickRole"
+                >
+                  {{option.label}}
+                </view>
+              </block>
+            </view>
+          </view>
+
+          <view class="mt">
+            <view class="field-label">自定义 role</view>
+            <input
+              class="input mt-sm"
+              placeholder="留空表示普通用户"
+              placeholder-class="ph"
+              value="{{item.roleDraft}}"
+              data-id="{{item._id}}"
+              bindinput="onDraftRoleInput"
+            />
+          </view>
+
+          <view class="action-row mt">
+            <view class="tag {{item.roleDraft !== item.role ? 'tag-warn' : ''}}">{{item.roleDraft !== item.role ? '未保存' : '已保存'}}</view>
+            <view class="btn btn-primary save-btn" data-id="{{item._id}}" bindtap="onSaveRole">
+              {{savingId === item._id ? '保存中' : '保存角色'}}
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="card mt">
+      <view class="card-bd empty">当前没有符合条件的用户。</view>
+    </view>
+
+    <view wx:if="{{hasNext}}" class="card mt">
+      <view class="card-bd">
+        <view class="btn btn-ghost" bindtap="onMore">{{loading ? '加载中' : '加载更多'}}</view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

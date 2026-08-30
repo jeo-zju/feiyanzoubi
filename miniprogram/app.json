@@ -1,22 +1,36 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/stats/index",
+    "pages/calendar-mine/index",
     "pages/me/index",
-    "pages/backstage/index",
-    "pages/backstage-sync/index",
-    "pages/backstage-health/index",
-    "pages/review-queue/index",
+    "pages/calendar-timeline/index",
+    "pages/calendar-publish/index",
+    "pages/friend-list/index",
     "pages/checkin/index",
     "pages/owner/index",
     "pages/gym-manage/index",
-    "pages/card-edit/index",
     "pages/card-gift/index",
     "pages/card-claim/index",
-    "pages/card-wallet/index",
     "pages/card-view/index",
     "pages/wall/index",
-    "pages/debug-logs/index"
+    "pages/debug-logs/index",
+    "pages/profile-edit/index",
+    "pages/review-queue/index",
+    "pages/gym-merge/index",
+    "pages/gym-merge-result/index",
+    "pages/backstage/index",
+    "pages/backstage-auth/index",
+    "pages/backstage-card-detail/index",
+    "pages/backstage-data/index",
+    "pages/backstage-gym-auth/index",
+    "pages/backstage-health/index",
+    "pages/backstage-review-detail/index",
+    "pages/backstage-sync/index",
+    "pages/backstage-user-detail/index",
+    "pages/user-admin/index",
+    "pages/circle-list/index",
+    "pages/circle-edit/index",
+    "pages/circle-detail/index"
   ],
   "window": {
     "backgroundColor": "#0B0D15",
@@ -41,10 +55,10 @@
         "selectedIconPath": "images/icons/home-active.png"
       },
       {
-        "pagePath": "pages/stats/index",
-        "text": "统计",
-        "iconPath": "images/icons/examples.png",
-        "selectedIconPath": "images/icons/examples-active.png"
+        "pagePath": "pages/calendar-mine/index",
+        "text": "我的日历",
+        "iconPath": "images/icons/calendar.png",
+        "selectedIconPath": "images/icons/calendar-active.png"
       },
       {
         "pagePath": "pages/me/index",
