@@ -19,8 +19,7 @@ function pad2(n) { return n < 10 ? `0${n}` : String(n); }
 function formatYMD(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 function todayYMD() {
   const d = new Date();
-  const utc8 = new Date(d.getTime() + 8 * 3600 * 1000);
-  return formatYMD(utc8);
+  return formatYMD(d);
 }
 function addDays(ymd, days) {
   const m = String(ymd).match(/^(\d{4})-(\d{2})-(\d{2})$/);
