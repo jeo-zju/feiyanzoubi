@@ -1,6 +1,7 @@
 const { ensureAppLogin, syncAppLogin } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 const userApi = require("../../services/api/user");
+const cardApi = require("../../services/api/card");
 const cache = require("../../utils/cache");
 const { collection } = require("../../services/db");
 
@@ -186,14 +187,21 @@ Page({
 
   async uploadAvatar(tempPath) {
     // issue #10: 增加重试；cloudPath 用时间戳+随机+扩展名保证唯一
+    console.warn("[profile-edit] uploadAvatar start", tempPath && tempPath.slice(0, 80));
     const doUpload = () => new Promise((resolve, reject) => {
       const ext = fileExt(tempPath);
       const cloudPath = `avatars/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
       wx.cloud.uploadFile({
         cloudPath,
         filePath: tempPath,
-        success: (res) => resolve(res && res.fileID ? res.fileID : ""),
-        fail: reject
+        success: (res) => {
+          console.warn("[profile-edit] uploadAvatar success", res && res.fileID);
+          resolve(res && res.fileID ? res.fileID : "");
+        },
+        fail: (err) => {
+          console.warn("[profile-edit] uploadAvatar fail", err && err.errMsg, err && err.message);
+          reject(err);
+        }
       });
     });
     try {
@@ -285,11 +293,42 @@ Page({
         const app = getApp();
         if (app && app.globalData) app.globalData.me = r.me;
       }
-      // issue #13: 手填新话入库（临时库，user_added 标记）
+      // issue #13 + #19: 一句话同步到主名片；无主卡时自动创建名片（新用户）
       const sloganText = safeText(this.data.slogan).trim();
+      try {
+        const myCard = await cardApi.listMy({});
+        const primary = (myCard && myCard.myPrimaryCard) || null;
+        if (primary && primary.cardId) {
+          if (sloganText) await cardApi.updateOneLiner(primary.cardId, sloganText);
+        } else if (sloganText || true) {
+          // 新用户：用资料创建主名片（upsert 要求背面故事非空，用默认占位）
+          await cardApi.upsert({
+            card: {
+              front: {
+                displayName: safeText(this.data.displayName) || nickName,
+                title: safeText(this.data.title),
+                mbti: safeText(this.data.mbti),
+                avatarMode: avatarUrl ? "custom" : "wechat",
+                avatarFileId: avatarUrl || "",
+                avatarUrl,
+                oneLiner: sloganText,
+                oneLinerStyle: "humor",
+                wanderer: false,
+                gyms: this.data.city ? [{ gymId: "", name: "", city: this.data.city }] : []
+              },
+              back: { story: "飞岩走壁，攀无止境" }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("[profile-edit] card sync failed", e && e.message);
+      }
+      // issue #13: 手填新话入库（临时库，user_added 标记）
       if (sloganText && SLOGAN_POOL.indexOf(sloganText.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]?\s*/, "")) < 0) {
         this.submitSloganToPool(sloganText.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]?\s*/, ""));
       }
+      try { cache.invalidate(cache.CACHE_KEYS.ME_PROFILE); } catch (_) {}
+      try { cache.invalidate(cache.CACHE_KEYS.CARD_SUMMARY); } catch (_) {}
       try { cache.invalidate(cache.CACHE_KEYS.ME_PROFILE); } catch (_) {}
       wx.showToast({ title: "已保存", icon: "success" });
       setTimeout(() => { wx.navigateBack({ delta: 1 }); }, 500);

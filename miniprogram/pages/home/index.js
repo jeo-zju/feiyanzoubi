@@ -461,10 +461,10 @@ Page({
       // 【约束】参数必须与 pages/calendar-mine/index.js loadAll 中完全一致，否则缓存串数据
       const params = { includeSummary: true, tab: "upcoming", page: 1, pageSize: 1 };
       const res = await app.cacheGet(CACHE_KEYS.CALENDAR_SUMMARY, {
-        ttlMin: 5,
+        ttlMin: 30,
         forceRefresh: !!force,
-        loader: async () => await calendarApi.mine(params),
-        useL2: false
+        loader: async () => await calendarApi.mine(params, { loading: false, silent: true }),
+        useL2: true
       });
       const summary = (res && res.summary) || {};
       this.setData({
@@ -474,7 +474,7 @@ Page({
     } catch (e) {
       console.warn("[home] loadCalendarStats failed", e && e.message);
       try {
-        const res = await calendarApi.mine({ includeSummary: true, tab: "upcoming", page: 1, pageSize: 1 });
+        const res = await calendarApi.mine({ includeSummary: true, tab: "upcoming", page: 1, pageSize: 1 }, { loading: false, silent: true });
         const summary = (res && res.summary) || {};
         this.setData({
           "stats.thisMonthPlans": Number(summary.thisMonthPlans || 0),

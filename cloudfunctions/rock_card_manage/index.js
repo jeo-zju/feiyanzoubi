@@ -40,6 +40,19 @@ exports.main = async (event) => {
     if (safeText(card.ownerOpenid) !== openid) return fail("FORBIDDEN", "无权限", tid);
     if (safeText(card.status) !== "active") return fail("FORBIDDEN", "名片不可操作", tid);
 
+    if (action === "update_one_liner") {
+      const oneLiner = safeText(event && event.oneLiner).slice(0, 60);
+      await cardsCol.doc(cardId).update({
+        data: {
+          "front.oneLiner": oneLiner,
+          "front.oneLinerStyle": safeText(event && event.oneLinerStyle) === "encourage" ? "encourage" : "humor",
+          updatedAt: Date.now(),
+          updated_at: db.serverDate()
+        }
+      });
+      return ok({ cardId, oneLiner }, tid);
+    }
+
     if (action === "set_primary") {
       await cardsCol.where({ ownerOpenid: openid, isPrimary: true }).update({ data: { isPrimary: false, updated_at: db.serverDate() } });
       await cardsCol.doc(cardId).update({ data: { isPrimary: true, updated_at: db.serverDate() } });

@@ -18,7 +18,7 @@ Page({
     defaultAvatar: DEFAULT_AVATAR,
     canSeeToolbox: false,
     drawerOpen: false,
-    version: "2.0.15",
+    version: "2.0.16",
 
     credit: { remaining: 0, limit: 10 },
     creditPercent: 0,
@@ -152,10 +152,14 @@ Page({
       const limit = Number(credit && credit.limit ? credit.limit : 0);
       const creditPercent = limit > 0 ? Math.max(0, Math.min(100, Math.round((remaining * 100) / limit))) : 0;
       const nextPrimaryCard = (res && res.myPrimaryCard) || null;
+      // issue #13: 名片上的那句话（oneLiner）优先于用户资料 slogan 展示
+      const cardOneLiner = (nextPrimaryCard && nextPrimaryCard.front && nextPrimaryCard.front.oneLiner) || "";
+      const me = this.data.me || {};
       this.setData({
         credit,
         creditPercent,
         myPrimaryCard: nextPrimaryCard,
+        me: Object.assign({}, me, { slogan: cardOneLiner || me.slogan || "" }),
         cardSyncing: false
       });
       try {

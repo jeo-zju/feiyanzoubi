@@ -16,6 +16,10 @@ async function generateOneLiner(payload) {
   return callCloud("rock_llm_one_liner", payload || {}, { loading: true, loadingTitle: "生成中" });
 }
 
+async function updateOneLiner(cardId, oneLiner) {
+  return callCloud("rock_card_manage", { action: "update_one_liner", cardId, oneLiner }, { loading: false, silent: true });
+}
+
 async function removeCreated(cardId, dryRun) {
   const args = { action: "remove_created", cardId };
   if (dryRun) args.dryRun = true;
@@ -24,6 +28,7 @@ async function removeCreated(cardId, dryRun) {
 
 module.exports = {
   upsert,
+  updateOneLiner,
   get,
   listMy,
   generateOneLiner,

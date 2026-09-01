@@ -12,8 +12,9 @@ async function queryTimeline(params) {
   return callCloud("calendar_query", { mode: "timeline", ...(params || {}) }, { loading: true, loadingTitle: "加载时间轴" });
 }
 
-async function mine(params) {
-  return callCloud("calendar_mine", params || {}, { loading: true, loadingTitle: "加载中" });
+async function mine(params, options) {
+  const opts = options && typeof options === "object" ? options : {};
+  return callCloud("calendar_mine", params || {}, { loading: true, loadingTitle: "加载中", ...opts });
 }
 
 async function joinPlan(planId) {

@@ -85,14 +85,14 @@
 
       <view wx:if="{{timeQuickKey === 'custom'}}" class="time-shell mt-sm">
         <view class="time-picker">
-          <picker class="time-col" mode="time" value="{{startTime}}" start="06:00" end="23:00" bindchange="onStartTimeChange">
+          <picker class="time-col" mode="selector" range="{{hourOptions}}" value="{{startHourIdx}}" bindchange="onStartHourChange">
             <view class="time-col__cap">开始时间</view>
-            <view class="time-col__value">{{startTime}}</view>
+            <view class="time-col__value">{{hourOptions[startHourIdx]}}</view>
           </picker>
           <view class="time-col__dash">—</view>
-          <picker class="time-col" mode="time" value="{{endTime}}" start="06:30" end="23:59" bindchange="onEndTimeChange">
+          <picker class="time-col" mode="selector" range="{{hourOptions}}" value="{{endHourIdx}}" bindchange="onEndHourChange">
             <view class="time-col__cap">结束时间</view>
-            <view class="time-col__value">{{endTime}}</view>
+            <view class="time-col__value">{{hourOptions[endHourIdx]}}</view>
           </picker>
         </view>
       </view>
@@ -122,18 +122,18 @@
           <view class="advanced-row__label">备注</view>
           <input class="input" placeholder="想对岩友说的话（可选）" placeholder-class="ph" value="{{note}}" bindinput="onNoteInput" />
         </view>
-        <view class="advanced-row advanced-row--switch">
+        <view wx:if="{{visibility === 'public'}}" class="advanced-row advanced-row--switch">
           <view class="advanced-row__label">
             <view>求搭子</view>
             <view class="muted" style="font-size:20rpx;">开启后，岩友可在时间轴上看到你的求搭子信息</view>
           </view>
           <switch checked="{{needPartner}}" bindchange="onTogglePartner" color="#8f7bff" />
         </view>
-        <view wx:if="{{needPartner}}" class="advanced-row">
+        <view wx:if="{{visibility === 'public' && needPartner}}" class="advanced-row">
           <view class="advanced-row__label">能力偏好</view>
           <view class="tag-grid">
             <view wx:for="{{skillTags}}" wx:key="key"
-              class="tag {{item.on ? (item.warn?'tag-warn':'') : 'tag--off'}}"
+              class="tag {{item.on ? 'tag-warn' : 'tag--off'}}"
               data-key="{{item.key}}"
               bindtap="onToggleSkillTag"
             >{{item.label}}</view>

@@ -46,6 +46,9 @@ Page({
     dateRangeLabel: "",
     startTime: "10:00",
     endTime: "22:00",
+    hourOptions: (() => { const arr = []; for (let h = 6; h <= 23; h++) arr.push(`${h < 10 ? "0" + h : h}:00`); return arr; })(),
+    startHourIdx: 4,
+    endHourIdx: 16,
     durationHourText: "12 小时",
     timeQuickKey: "allday",
     timeQuickLabel: "全天",
@@ -195,9 +198,47 @@ Page({
       patch.startTime = preset.startTime;
       patch.endTime = preset.endTime;
     }
+    // #20: 同步整点下拉索引（非整点时间就近取整）
+    const roundHour = (hm) => {
+      const m = this.timeHMToMin(hm || "10:00");
+      const h = Math.max(6, Math.min(23, Math.round(m / 60)));
+      return `${h < 10 ? "0" + h : h}:00`;
+    };
+    const sVal = key === "custom" ? this.data.startTime : patch.startTime || this.data.startTime;
+    const eVal = key === "custom" ? this.data.endTime : patch.endTime || this.data.endTime;
+    const sRound = roundHour(sVal);
+    const eRound = roundHour(eVal);
+    patch.startHourIdx = Math.max(0, this.data.hourOptions.indexOf(sRound));
+    patch.endHourIdx = Math.max(0, this.data.hourOptions.indexOf(eRound));
+    if (key === "custom") {
+      patch.startTime = sRound;
+      patch.endTime = eRound;
+    }
     this.setData(patch, () => this.recomputeDuration());
   },
 
+  onStartHourChange(e) {
+    const idx = Math.max(0, Number((e && e.detail && e.detail.value) || 0));
+    const v = this.data.hourOptions[idx] || "10:00";
+    const startMin = this.timeHMToMin(v);
+    let end = this.data.endTime;
+    if (this.timeHMToMin(end) - startMin < 60) {
+      end = hmLabel(Math.min(23 * 60, startMin + 120));
+    }
+    const endIdx = Math.max(0, this.data.hourOptions.indexOf(end));
+    this.setData({ startTime: v, startHourIdx: idx, endTime: end, endHourIdx: endIdx });
+    this.recomputeDuration();
+  },
+  onEndHourChange(e) {
+    const idx = Math.max(0, Number((e && e.detail && e.detail.value) || 0));
+    const v = this.data.hourOptions[idx] || "22:00";
+    if (this.timeHMToMin(v) <= this.timeHMToMin(this.data.startTime)) {
+      wx.showToast({ title: "结束时间需晚于开始时间", icon: "none" });
+      return;
+    }
+    this.setData({ endTime: v, endHourIdx: idx });
+    this.recomputeDuration();
+  },
   onStartTimeChange(e) {
     const v = (e && e.detail && e.detail.value) || "";
     if (!v) return;
@@ -243,6 +284,10 @@ Page({
     if (v === "public") {
       // 公开发布：默认勾选「求搭子」并展开高级选项
       patch.needPartner = true;
+      patch.advancedOpen = true;
+    } else {
+      // #21: 对岩友/岩友圈发布不展示「求搭子」，联动关闭
+      patch.needPartner = false;
       patch.advancedOpen = true;
     }
     this.setData(patch);
