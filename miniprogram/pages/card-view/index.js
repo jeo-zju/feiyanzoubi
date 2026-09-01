@@ -75,6 +75,28 @@ Page({
     reportDebug("card-view:onLoad", "A", "card-view onLoad", { cardId, cssW, cssH });
     // #endregion
   },
+
+  onShareAppMessage() {
+    const card = this.data.card || {};
+    const front = card.front || {};
+    const name = safeText(front.displayName) || "攀岩名片";
+    return {
+      title: `${name}的攀岩名片`,
+      path: `/pages/card-view/index?cardId=${this.data.cardId}`,
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
+  onShareTimeline() {
+    const card = this.data.card || {};
+    const front = card.front || {};
+    const name = safeText(front.displayName) || "攀岩名片";
+    return {
+      title: `${name}的攀岩名片`,
+      query: `cardId=${this.data.cardId}`,
+      imageUrl: "/images/avatar.png"
+    };
+  },
   onShow() {
     // #region debug-point A:on-show
     reportDebug("card-view:onShow", "A", "card-view onShow", { cardId: this.data.cardId });

@@ -109,6 +109,22 @@ Page({
     try { await this.loadStats({ reset: true }); } catch (_) {}
   },
 
+  onShareAppMessage() {
+    return {
+      title: "我的攀岩日历",
+      path: "/pages/calendar-mine/index",
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: "我的攀岩日历",
+      query: "",
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
   onShow() {
     if (this._onShowRunning) return;
     this._onShowRunning = true;

@@ -90,6 +90,22 @@ Page({
     this.buildCalendarBase();
   },
 
+  onShareAppMessage() {
+    return {
+      title: "飞岩走壁｜攀岩人的日历与名片",
+      path: "/pages/home/index",
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: "飞岩走壁｜攀岩人的日历与名片",
+      query: "",
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
   async onShow() {
     const app = getApp();
     try { await ensureAppLogin(); } catch (e) { console.warn("[home] ensureAppLogin failed", e && e.message); }

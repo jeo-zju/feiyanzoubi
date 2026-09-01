@@ -34,6 +34,31 @@ Page({
 
   onLoad() { this.computeMyCardSize(); },
 
+  onShareAppMessage() {
+    const cardId = this.data.myPrimaryCard && this.data.myPrimaryCard.cardId ? this.data.myPrimaryCard.cardId : "";
+    const nickName = (this.data.user && this.data.user.nickName) || "我";
+    if (cardId) {
+      return {
+        title: `${nickName}的攀岩名片`,
+        path: `/pages/card-view/index?cardId=${cardId}`,
+        imageUrl: "/images/avatar.png"
+      };
+    }
+    return {
+      title: "飞岩走壁｜攀岩人的日历与名片",
+      path: "/pages/me/index",
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: "飞岩走壁｜攀岩人的日历与名片",
+      query: "",
+      imageUrl: "/images/avatar.png"
+    };
+  },
+
   async onShow() {
     this.setData({ cardSyncing: true });
     this.computeMyCardSize();
