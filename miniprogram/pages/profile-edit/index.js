@@ -2,6 +2,25 @@ const { ensureAppLogin, syncAppLogin } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 const userApi = require("../../services/api/user");
 const cache = require("../../utils/cache");
+const { collection } = require("../../services/db");
+
+// issue #13: 预置攀岩黑话库（随机 emoji 按钮从中取）
+const SLOGAN_POOL = [
+  "攀岩是我唯一的温柔",
+  "挂上快挂，烦恼放下",
+  "这条线，我势在必得",
+  "疼吗？疼就对了",
+  "岩壁不会辜负努力",
+  "今天就爬开心点",
+  "不掉下来就行",
+  "稳一点，再稳一点",
+  "指尖的信仰",
+  "摔过的地方都开过花",
+  "向上是唯一的答案",
+  "粉袋一背，谁也不爱"
+];
+
+const SLOGAN_EMOJIS = ["🧗", "🪨", "🧗‍♀️", "🧗‍♂️", "💪", "🔥", "✨", "🦾", "⛰️", "🎯", "🤙", "🧊"];
 
 const BOULDER_LEVELS = ["", "V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8+"];
 const ROPE_LEVELS = ["", "5.8", "5.9", "5.10a", "5.10b", "5.10c", "5.10d", "5.11a", "5.11b", "5.11c", "5.11d", "5.12a+"];
@@ -50,6 +69,7 @@ Page({
     displayName: "",
     title: "",
     mbti: "",
+    slogan: "",
     hasLocalAvatar: false,
     saving: false,
     climbSkills: {
@@ -90,6 +110,7 @@ Page({
       const displayName = safeText(me.displayName || "");
       const title = safeText(me.title || "");
       const mbti = safeText(me.mbti || "");
+      const slogan = safeText(me.slogan || "");
       this.setData({
         form: {
           nickName: safeText(me.nickName || user && user.nickName),
@@ -98,6 +119,7 @@ Page({
         displayName,
         title,
         mbti,
+        slogan,
         hasLocalAvatar: false,
         climbSkills: {
           boulder: safeText(cs.boulder || ""),
@@ -126,6 +148,36 @@ Page({
     this.setData({ displayName: e && e.detail ? e.detail.value : "" });
   },
 
+  // issue #13: 名片一句话编辑
+  onSloganInput(e) {
+    this.setData({ slogan: (e && e.detail && e.detail.value || "").slice(0, 20) });
+  },
+  onRandomSlogan() {
+    const idx = Math.floor(Math.random() * SLOGAN_POOL.length);
+    const emoji = SLOGAN_EMOJIS[Math.floor(Math.random() * SLOGAN_EMOJIS.length)];
+    this.setData({ slogan: `${emoji} ${SLOGAN_POOL[idx]}` });
+  },
+  // issue #13: 手填的新话写入黑话临时库（user_added 标记，默认不展示给其他用户）
+  async submitSloganToPool(text) {
+    try {
+      const pool = collection("RockSloganPool");
+      const where = pool.where({ text });
+      const found = await where.count();
+      if (found && found.total > 0) return;
+      await pool.add({
+        data: {
+          text,
+          user_added: true,
+          source: "user",
+          approved: false,
+          createdAt: Date.now()
+        }
+      });
+    } catch (e) {
+      console.warn("[profile-edit] submitSloganToPool failed", e && e.message);
+    }
+  },
+
   onChooseAvatar(e) {
     const avatarUrl = safeText(e && e.detail && e.detail.avatarUrl);
     if (!avatarUrl) return;
@@ -133,7 +185,8 @@ Page({
   },
 
   async uploadAvatar(tempPath) {
-    return new Promise((resolve, reject) => {
+    // issue #10: 增加重试；cloudPath 用时间戳+随机+扩展名保证唯一
+    const doUpload = () => new Promise((resolve, reject) => {
       const ext = fileExt(tempPath);
       const cloudPath = `avatars/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
       wx.cloud.uploadFile({
@@ -143,6 +196,12 @@ Page({
         fail: reject
       });
     });
+    try {
+      return await doUpload();
+    } catch (e1) {
+      try { await new Promise((r) => setTimeout(r, 600)); } catch (_) {}
+      return await doUpload();
+    }
   },
 
   onBoulderChange(e) {
@@ -186,7 +245,23 @@ Page({
     }
     this.setData({ saving: true });
     try {
-      if (avatarUrl && !isRemoteAvatar(avatarUrl)) avatarUrl = await this.uploadAvatar(avatarUrl);
+      if (avatarUrl && !isRemoteAvatar(avatarUrl)) {
+        // issue #10: 上传失败时明确提示，不再静默把临时路径存库
+        try {
+          avatarUrl = await this.uploadAvatar(avatarUrl);
+          if (!avatarUrl) {
+            wx.showToast({ title: "头像上传失败，请重试", icon: "none" });
+            this.setData({ saving: false });
+            return;
+          }
+          this.setData({ "form.avatarUrl": avatarUrl, hasLocalAvatar: false });
+        } catch (upErr) {
+          console.warn("[profile-edit] uploadAvatar failed", upErr && upErr.message);
+          wx.showToast({ title: "头像上传失败，请重试", icon: "none" });
+          this.setData({ saving: false });
+          return;
+        }
+      }
       const authPayload = { nickName };
       if (avatarUrl) authPayload.avatarUrl = avatarUrl;
       try { await syncAppLogin(authPayload); } catch (e) {}
@@ -197,7 +272,8 @@ Page({
         armspanCm: this.data.armspanCm,
         displayName: safeText(this.data.displayName),
         title: safeText(this.data.title),
-        mbti: safeText(this.data.mbti)
+        mbti: safeText(this.data.mbti),
+        slogan: safeText(this.data.slogan)
       };
       if (profilePayload && profilePayload.climbSkills) {
         delete profilePayload.climbSkills.protector;
@@ -208,6 +284,11 @@ Page({
       if (r && r.me) {
         const app = getApp();
         if (app && app.globalData) app.globalData.me = r.me;
+      }
+      // issue #13: 手填新话入库（临时库，user_added 标记）
+      const sloganText = safeText(this.data.slogan).trim();
+      if (sloganText && SLOGAN_POOL.indexOf(sloganText.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]?\s*/, "")) < 0) {
+        this.submitSloganToPool(sloganText.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]?\s*/, ""));
       }
       try { cache.invalidate(cache.CACHE_KEYS.ME_PROFILE); } catch (_) {}
       wx.showToast({ title: "已保存", icon: "success" });

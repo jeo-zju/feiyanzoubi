@@ -81,6 +81,20 @@
     </view>
   </view>
 
+  <view class="card mt">
+    <view class="card-bd">
+      <view class="inline-row">
+        <view class="inline-col">
+          <view class="inline-label">名片一句话</view>
+          <view class="slogan-row">
+            <input class="compact-input slogan-input" placeholder="写一句攀岩黑话（可留空）" value="{{slogan}}" bindinput="onSloganInput" maxlength="20" />
+            <view class="slogan-dice" bindtap="onRandomSlogan">🎲</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
   <button class="btn btn-primary save-btn mt2" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">保存资料</button>
   <view style="height: 40rpx;"></view>
 </view>
