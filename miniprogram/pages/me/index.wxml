@@ -41,20 +41,8 @@
     </view>
   </view>
 
-  <view class="glance-grid glance-grid--single mt-card">
-    <view class="card glance-card glance-card--credit glance-card--btn" bindtap="goGift">
-      <view class="card-bd glance-bd">
-        <view class="glance-top">
-          <view class="glance-title">灵感</view>
-          <view class="glance-value">{{credit.remaining}}</view>
-        </view>
-        <view class="glance-sub">消耗灵感生成名片上的一句话</view>
-        <view class="credit-bar">
-          <view class="credit-bar-fill" style="width: {{creditPercent}}%;"></view>
-        </view>
-        <view class="glance-cta">去写一句话 ›</view>
-      </view>
-    </view>
+  <view wx:if="{{me.slogan}}" class="slogan-banner mt-card">
+    <text class="slogan-banner__text">{{me.slogan}}</text>
   </view>
 
   <view class="glance-grid mt-card">
