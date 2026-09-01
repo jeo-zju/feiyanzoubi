@@ -70,25 +70,44 @@
       <view class="tag tag-warn">已选择 {{durationHourText}}</view>
     </view>
     <view class="card-bd">
-      <view class="time-shell">
-        <view class="time-fade">
-          <text wx:for="{{ghostTicksTop}}" wx:key="*this" class="time-fade__item">{{item}}</text>
+      <view class="quick-grid">
+        <view
+          wx:for="{{timeQuick}}"
+          wx:key="key"
+          class="quick-item {{timeQuickKey === item.key ? 'quick-item--active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onSelectTimeQuick"
+        >
+          <view class="quick-item__label">{{item.label}}</view>
+          <view class="quick-item__hint">{{item.hint}}</view>
         </view>
-        <view class="time-range" bindtap="onTapStartTime">
-          <view class="time-range__start">{{startTime}}</view>
-          <view class="time-range__dash">—</view>
-          <view class="time-range__end" bindtap="onTapEndTime">{{endTime}}</view>
+      </view>
+
+      <view wx:if="{{timeQuickKey === 'custom'}}" class="time-shell mt-sm">
+        <view class="time-picker">
+          <picker class="time-col" mode="time" value="{{startTime}}" start="06:00" end="23:00" bindchange="onStartTimeChange">
+            <view class="time-col__cap">开始时间</view>
+            <view class="time-col__value">{{startTime}}</view>
+          </picker>
+          <view class="time-col__dash">—</view>
+          <picker class="time-col" mode="time" value="{{endTime}}" start="06:30" end="23:59" bindchange="onEndTimeChange">
+            <view class="time-col__cap">结束时间</view>
+            <view class="time-col__value">{{endTime}}</view>
+          </picker>
         </view>
-        <view class="time-fade time-fade--bottom">
-          <text wx:for="{{ghostTicksBottom}}" wx:key="*this" class="time-fade__item">{{item}}</text>
-        </view>
+      </view>
+      <view wx:else class="time-preset mt-sm">
+        <text class="time-preset__label">{{timeQuickLabel}}</text>
+        <text class="time-preset__range">{{startTime}} — {{endTime}}</text>
       </view>
     </view>
   </view>
 
   <view class="card mt">
+    <view class="card-hd">发布对象</view>
     <view class="card-bd">
       <seg-tabs tabs="{{visibilityTabs}}" value="{{visibility}}" bind:change="onVisibilityChange" />
+      <view wx:if="{{visibilityHint}}" class="visibility-hint muted">{{visibilityHint}}</view>
     </view>
   </view>
 

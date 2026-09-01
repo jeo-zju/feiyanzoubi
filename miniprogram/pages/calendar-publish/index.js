@@ -6,6 +6,15 @@ const cache = require("../../utils/cache");
 
 const MAX_DAYS = 14;
 const WEEK_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
+// 时间段快速筛选预设：全天/上午/下午 + 自定义（时间段滚轮）。
+// 全天取 10:00-22:00，与时间轴可视窗口（calendar-timeline 的 START_HOUR=10 / END_HOUR=22）一致，
+// 同时满足云函数「单次计划不超过 12 小时」的约束（00:00-23:59 会触发后端 12 小时上限被拒绝）。
+const TIME_QUICK = [
+  { key: "allday", label: "全天", hint: "10:00-22:00", startTime: "10:00", endTime: "22:00" },
+  { key: "morning", label: "上午", hint: "10:00-14:00", startTime: "10:00", endTime: "14:00" },
+  { key: "afternoon", label: "下午", hint: "14:00-22:00", startTime: "14:00", endTime: "22:00" },
+  { key: "custom", label: "时间段", hint: "自定义", startTime: "", endTime: "" }
+];
 
 function pad2(n) { return n < 10 ? `0${n}` : String(n); }
 function addDays(baseDate, days) {
@@ -35,19 +44,22 @@ Page({
     dateCells: [],
     selectedDate: "",
     dateRangeLabel: "",
-    startTime: "19:00",
-    endTime: "21:00",
-    durationHourText: "2 小时",
-    ghostTicksTop: ["18:30", "20:30"],
-    ghostTicksBottom: ["19:30", "21:30"],
+    startTime: "10:00",
+    endTime: "22:00",
+    durationHourText: "12 小时",
+    timeQuickKey: "allday",
+    timeQuickLabel: "全天",
+    timeQuick: TIME_QUICK,
     visibility: "public",
     visibilityTabs: [
       { key: "public", label: "公开发布" },
-      { key: "friends", label: "对我的岩友发布" }
+      { key: "friends", label: "对岩友发布" },
+      { key: "circle", label: "对岩友圈发布" }
     ],
-    advancedOpen: false,
+    visibilityHint: "",
+    advancedOpen: true,
     note: "",
-    needPartner: false,
+    needPartner: true,
     skillTags: [
       { key: "boulder", label: "抱石", on: false, warn: true },
       { key: "lead", label: "先锋", on: false },
@@ -173,47 +185,40 @@ Page({
     this.setData({ dateCells: cells, selectedDate: date });
   },
 
-  onTapStartTime() {
-    const cur = this.data.startTime;
-    const items = [];
-    for (let h = 6; h <= 23; h++) {
-      for (let m = 0; m < 60; m += 30) {
-        items.push(`${pad2(h)}:${pad2(m)}`);
-      }
+  onSelectTimeQuick(e) {
+    const key = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.key;
+    if (!key) return;
+    const preset = TIME_QUICK.find((x) => x.key === key);
+    if (!preset) return;
+    const patch = { timeQuickKey: key, timeQuickLabel: preset.label };
+    if (key !== "custom" && preset.startTime && preset.endTime) {
+      patch.startTime = preset.startTime;
+      patch.endTime = preset.endTime;
     }
-    wx.showActionSheet({
-      itemList: items,
-      success: (r) => {
-        const v = items[r.tapIndex];
-        if (!v) return;
-        const end = this.timeHMToMin(this.data.endTime);
-        if (this.timeHMToMin(v) >= end) {
-          this.setData({ endTime: hmLabel(this.timeHMToMin(v) + 120) });
-        }
-        this.setData({ startTime: v });
-        this.recomputeDuration();
-      }
-    });
+    this.setData(patch, () => this.recomputeDuration());
   },
 
-  onTapEndTime() {
-    const startMin = this.timeHMToMin(this.data.startTime);
-    const items = [];
-    const startIdx = Math.floor(startMin / 30);
-    const endBound = 24 * 60;
-    for (let t = startMin + 30; t <= endBound; t += 30) {
-      if (t - startMin < 30 || t - startMin > 12 * 60) continue;
-      items.push(hmLabel(t));
+  onStartTimeChange(e) {
+    const v = (e && e.detail && e.detail.value) || "";
+    if (!v) return;
+    const startMin = this.timeHMToMin(v);
+    let end = this.data.endTime;
+    if (this.timeHMToMin(end) - startMin < 30) {
+      end = hmLabel(Math.min(23 * 60 + 30, startMin + 120));
     }
-    wx.showActionSheet({
-      itemList: items,
-      success: (r) => {
-        const v = items[r.tapIndex];
-        if (!v) return;
-        this.setData({ endTime: v });
-        this.recomputeDuration();
-      }
-    });
+    this.setData({ startTime: v, endTime: end, timeQuickKey: "custom", timeQuickLabel: "时间段" });
+    this.recomputeDuration();
+  },
+
+  onEndTimeChange(e) {
+    const v = (e && e.detail && e.detail.value) || "";
+    if (!v) return;
+    if (this.timeHMToMin(v) <= this.timeHMToMin(this.data.startTime)) {
+      wx.showToast({ title: "结束时间需晚于开始时间", icon: "none" });
+      return;
+    }
+    this.setData({ endTime: v, timeQuickKey: "custom", timeQuickLabel: "时间段" });
+    this.recomputeDuration();
   },
 
   timeHMToMin(hm) {
@@ -229,15 +234,24 @@ Page({
     const hours = Math.floor(diff / 60);
     const mins = diff - hours * 60;
     let txt = mins ? `${hours} 小时 ${mins} 分` : `${hours} 小时`;
-    const sm = (s / 30 - 2 + 24) % 48;
-    const em = (e / 30 - 2 + 24) % 48;
-    const top = [hmLabel(Math.max(0, s - 30)), hmLabel(Math.min(24 * 60 - 30, e - 30))];
-    const bottom = [hmLabel(Math.min(24 * 60 - 30, s + 30)), hmLabel(Math.min(24 * 60 - 30, e + 30))];
-    this.setData({ durationHourText: txt, ghostTicksTop: top, ghostTicksBottom: bottom });
+    this.setData({ durationHourText: txt });
   },
 
   onVisibilityChange(e) {
-    this.setData({ visibility: (e && e.detail && e.detail.value) || "public" });
+    const v = (e && e.detail && e.detail.value) || "public";
+    const patch = { visibility: v, visibilityHint: this.visibilityHintFor(v) };
+    if (v === "public") {
+      // 公开发布：默认勾选「求搭子」并展开高级选项
+      patch.needPartner = true;
+      patch.advancedOpen = true;
+    }
+    this.setData(patch);
+  },
+
+  visibilityHintFor(v) {
+    if (v === "friends") return "对岩友发布——只有你的岩友能看到你的发布";
+    if (v === "circle") return "对岩友圈发布——会自动发布到对应岩馆关联的岩友圈(已加入的)";
+    return "";
   },
 
   onToggleAdvanced() { this.setData({ advancedOpen: !this.data.advancedOpen }); },
