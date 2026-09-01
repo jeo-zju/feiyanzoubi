@@ -101,6 +101,7 @@
       <text class="float-bottom__ic">＋</text>
       <text>发布日历</text>
     </view>
+    <view class="float-bottom__refresh" bindtap="onTapRefresh" aria-label="刷新">↻</view>
   </view>
 
   <view class="page-footpad"></view>
