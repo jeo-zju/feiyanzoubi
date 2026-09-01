@@ -40,7 +40,7 @@ function hashOpenidToRockId(openid) {
 
 const ALLOWED_TOPLEVEL = new Set([
   "nickName", "avatarUrl", "city", "gender", "province", "country",
-  "heightCm", "armspanCm", "title", "mbti", "displayName"
+  "heightCm", "armspanCm", "title", "mbti", "displayName", "slogan"
 ]);
 const ALLOWED_NESTED = new Set(["climbSkills", "giftWall"]);
 
@@ -173,6 +173,7 @@ async function hydrateMe(doc) {
     armspanCm: doc.armspanCm || doc.armspan || "",
     climbSkills: doc.climbSkills || {},
     giftWall: doc.giftWall || {},
+    slogan: doc.slogan || "",
     acceptedCount: (acceptedCount && acceptedCount.total) || 0
   };
 }

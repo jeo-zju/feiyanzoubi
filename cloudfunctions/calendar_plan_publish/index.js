@@ -92,6 +92,58 @@ async function getGym(gymId) {
   }
 }
 
+// 查找当前用户已加入的、且关联了指定岩馆的岩友圈
+async function getMyCirclesForGym(openid, gymId) {
+  if (!openid || !gymId) return [];
+  try {
+    const cRes = await db
+      .collection("RockCircles")
+      .where({ status: "active", gymIds: gymId })
+      .limit(100)
+      .get();
+    const circles = (cRes && cRes.data) || [];
+    if (!circles.length) return [];
+    const cIds = Array.from(new Set(circles.map((c) => String(c._id || "")).filter(Boolean)));
+    if (!cIds.length) return [];
+    const mRes = await db
+      .collection("RockCircleMembers")
+      .where({ openid, circleId: _.in(cIds), status: "accepted" })
+      .limit(100)
+      .get();
+    const memberships = (mRes && mRes.data) || [];
+    return Array.from(new Set(memberships.map((m) => String(m.circleId || "")).filter(Boolean)));
+  } catch (e) {
+    return [];
+  }
+}
+
+// 计划发布成功后，自动在目标岩友圈发一条动态
+async function autoPostToCircles(opts) {
+  const { planId, circleIds, openid, date, startTime, endTime, gymSnapshot, note } = opts;
+  const gymName = (gymSnapshot && gymSnapshot.name) || "";
+  const notePart = note ? `（${note}）` : "";
+  const content = `🧗 约爬计划 ${date} ${startTime}-${endTime} @${gymName}${notePart}，来报名一起爬！`;
+  for (const circleId of circleIds) {
+    try {
+      await db.collection("RockCirclePosts").add({
+        data: {
+          circleId,
+          openid,
+          nickName: "",
+          avatarUrl: "",
+          content,
+          images: [],
+          status: "active",
+          planId,
+          createdAt: Date.now(),
+          created_at: db.serverDate(),
+          updated_at: db.serverDate()
+        }
+      });
+    } catch (e) {}
+  }
+}
+
 async function hydrateUserMap(openids) {
   const ids = Array.from(new Set((openids || []).filter(Boolean))).slice(0, 200);
   if (!ids.length) return {};
@@ -161,7 +213,8 @@ exports.main = async (event) => {
       const date = safeText(payload.date);
       const startTime = safeText(payload.startTime);
       const endTime = safeText(payload.endTime);
-      const visibility = safeText(payload.visibility) === "friends" ? "friends" : "public";
+      const rawVisibility = safeText(payload.visibility);
+      const visibility = ["public", "friends", "circle"].includes(rawVisibility) ? rawVisibility : "public";
       const note = safeText(payload.note);
       const needPartner = !!(payload && payload.needPartner);
       const skillTags = normalizeSkillTags(payload && payload.skillTags);
@@ -191,6 +244,13 @@ exports.main = async (event) => {
         if (!outdoorName) return fail("BAD_REQUEST", "请填写野攀地点", tid);
       }
 
+      let circleIds = [];
+      if (visibility === "circle") {
+        if (mode !== "gym" || !gymId) return fail("BAD_REQUEST", "对岩友圈发布需要选择岩馆", tid);
+        circleIds = await getMyCirclesForGym(openid, gymId);
+        if (!circleIds.length) return fail("NO_CIRCLE", "未加入该岩馆关联的岩友圈，无法对岩友圈发布", tid);
+      }
+
       const user = await getUser(openid);
       const nickName = (user && (user.nickName || user.wechatName || user.name)) || "";
       const avatarUrl = (user && user.avatarUrl) || "";
@@ -212,6 +272,7 @@ exports.main = async (event) => {
           endTime,
           durationMin,
           visibility,
+          circleIds,
           note,
           needPartner,
           skillTags,
@@ -223,7 +284,11 @@ exports.main = async (event) => {
           updated_at: db.serverDate()
         };
         const r = await col.add({ data });
-        return ok({ planId: r && r._id ? String(r._id) : "" }, tid);
+        const planId = r && r._id ? String(r._id) : "";
+        if (planId && circleIds.length) {
+          await autoPostToCircles({ planId, circleIds, openid, date, startTime, endTime, gymSnapshot, note });
+        }
+        return ok({ planId }, tid);
       }
 
       if (action === "update") {
@@ -244,6 +309,7 @@ exports.main = async (event) => {
           endTime,
           durationMin,
           visibility,
+          circleIds,
           note,
           needPartner,
           skillTags,
