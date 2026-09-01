@@ -159,7 +159,10 @@ Page({
       city
     });
     try { this.setData({ canSeeToolbox: !!isAdminUser(user) }); } catch (e) {}
-    this.loadAllHome();
+    // issue #11: 首次进入全量加载；后续切 tab 回首页只加载缓存，避免每次弹“加载中”
+    const firstLoad = !this._homeLoadedOnce;
+    this._homeLoadedOnce = true;
+    this.loadAllHome(firstLoad);
   },
 
   buildCalendarBase() {
@@ -182,19 +185,21 @@ Page({
     this.setData({ dateCells: cells, calendarLabel: monthLabel(start) });
   },
 
-  async loadAllHome() {
-    try { await this.loadGymList(); } catch (e) { console.warn("[home] preloadGymList failed", e && e.message); }
+  async loadAllHome(force) {
+    // issue #11: force=true 全量刷新（首次进入/手动点刷新）；否则仅加载缓存数据，不弹加载中
+    const isForce = force !== false;
+    try { await this.loadGymList(isForce); } catch (e) { console.warn("[home] preloadGymList failed", e && e.message); }
     const safe = async (name, fn) => { try { await fn(); } catch (e) { console.warn("[home] loadAllHome", name, "failed", e && e.message); } };
     const groupIndependent = Promise.all([
-      safe("friend", () => this.loadFriendCombined()),
-      safe("cardSummary", () => this.loadCardSummary()),
-      safe("calendarStats", () => this.loadCalendarStats()),
-      safe("myCircles", () => this.loadMyCircles())
+      safe("friend", () => this.loadFriendCombined(isForce)),
+      safe("cardSummary", () => this.loadCardSummary(isForce)),
+      safe("calendarStats", () => this.loadCalendarStats(isForce)),
+      safe("myCircles", () => this.loadMyCircles(isForce))
     ]);
-    const groupCalendar = safe("calendar", () => this.loadCalendar());
+    const groupCalendar = safe("calendar", () => this.loadCalendar(isForce));
     await Promise.all([groupIndependent, groupCalendar]);
     if (this.data.gymId) {
-      await safe("gymCircles", () => this.loadGymCircles());
+      await safe("gymCircles", () => this.loadGymCircles(isForce));
     }
     try { wx.setStorageSync("home_city", safeText(this.data.city)); } catch (_) {}
     try {
@@ -205,11 +210,17 @@ Page({
     } catch (_) {}
   },
 
-  async loadFriendCombined() {
+  // issue #11: 手动刷新——发布日历右侧小图标点击，全量重新加载
+  onTapRefresh() {
+    this.loadAllHome(true);
+  },
+
+  async loadFriendCombined(force) {
     const app = getApp();
     try {
       const r = await app.cacheGet(CACHE_KEYS.FRIEND_COMBINED, {
         ttlMin: 3,
+        forceRefresh: !!force,
         loader: async () => {
           return await friendshipApi.list({ pageSize: 20 });
         },
@@ -242,11 +253,12 @@ Page({
     }
   },
 
-  async loadMyCircles() {
+  async loadMyCircles(force) {
     const app = getApp();
     try {
       const cached = await app.cacheGet(CACHE_KEYS.MY_CIRCLES, {
         ttlMin: 30,
+        forceRefresh: !!force,
         loader: async () => {
           const r = await circleApi.myList();
           return (r && r.list) || [];
@@ -265,24 +277,33 @@ Page({
     }
   },
 
-  async loadGymCircles() {
+  async loadGymCircles(force) {
     if (!safeText(this.data.gymId)) {
       this.setData({ circleList: [], circleTotal: 0, circleHasMore: false, _circleMembershipMap: {} });
       return;
     }
     try {
-      const params = {
-        city: safeText(this.data.city),
-        gymId: safeText(this.data.gymId),
-        page: 1,
-        pageSize: CIRCLE_HOME_LIMIT + 1
-      };
-      const r = await circleApi.list(params);
-      const list = Array.isArray(r && r.list) ? r.list : [];
-      const total = Number(r && r.total ? r.total : list.length);
+      const app = getApp();
+      const cacheKey = `${CACHE_KEYS.MY_CIRCLES}_gym_${safeText(this.data.gymId)}`;
+      const cached = await app.cacheGet(cacheKey, {
+        ttlMin: 5,
+        forceRefresh: !!force,
+        loader: async () => {
+          const params = {
+            city: safeText(this.data.city),
+            gymId: safeText(this.data.gymId),
+            page: 1,
+            pageSize: CIRCLE_HOME_LIMIT + 1
+          };
+          return await circleApi.list(params);
+        },
+        useL2: false
+      });
+      const list = Array.isArray(cached && cached.list) ? cached.list : [];
+      const total = Number(cached && cached.total ? cached.total : list.length);
       const hasMore = list.length > CIRCLE_HOME_LIMIT;
       const showList = list.slice(0, CIRCLE_HOME_LIMIT);
-      const membershipMap = (r && r.myMembershipMap) || {};
+      const membershipMap = (cached && cached.myMembershipMap) || {};
       this.setData({
         circleList: showList,
         circleTotal: total,
@@ -314,7 +335,7 @@ Page({
       selectedCircleLabel: id ? name : "全部岩友圈",
       circlePickerVisible: false
     });
-    this.loadCalendar();
+    this.loadCalendar(true);
   },
 
   async onTapCircleApply(e) {
@@ -330,7 +351,7 @@ Page({
       } else {
         wx.showToast({ title: "已申请", icon: "success" });
       }
-      await this.loadGymCircles();
+      await this.loadGymCircles(true);
     } catch (e) {
       console.warn("[home] apply circle fail", e && e.message);
       wx.showToast({ title: e && e.message || "申请失败", icon: "none" });
@@ -358,7 +379,7 @@ Page({
     wx.navigateTo({ url: `/pages/circle-list/index?${params.join("&")}` });
   },
 
-  async loadCalendar() {
+  async loadCalendar(force) {
     try {
       const cells = this.data.dateCells || [];
       if (!cells.length) return;
@@ -369,7 +390,14 @@ Page({
         endDate: cells[cells.length - 1].date
       };
       if (this.data.gymId) params.gymId = this.data.gymId;
-      const res = await calendarApi.queryCalendar(params);
+      const app = getApp();
+      const cacheKey = `${CACHE_KEYS.CALENDAR_SUMMARY}_home_${safeText(this.data.city)}_${this.data.visibility}`;
+      const res = await app.cacheGet(cacheKey, {
+        ttlMin: 1,
+        forceRefresh: !!force,
+        loader: async () => await calendarApi.queryCalendar(params),
+        useL2: false
+      });
       const aggArr = (res && res.dateAgg) || [];
       const agg = {};
       aggArr.forEach((a) => { agg[a.date] = a; });
@@ -386,11 +414,12 @@ Page({
     } catch (e) { console.warn("[home] loadCalendar failed", e && e.message); }
   },
 
-  async loadCardSummary() {
+  async loadCardSummary(force) {
     const app = getApp();
     try {
       const res = await app.cacheGet(CACHE_KEYS.CARD_SUMMARY, {
         ttlMin: 30,
+        forceRefresh: !!force,
         loader: async () => await cardApi.listMy({}),
         useL2: true
       });
@@ -426,13 +455,14 @@ Page({
     }
   },
 
-  async loadCalendarStats() {
+  async loadCalendarStats(force) {
     const app = getApp();
     try {
       // 【约束】参数必须与 pages/calendar-mine/index.js loadAll 中完全一致，否则缓存串数据
       const params = { includeSummary: true, tab: "upcoming", page: 1, pageSize: 1 };
       const res = await app.cacheGet(CACHE_KEYS.CALENDAR_SUMMARY, {
         ttlMin: 5,
+        forceRefresh: !!force,
         loader: async () => await calendarApi.mine(params),
         useL2: false
       });
@@ -454,13 +484,14 @@ Page({
     }
   },
 
-  async loadGymList() {
+  async loadGymList(force) {
     const app = getApp();
     const cityKey = String(safeText(this.data.city) || "").trim().toLowerCase();
     const cacheKey = `${CACHE_KEYS.GYM_LIST_PREFIX}${cityKey}`;
     try {
       const res = await app.cacheGet(cacheKey, {
         ttlMin: 120,
+        forceRefresh: !!force,
         loader: async () => await gymApi.list(
           { city: safeText(this.data.city), keyword: "", page: 1, pageSize: 20 },
           { loading: false }
@@ -498,7 +529,7 @@ Page({
     const v = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.v;
     if (!v || v === this.data.visibility) return;
     this.setData({ visibility: v });
-    this.loadCalendar();
+    this.loadCalendar(true);
   },
 
   onTapCity() {
@@ -555,14 +586,14 @@ Page({
   },
 
   async onTapGymFilter() {
-    const cached = (this.data._gymOptionsCache || []).slice();
+    // issue #9: 不闪现旧缓存（可能只有 7 条），直接 loading + 重新拉全量
     this.setData({
       gymKeyword: "",
-      gymOptions: cached.length ? cached : this.data.gymOptions,
+      gymOptions: [],
       gymPickerVisible: true,
       "_gymPickerState.page": 0,
       "_gymPickerState.hasMore": false,
-      "_gymPickerState.loading": false
+      "_gymPickerState.loading": true
     });
     await this.loadGymPicker(true);
   },
@@ -632,8 +663,8 @@ Page({
       gymFilterLabel: id ? name : "全部岩馆",
       gymPickerVisible: false
     });
-    this.loadCalendar();
-    this.loadGymCircles();
+    this.loadCalendar(true);
+    this.loadGymCircles(true);
   },
 
   onTapDate(e) {
@@ -647,27 +678,13 @@ Page({
   },
 
   onTapCheckin() {
-    const self = this;
-    const list = ["从常用岩馆打卡", "先选岩馆再打卡"];
-    let visible = true;
-    const mask = wx.createSelectorQuery ? null : null;
-    this._checkinSheet = { visible: true };
-    wx.showActionSheet({
-      itemList: list.length <= 6 ? list : list.slice(0, 6),
-      fail(err) { console.warn("[home] checkin actionsheet fail", err && err.errMsg); },
-      success(r) {
-        if (!visible || r == null || r.tapIndex == null || r.tapIndex === undefined) return;
-        if (r.tapIndex === 0) {
-          let lastGymId = "";
-          try { lastGymId = safeText(wx.getStorageSync("lastGymId")); } catch (_) {}
-          if (lastGymId) wx.navigateTo({ url: `/pages/checkin/index?gymId=${lastGymId}` });
-          else wx.showToast({ title: "还没有常用岩馆，先选一家", icon: "none" });
-        } else {
-          wx.navigateTo({ url: `/pages/calendar-timeline/index?date=${todayYMD()}&auto=1` });
-        }
-      },
-      complete() { visible = false; }
-    });
+    // issue #18: 未选岩馆时直接拦截，禁止进入下一步；已选岩馆时直接进入对应岩馆打卡页，不再弹选项
+    const gymId = safeText(this.data.gymId);
+    if (!gymId) {
+      wx.showToast({ title: "请先选择岩馆再打卡", icon: "none" });
+      return;
+    }
+    wx.navigateTo({ url: `/pages/checkin/index?gymId=${gymId}` });
   },
 
   onTapPublish() {

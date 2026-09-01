@@ -1,4 +1,4 @@
-const VERSION_PREFIX = "_cache_v1_";
+const VERSION_PREFIX = "_cache_v2_";
 
 const CACHE_KEYS = {
   ME_PROFILE: `${VERSION_PREFIX}me_profile`,
