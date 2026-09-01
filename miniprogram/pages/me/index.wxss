@@ -347,6 +347,13 @@
 .drawer-bottom-spacer {
   height: calc(env(safe-area-inset-bottom) + 40rpx);
 }
+.drawer-version {
+  font-size: 20rpx;
+  color: rgba(231,233,243,0.35);
+  text-align: center;
+  padding: 16rpx 0 4rpx;
+  letter-spacing: 1rpx;
+}
 .drawer-grp {
   padding: 14rpx 6rpx 10rpx;
   margin-top: 10rpx;

@@ -96,6 +96,7 @@
           <text class="drawer-row__arrow">›</text>
         </view>
       </view>
+      <view class="drawer-version">v{{version}}</view>
       <view class="drawer-bottom-spacer"></view>
     </scroll-view>
   </view>
