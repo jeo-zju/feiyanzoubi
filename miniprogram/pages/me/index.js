@@ -18,7 +18,7 @@ Page({
     defaultAvatar: DEFAULT_AVATAR,
     canSeeToolbox: false,
     drawerOpen: false,
-    version: "2.0.16",
+    version: "2.0.17",
 
     credit: { remaining: 0, limit: 10 },
     creditPercent: 0,
