@@ -52,6 +52,21 @@ function daysBetween(start, end) {
   return Math.round((de - ds) / 86400000);
 }
 
+async function getMyCircleIds(openid) {
+  if (!openid) return [];
+  try {
+    const res = await db
+      .collection("RockCircleMembers")
+      .where({ openid, status: "accepted" })
+      .limit(100)
+      .get();
+    const list = (res && res.data) || [];
+    return Array.from(new Set(list.map((r) => String(r.circleId || "")).filter(Boolean)));
+  } catch (e) {
+    return [];
+  }
+}
+
 async function getFriendOpenids(openid) {
   try {
     const res = await db
@@ -82,7 +97,7 @@ async function getFriendOpenids(openid) {
   }
 }
 
-function buildVisibilityWhere(visibility, openid, friendIds) {
+function buildVisibilityWhere(visibility, openid, friendIds, myCircleIds) {
   const v = safeText(visibility);
   if (v === "friends") {
     const allowed = new Set(friendIds || []);
@@ -91,6 +106,15 @@ function buildVisibilityWhere(visibility, openid, friendIds) {
       { visibility: _.in(["public", "friends"]) },
       _.or([{ _openid: _.in(Array.from(allowed)) }, { uid: _.in(Array.from(allowed)) }])
     ]);
+  }
+  if (v === "circle") {
+    const mine = Array.from(new Set((myCircleIds || []).filter(Boolean)));
+    const ors = [
+      { visibility: "circle", _openid: openid },
+      { visibility: "circle", uid: openid }
+    ];
+    if (mine.length) ors.push({ visibility: "circle", circleIds: _.in(mine) });
+    return _.or(ors);
   }
   return _.or([{ visibility: "public" }, _.and([{ visibility: "friends" }, _.or([{ _openid: openid }, { uid: openid }])])]);
 }
@@ -103,6 +127,7 @@ exports.main = async (event) => {
     const mode = safeText(event && event.mode) || "calendar";
 
     const friendIds = openid ? await getFriendOpenids(openid) : [];
+    const myCircleIds = openid ? await getMyCircleIds(openid) : [];
     const col = db.collection("RockCalendarPlans");
 
     if (mode === "calendar") {
@@ -123,7 +148,7 @@ exports.main = async (event) => {
       const baseWhere = [
         { status: "active" },
         { date: _.in(dates) },
-        buildVisibilityWhere(visibility, openid, friendIds)
+        buildVisibilityWhere(visibility, openid, friendIds, myCircleIds)
       ];
       if (gymId) baseWhere.push({ gymId });
       if (city) baseWhere.push({ "gymSnapshot.city": city });
@@ -157,7 +182,7 @@ exports.main = async (event) => {
       const onlyFriends = !!(event && event.onlyFriends);
       const sortBy = safeText(event && event.sortBy) || "time";
 
-      const baseWhere = [{ status: "active" }, { date }, buildVisibilityWhere(visibility, openid, friendIds)];
+      const baseWhere = [{ status: "active" }, { date }, buildVisibilityWhere(visibility, openid, friendIds, myCircleIds)];
       if (gymId) baseWhere.push({ gymId });
       if (filterGymId) baseWhere.push({ gymId: filterGymId });
       if (city) baseWhere.push({ "gymSnapshot.city": city });
