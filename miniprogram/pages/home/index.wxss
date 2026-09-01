@@ -299,7 +299,10 @@
 }
 .sheet__bd {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  /* 真机 scroll-view 触底事件依赖自身滚动；不能用 overflow-y:auto（会吞掉 scrolltolower） */
+  overflow: hidden;
+  height: 46vh;
   padding: 12rpx 0 20rpx;
   box-sizing: border-box;
 }
