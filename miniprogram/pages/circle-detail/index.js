@@ -16,17 +16,10 @@ Page({
     myMembership: null,
     myStatus: "",
     pendingCount: 0,
-    memberSheetVisible: false,
-    pendingSheetVisible: false,
     gymSheetVisible: false,
     settingSheetVisible: false,
     linkGymSheetVisible: false,
     linkGymOptions: [],
-    bottomTab: "members",
-    bottomTabs: [
-      { key: "members", label: "成员" },
-      { key: "posts", label: "动态" }
-    ],
     postsList: [],
     postsLoading: false,
     postSheetVisible: false,
@@ -49,7 +42,11 @@ Page({
   async loadDetail() {
     try {
       const r = await circleApi.detail({ circleId: this.data.circleId });
+      const app = getApp();
+      const me = (app && app.globalData && app.globalData.me) || (app && app.globalData && app.globalData.user) || {};
+      const myOpenid = String(me.openid || me._openid || "" );
       this.setData({
+        myOpenid,
         circle: r && r.circle ? r.circle : null,
         members: (r && r.members) || [],
         pendings: (r && r.pendings) || [],
@@ -79,69 +76,6 @@ Page({
     }
   },
 
-  openMemberSheet() { this.setData({ memberSheetVisible: true }); },
-  closeMemberSheet() { this.setData({ memberSheetVisible: false }); },
-
-  openPendingSheet() {
-    if (!this.data.isAdmin) return;
-    this.setData({ pendingSheetVisible: true });
-  },
-  closePendingSheet() { this.setData({ pendingSheetVisible: false }); },
-
-  openGymSheet() { this.setData({ gymSheetVisible: true }); },
-  closeGymSheet() { this.setData({ gymSheetVisible: false }); },
-
-  openSettingSheet() { this.setData({ settingSheetVisible: true }); },
-  closeSettingSheet() { this.setData({ settingSheetVisible: false }); },
-
-  goEdit() {
-    this.setData({ settingSheetVisible: false });
-    wx.navigateTo({ url: `/pages/circle-edit/index?mode=edit&circleId=${this.data.circleId}` });
-  },
-
-  onConfirmDisband() {
-    this.setData({ settingSheetVisible: false });
-    const self = this;
-    wx.showModal({
-      title: "解散岩友圈？",
-      content: "解散后成员将无法访问",
-      confirmText: "解散",
-      confirmColor: "#C65A5A",
-      async success(r) {
-        if (!r.confirm) return;
-        try {
-          await circleApi.disband({ circleId: self.data.circleId });
-          try { cache.invalidate(cache.CACHE_KEYS.MY_CIRCLES); } catch (_) {}
-          wx.showToast({ title: "已解散", icon: "success" });
-          setTimeout(() => wx.navigateBack(), 450);
-        } catch (e) {
-          wx.showToast({ title: e && e.message || "失败", icon: "none" });
-        }
-      }
-    });
-  },
-
-  onConfirmLeave() {
-    this.setData({ settingSheetVisible: false });
-    const self = this;
-    wx.showModal({
-      title: "退出岩友圈？",
-      content: "退出后可再次申请加入",
-      confirmText: "退出",
-      confirmColor: "#8A8A8A",
-      async success(r) {
-        if (!r.confirm) return;
-        try {
-          await circleApi.leave({ circleId: self.data.circleId });
-          try { cache.invalidate(cache.CACHE_KEYS.MY_CIRCLES); } catch (_) {}
-          wx.showToast({ title: "已退出", icon: "success" });
-          setTimeout(() => wx.navigateBack(), 450);
-        } catch (e) {
-          wx.showToast({ title: e && e.message || "失败", icon: "none" });
-        }
-      }
-    });
-  },
 
   async onApprove(e) {
     const openid = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.oid);
@@ -255,13 +189,6 @@ Page({
   },
 
   goBack() { wx.navigateBack({ fail: () => wx.switchTab({ url: "/pages/home/index" }) }); },
-
-  onBottomTabChange(e) {
-    const v = (e && e.detail && e.detail.value) || "";
-    if (!v || v === this.data.bottomTab) return;
-    this.setData({ bottomTab: v });
-    if (v === "posts" && !this._postsLoaded) this.loadPosts(true).catch(() => {});
-  },
 
   async loadPosts(reset) {
     if (this.data.postsLoading) return;
@@ -389,7 +316,7 @@ Page({
         images
       });
       wx.showToast({ title: "已发布", icon: "success" });
-      this.setData({ postSheetVisible: false, postContent: "", postImages: [], bottomTab: "posts" });
+      this.setData({ postSheetVisible: false, postContent: "", postImages: [] });
       this._postsLoaded = false;
       this._postPage = 1;
       this.loadPosts(true).catch(() => {});

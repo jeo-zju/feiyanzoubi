@@ -27,19 +27,10 @@
     </view>
   </view>
 
-  <view class="rounds">
-    <view class="round-btn" bindtap="openMemberSheet">
-      <view class="round-btn__ic">👥</view>
-      <text class="round-btn__label">成员</text>
-    </view>
-    <view class="round-btn" wx:if="{{isAdmin}}" bindtap="openPendingSheet">
-      <view class="round-btn__ic">⏳</view>
-      <view class="round-btn__badge" wx:if="{{pendingCount>0}}">{{pendingCount>99?'99+':pendingCount}}</view>
-      <text class="round-btn__label">审批</text>
-    </view>
+  <view class="detail-actions">
     <view class="round-btn" bindtap="openGymSheet">
       <view class="round-btn__ic">🏟️</view>
-      <text class="round-btn__label">岩馆</text>
+      <text class="round-btn__label">关联岩馆</text>
     </view>
     <view wx:if="{{myStatus==='accepted' || isAdmin}}" class="round-btn round-btn--accent" bindtap="openPostSheet">
       <view class="round-btn__ic">＋</view>
@@ -47,56 +38,38 @@
     </view>
   </view>
 
-  <view class="tabs-wrap">
-    <seg-tabs tabs="{{bottomTabs}}" value="{{bottomTab}}" bind:change="onBottomTabChange" />
-  </view>
-
-  <view class="tab-content">
-    <block wx:if="{{bottomTab==='members'}}">
-      <view class="card mt-sm">
-        <view class="card-bd list list--tight">
-          <view wx:if="{{members.length===0}}" class="empty-state">暂无成员</view>
-          <block wx:else>
-            <view class="list-row row" wx:for="{{members}}" wx:key="openid">
-              <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-              <view class="row-info">
-                <view class="row-title">{{item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
-                <view class="muted row-sub">{{item.rockId || '-'}}</view>
-              </view>
-              <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-xs btn-ghost-danger" data-oid="{{item.openid}}" bindtap="onRemoveMember">移除</view>
-            </view>
-          </block>
+  <view class="card mt-sm">
+    <view class="card-hd">
+      <text class="card-hd__t">成员 · {{members.length}}</text>
+      <text wx:if="{{pendingCount>0}}" class="card-hd__badge">{{pendingCount}} 待审批</text>
+    </view>
+    <view class="card-bd list list--tight">
+      <view wx:if="{{members.length===0 && pendings.length===0}}" class="empty-state">暂无成员</view>
+      <block wx:else>
+        <view class="list-row row" wx:for="{{members}}" wx:key="openid">
+          <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          <view class="row-info">
+            <view class="row-title">{{item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
+            <view class="muted row-sub">{{item.rockId || '-'}}</view>
+          </view>
+          <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-xs btn-ghost-danger" data-oid="{{item.openid}}" bindtap="onRemoveMember">移除</view>
+          <view wx:elif="{{item.openid===myOpenid}}" class="btn btn-xs btn-ghost" data-oid="{{item.openid}}" catchtap="onConfirmLeave">退出</view>
         </view>
-      </view>
-    </block>
-
-    <block wx:if="{{bottomTab==='posts'}}">
-      <view class="card mt-sm">
-        <view class="card-bd list">
-          <view wx:if="{{(myStatus!=='accepted' && !isAdmin) && circle.visibility!=='public'}}" class="empty-state">加入后可查看圈内动态</view>
-          <view wx:elif="{{postsLoading}}" class="empty-state">加载中…</view>
-          <view wx:elif="{{!postsList.length}}" class="empty-state">还没有动态，发第一条吧</view>
-          <block wx:else>
-            <view class="post-row" wx:for="{{postsList}}" wx:key="_id">
-              <view class="post-hd">
-                <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-                <view class="post-info">
-                  <view class="post-name">{{item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
-                  <view class="muted post-time">{{item.createdAtText || item.timeText || ''}}</view>
-                </view>
-                <view wx:if="{{item.canDelete}}" class="post-del" data-pid="{{item._id}}" catchtap="onTapDeletePost">×</view>
-              </view>
-              <view wx:if="{{item.content}}" class="post-content">{{item.content}}</view>
-              <view wx:if="{{item.images && item.images.length}}" class="post-images">
-                <image wx:for="{{item.images}}" wx:for-item="img" wx:for-index="iidx" wx:key="*this"
-                  class="post-img" src="{{img}}" mode="aspectFill"
-                  data-src="{{img}}" catchtap="onTapPostImage" />
-              </view>
-            </view>
-          </block>
+        <view wx:if="{{pendings.length>0}}" class="pending-divider">待审批申请</view>
+        <view class="list-row row pending-row" wx:for="{{pendings}}" wx:key="openid">
+          <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          <view class="row-info">
+            <view class="row-title">{{item.nickName || '岩友'}}</view>
+            <view class="muted row-sub">{{item.rockId || '-'}}</view>
+          </view>
+          <view wx:if="{{isAdmin}}" class="sheet-item__actions">
+            <view class="ic-btn ic-btn--ok" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
+            <view class="ic-btn ic-btn--no" data-oid="{{item.openid}}" bindtap="onReject">✕</view>
+          </view>
+          <view wx:else class="btn btn-xs btn-ghost">待审批</view>
         </view>
-      </view>
-    </block>
+      </block>
+    </view>
   </view>
 
   <view class="foot">
@@ -129,53 +102,6 @@
           </view>
         </view>
       </view>
-    </view>
-  </view>
-
-  <view wx:if="{{memberSheetVisible}}" class="sheet-mask" bindtap="closeMemberSheet" catchtouchmove="noop">
-    <view class="sheet" catchtap="noop">
-      <view class="sheet__hd">
-        <text class="sheet__title">成员 · {{members.length}}</text>
-        <view class="sheet__close" bindtap="closeMemberSheet">✕</view>
-      </view>
-      <scroll-view class="sheet__bd" scroll-y>
-        <view wx:if="{{members.length===0}}" class="sheet-empty">暂无成员</view>
-        <block wx:else>
-          <view class="sheet-item sheet-item--row" wx:for="{{members}}" wx:key="openid">
-            <image class="sheet-item__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-            <view class="sheet-item__info">
-              <text class="sheet-item__name">{{item.nickName || '岩友'}}</text>
-              <text class="sheet-item__sub">{{item.rockId || '-'}}{{item.role==='admin' ? ' · 管理员' : ''}}</text>
-            </view>
-            <view wx:if="{{isAdmin && item.role!=='admin'}}" class="sheet-item__btn sheet-item__btn--danger" data-oid="{{item.openid}}" bindtap="onRemoveMember">移除</view>
-          </view>
-        </block>
-      </scroll-view>
-    </view>
-  </view>
-
-  <view wx:if="{{pendingSheetVisible}}" class="sheet-mask" bindtap="closePendingSheet" catchtouchmove="noop">
-    <view class="sheet" catchtap="noop">
-      <view class="sheet__hd">
-        <text class="sheet__title">待审批 · {{pendings.length}}</text>
-        <view class="sheet__close" bindtap="closePendingSheet">✕</view>
-      </view>
-      <scroll-view class="sheet__bd" scroll-y>
-        <view wx:if="{{pendings.length===0}}" class="sheet-empty">暂无待审批</view>
-        <block wx:else>
-          <view class="sheet-item sheet-item--row" wx:for="{{pendings}}" wx:key="openid">
-            <image class="sheet-item__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-            <view class="sheet-item__info">
-              <text class="sheet-item__name">{{item.nickName || '岩友'}}</text>
-              <text class="sheet-item__sub">{{item.rockId || '-'}}</text>
-            </view>
-            <view class="sheet-item__actions">
-              <view class="ic-btn ic-btn--ok" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
-              <view class="ic-btn ic-btn--no" data-oid="{{item.openid}}" bindtap="onReject">✕</view>
-            </view>
-          </view>
-        </block>
-      </scroll-view>
     </view>
   </view>
 
