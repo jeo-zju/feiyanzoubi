@@ -89,7 +89,7 @@ Page({
     this.setData({
       user: {
         nickName: user.nickName || me.nickName || "",
-        avatarUrl: user.avatarUrl || me.avatarUrl || "",
+        avatarUrl: me.avatarUrl || user.avatarUrl || "",
         projectName: user.projectName || "Project"
       },
       me,
@@ -153,7 +153,7 @@ Page({
       const creditPercent = limit > 0 ? Math.max(0, Math.min(100, Math.round((remaining * 100) / limit))) : 0;
       const nextPrimaryCard = (res && res.myPrimaryCard) || null;
       // issue #13: 名片上的那句话（oneLiner）优先于用户资料 slogan 展示
-      const cardOneLiner = (nextPrimaryCard && nextPrimaryCard.front && nextPrimaryCard.front.oneLiner) || "";
+      const cardOneLiner = (nextPrimaryCard && (nextPrimaryCard.oneLiner || (nextPrimaryCard.front && nextPrimaryCard.front.oneLiner))) || "";
       const me = this.data.me || {};
       this.setData({
         credit,

@@ -1,3 +1,10 @@
 
 # 调试临时文件
 .dbg/
+
+# 部署工具链（避免密钥/配置/依赖进公开仓库）
+node_modules/
+deploy-tools/config.env
+*.key
+deploy-tools/preview-qrcode.jpg
+

@@ -53,6 +53,34 @@ exports.main = async (event) => {
       return ok({ cardId, oneLiner }, tid);
     }
 
+    if (action === "sync_profile") {
+      // #13: 编辑资料保存时，将资料字段完整同步到主名片（不耗额度、不需要背面故事）
+      const front = (event && event.front) && typeof event.front === "object" ? event.front : {};
+      const patch = {};
+      ["displayName", "title", "mbti", "oneLiner"].forEach((k) => {
+        if (front[k] !== undefined) patch["front." + k] = safeText(front[k]);
+      });
+      if (front.oneLinerStyle !== undefined) {
+        patch["front.oneLinerStyle"] = safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor";
+      }
+      if (front.avatarMode !== undefined) {
+        patch["front.avatarMode"] = safeText(front.avatarMode) === "custom" ? "custom" : "wechat";
+      }
+      if (front.avatarFileId !== undefined) patch["front.avatarFileId"] = safeText(front.avatarFileId);
+      if (front.avatarUrl !== undefined) patch["front.avatarUrl"] = safeText(front.avatarUrl);
+      if (front.wanderer !== undefined) patch["front.wanderer"] = !!front.wanderer;
+      if (Array.isArray(front.gyms)) {
+        patch["front.gyms"] = front.gyms.slice(0, 3).map((g) => {
+          if (typeof g === "string") return { gymId: "", name: safeText(g), city: "" };
+          return { gymId: safeText(g && g.gymId), name: safeText(g && g.name), city: safeText(g && g.city) };
+        });
+      }
+      patch.updatedAt = Date.now();
+      patch.updated_at = db.serverDate();
+      await cardsCol.doc(cardId).update({ data: patch });
+      return ok({ cardId }, tid);
+    }
+
     if (action === "set_primary") {
       await cardsCol.where({ ownerOpenid: openid, isPrimary: true }).update({ data: { isPrimary: false, updated_at: db.serverDate() } });
       await cardsCol.doc(cardId).update({ data: { isPrimary: true, updated_at: db.serverDate() } });

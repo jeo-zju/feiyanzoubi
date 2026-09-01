@@ -58,7 +58,8 @@ function pickCardSnapshot(card, userAvatarUrl) {
     oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor",
     avatarMode: safeText(front.avatarMode) === "custom" ? "custom" : "wechat",
     avatarFileId: safeText(front.avatarFileId),
-    avatarUrl: safeText(front.avatarUrl || userAvatarUrl)
+    avatarUrl: safeText(front.avatarUrl || userAvatarUrl),
+    updatedAt: card && (card.updatedAt || card._updateTime) ? Number(card.updatedAt || card._updateTime || 0) : 0
   };
 }
 

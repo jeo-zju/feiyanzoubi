@@ -293,29 +293,30 @@ Page({
         const app = getApp();
         if (app && app.globalData) app.globalData.me = r.me;
       }
-      // issue #13 + #19: 一句话同步到主名片；无主卡时自动创建名片（新用户）
+      // issue #13 + #19: 编辑资料完整同步到主名片；无主卡时自动创建（新用户）
       const sloganText = safeText(this.data.slogan).trim();
+      const frontSync = {
+        displayName: safeText(this.data.displayName) || nickName,
+        title: safeText(this.data.title),
+        mbti: safeText(this.data.mbti),
+        oneLiner: sloganText,
+        oneLinerStyle: "humor",
+        avatarMode: avatarUrl ? "custom" : "wechat",
+        avatarFileId: avatarUrl || "",
+        avatarUrl,
+        wanderer: false,
+        gyms: this.data.city ? [{ gymId: "", name: "", city: this.data.city }] : []
+      };
       try {
         const myCard = await cardApi.listMy({});
         const primary = (myCard && myCard.myPrimaryCard) || null;
         if (primary && primary.cardId) {
-          if (sloganText) await cardApi.updateOneLiner(primary.cardId, sloganText);
-        } else if (sloganText || true) {
+          await cardApi.syncProfile(primary.cardId, frontSync);
+        } else {
           // 新用户：用资料创建主名片（upsert 要求背面故事非空，用默认占位）
           await cardApi.upsert({
             card: {
-              front: {
-                displayName: safeText(this.data.displayName) || nickName,
-                title: safeText(this.data.title),
-                mbti: safeText(this.data.mbti),
-                avatarMode: avatarUrl ? "custom" : "wechat",
-                avatarFileId: avatarUrl || "",
-                avatarUrl,
-                oneLiner: sloganText,
-                oneLinerStyle: "humor",
-                wanderer: false,
-                gyms: this.data.city ? [{ gymId: "", name: "", city: this.data.city }] : []
-              },
+              front: frontSync,
               back: { story: "飞岩走壁，攀无止境" }
             }
           });
@@ -329,7 +330,6 @@ Page({
       }
       try { cache.invalidate(cache.CACHE_KEYS.ME_PROFILE); } catch (_) {}
       try { cache.invalidate(cache.CACHE_KEYS.CARD_SUMMARY); } catch (_) {}
-      try { cache.invalidate(cache.CACHE_KEYS.ME_PROFILE); } catch (_) {}
       wx.showToast({ title: "已保存", icon: "success" });
       setTimeout(() => { wx.navigateBack({ delta: 1 }); }, 500);
     } catch (e) {
