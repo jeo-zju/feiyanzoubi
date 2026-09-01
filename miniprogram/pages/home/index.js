@@ -11,7 +11,7 @@ const { DEFAULT_AVATAR, CIRCLE_COLORS } = require("../../utils/constants");
 const { CACHE_KEYS } = require("../../utils/cache");
 
 const WEEK_LABELS = ["今天", "周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-const CITY_PRESETS = ["上海", "北京", "深圳", "广州", "杭州", "成都", "南京", "武汉"];
+const CITY_PRESETS = ["杭州", "上海", "北京", "深圳", "广州", "成都", "南京", "武汉"];
 const CALENDAR_DAYS = 14;
 const CIRCLE_HOME_LIMIT = 2;
 
@@ -147,7 +147,7 @@ Page({
     }
     let storedCity = "";
     try { storedCity = String(wx.getStorageSync("home_city") || ""); } catch (_) {}
-    const city = safeText(this.data.city) || safeText(me.city) || safeText(user.city) || safeText(storedCity) || "上海";
+    const city = safeText(this.data.city) || safeText(me.city) || safeText(user.city) || safeText(storedCity) || "杭州";
     this.setData({
       user: {
         nickName: user.nickName || me.nickName || "",

@@ -38,7 +38,7 @@ Page({
     this.setData({
       mode,
       circleId,
-      city: cityFromOpt || "上海",
+      city: cityFromOpt || "杭州",
       gymIds,
       cityOptions,
       selectedColorIndex: Math.floor(Math.random() * CIRCLE_COLORS.length)
