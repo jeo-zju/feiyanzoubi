@@ -107,6 +107,12 @@ function drawFrontCard(ctx, options) {
 
     const tx = ax + ar * 2 + 36;
     const nameY = ay + ar + 4;
+    // issue #23: 旧版 canvas 上 save/restore 对文字样式（textAlign/textBaseline）的
+    // 恢复在部分真机/基础库上不可靠。若顶部横幅（textAlign:center）或上一帧残留了
+    // center/middle 状态，称呼文字会以 tx 为中线向两侧展开、直接压到头像圆上。
+    // 因此称呼行绘制前显式复位文本状态，保证名字永远从头像右侧开始。
+    ctx.setTextAlign("left");
+    ctx.setTextBaseline("alphabetic");
     const nameText = clampText(front.displayName || me.displayName || user.nickName || "岩友", 10);
     ctx.setFillStyle("#E7E9F3");
     ctx.setFontSize(50);
@@ -205,6 +211,10 @@ function drawFrontCard(ctx, options) {
   ctx.stroke();
 
   const tx = ax + ar * 2 + Math.floor(W * 0.05);
+  // issue #23: 同上——头像圆绘制（save/clip/restore）若在真机上残留 center/middle
+  // 文本状态，会把称呼/标题以 tx 为中心绘制到头像上；绘制前显式复位。
+  ctx.setTextAlign("left");
+  ctx.setTextBaseline("alphabetic");
   ctx.setFillStyle("#FFFFFF");
   ctx.setFontSize(Math.floor(H * 0.11));
   ctx.fillText(clampText(front.displayName || "岩友", 10), tx, ay + Math.floor(H * 0.13));
