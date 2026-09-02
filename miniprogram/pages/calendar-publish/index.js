@@ -38,9 +38,11 @@ Page({
     city: "",
     selectedGymId: "",
     selectedGymName: "",
+    gymPickOpen: false,
     gymKeyword: "",
-    gymSearched: [],
-    gymSearching: false,
+    gymOptions: [],
+    // #26③: 岩馆列表分页状态（对齐首页 home loadGymPicker：20/页 + 滚动加载）
+    _gymPickerState: { page: 0, hasMore: false, loading: false },
     dateCells: [],
     selectedDate: "",
     dateRangeLabel: "",
@@ -117,69 +119,125 @@ Page({
       dateRangeLabel: `${startLabel} - ${endLabel}`
     });
     this.recomputeDuration();
+    if (!gymId) {
+      // #26①: 进入时未带岩馆 → 复用「今日打卡」拦截模式（home onTapCheckin：未选直接提示），
+      // 提示先选岩馆并自动打开选择/搜索，发布前必须完成岩馆绑定
+      wx.showToast({ title: "请先选择岩馆", icon: "none" });
+      this.openGymPicker();
+    }
   },
 
   onUnload() {
-    if (this._gymSearchTimer) {
-      clearTimeout(this._gymSearchTimer);
-      this._gymSearchTimer = null;
-    }
-    this._gymSearchToken = (this._gymSearchToken || 0) + 1;
+    this._clearGymPickerTimer();
+  },
+
+  // #26③: 岩馆选择/搜索整体对齐首页 home 的 loadGymPicker 模式：
+  // 搜索框 + 300ms 防抖 + 分页(20/页) + 滚动加载(hasNext)，支持城市列表直接浏览
+  openGymPicker() {
+    if (this.data.gymPickOpen) return;
+    this._clearGymPickerTimer();
+    this.setData({
+      gymPickOpen: true,
+      gymKeyword: "",
+      gymOptions: [],
+      "_gymPickerState.page": 0,
+      "_gymPickerState.hasMore": false,
+      "_gymPickerState.loading": false
+    });
+    this.loadGymPicker(true);
+  },
+
+  onTapChangeGym() {
+    if (!this.data.gymPickOpen) this.openGymPicker();
+  },
+
+  onCloseGymPicker() {
+    if (!this.data.selectedGymId) return;
+    this._clearGymPickerTimer();
+    this.setData({ gymPickOpen: false, gymKeyword: "", gymOptions: [] });
   },
 
   onGymKeywordInput(e) {
     const keyword = safeText(e && e.detail && e.detail.value);
-    this.setData({ gymKeyword: keyword });
-    if (this._gymSearchTimer) {
-      clearTimeout(this._gymSearchTimer);
-      this._gymSearchTimer = null;
-    }
-    this._gymSearchToken = (this._gymSearchToken || 0) + 1;
-    const token = this._gymSearchToken;
-    if (!keyword) {
-      this.setData({ gymSearched: [], gymSearching: false });
-      return;
-    }
-    this.setData({ gymSearching: true });
+    this.setData({ gymKeyword: keyword, gymOptions: [], "_gymPickerState.loading": true });
+    if (this._gymKeywordTimer) clearTimeout(this._gymKeywordTimer);
     const self = this;
-    this._gymSearchTimer = setTimeout(() => {
-      self._gymSearchTimer = null;
-      self.loadGymSearch(keyword, token);
+    this._gymKeywordTimer = setTimeout(() => {
+      self._gymKeywordTimer = null;
+      self.loadGymPicker(true);
     }, 300);
   },
 
-  async loadGymSearch(keyword, token) {
+  onGymPickerScrollLower() {
+    this.onGymPickerLoadMore();
+  },
+
+  onGymPickerLoadMore() {
+    const st = this.data._gymPickerState || {};
+    if (st.loading || !st.hasMore) return;
+    this.loadGymPicker(false);
+  },
+
+  async loadGymPicker(reset) {
+    const st = this.data._gymPickerState || { page: 0, hasMore: false, loading: false };
+    if (!reset && (st.loading || !st.hasMore)) return;
+    const keyword = safeText(this.data.gymKeyword);
+    const page = reset ? 1 : Math.max(1, Number(st.page || 0) + 1);
+    this._gymPickerToken = (this._gymPickerToken || 0) + 1;
+    const token = this._gymPickerToken;
+    this.setData({ "_gymPickerState.loading": true });
     try {
       const res = await gymApi.list(
-        { page: 1, pageSize: 10, keyword, city: safeText(this.data.city) },
+        { city: safeText(this.data.city), keyword, page, pageSize: 20 },
         { loading: false }
       );
-      if (token !== this._gymSearchToken) return;
+      if (token !== this._gymPickerToken) return;
       const list = (res && res.gyms) || [];
-      this.setData({
-        gymSearching: false,
-        gymSearched: list.map((x) => ({
-          _id: x._id,
-          name: x.name || x.gymName || "",
-          city: x.city || "",
-          address: x.address || ""
+      const hasMore = !!(res && res.hasNext);
+      const options = (Array.isArray(list) ? list : [])
+        .map((x) => ({
+          _id: String((x && x._id) || ""),
+          name: safeText(x && (x.name || x.gymName)) || "未命名岩馆",
+          city: safeText(x && (x.city || x.cityName || "")),
+          address: safeText(x && (x.address || x.addr || ""))
         }))
+        .filter((o) => o._id);
+      const merged = reset ? options : (this.data.gymOptions || []).concat(options);
+      this.setData({
+        gymOptions: merged,
+        "_gymPickerState.page": page,
+        "_gymPickerState.hasMore": hasMore,
+        "_gymPickerState.loading": false
       });
     } catch (e) {
-      if (token !== this._gymSearchToken) return;
-      this.setData({ gymSearched: [], gymSearching: false });
+      if (token !== this._gymPickerToken) return;
+      console.warn("[calendar-publish] loadGymPicker failed", e && e.message);
+      this.setData({ "_gymPickerState.loading": false });
     }
   },
 
-  onSelectGym(e) {
-    const ds = e && e.currentTarget && e.currentTarget.dataset;
+  // #26②: 选择后回到「已选态」直接展示岩馆，顶部模块语义清晰
+  onPickGym(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const gymId = String(ds.gymid || "");
+    if (!gymId) return;
+    this._clearGymPickerTimer();
     this.setData({
-      selectedGymId: ds.gymid || "",
-      selectedGymName: ds.gymname || ""
+      selectedGymId: gymId,
+      selectedGymName: String(ds.gymname || ""),
+      gymPickOpen: false,
+      gymKeyword: "",
+      gymOptions: []
     });
   },
 
-  onClearGym() { this.setData({ selectedGymId: "", selectedGymName: "" }); },
+  _clearGymPickerTimer() {
+    if (this._gymKeywordTimer) {
+      clearTimeout(this._gymKeywordTimer);
+      this._gymKeywordTimer = null;
+    }
+    this._gymPickerToken = (this._gymPickerToken || 0) + 1;
+  },
 
   onSelectDate(e) {
     const date = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.date;
@@ -314,7 +372,7 @@ Page({
 
   async onPublish() {
     if (!this.data.selectedGymId) {
-      wx.showToast({ title: "请选择或搜索岩馆", icon: "none" });
+      wx.showToast({ title: "请先选择岩馆", icon: "none" });
       return;
     }
     if (!this.data.selectedDate) {
@@ -332,17 +390,21 @@ Page({
       return;
     }
     const skillTags = this.data.skillTags.filter((x) => x.on).map((x) => x.key);
+    // issue #27: 云函数 calendar_plan_publish 读 event.payload.date 等嵌套字段，
+    // action 读 event 顶层 → 这里包一层 payload（原来平铺导致云端 payload={} 报缺 date）
     const payload = {
       action: "create",
-      mode: "gym",
-      date: this.data.selectedDate,
-      startTime: this.data.startTime,
-      endTime: this.data.endTime,
-      visibility: this.data.visibility,
-      note: this.data.note || "",
-      needPartner: !!this.data.needPartner,
-      skillTags,
-      gymId: this.data.selectedGymId
+      payload: {
+        mode: "gym",
+        date: this.data.selectedDate,
+        startTime: this.data.startTime,
+        endTime: this.data.endTime,
+        visibility: this.data.visibility,
+        note: this.data.note || "",
+        needPartner: !!this.data.needPartner,
+        skillTags,
+        gymId: this.data.selectedGymId
+      }
     };
     wx.showLoading({ title: "发布中…", mask: true });
     try {
