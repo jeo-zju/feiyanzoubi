@@ -163,6 +163,7 @@ exports.main = async (event) => {
           const uid = u.openid || u._openid || u.uid || "";
           return {
             openid: uid,
+            _openid: uid,
             nickName: u.nickName || "",
             avatarUrl: u.avatarUrl || "",
             rockId: shortId(uid),
@@ -177,12 +178,18 @@ exports.main = async (event) => {
             const u = list[i];
             const uid = u.openid || u._openid || u.uid || "";
             if (!uid || uid === openid) continue;
-            if (shortId(uid) === rockIdLike || shortId(uid).indexOf(rockIdLike) === 0) {
+            // 岩友 ID 同时兼容两种派生：文档里存的官方 rockId（名片/个人页展示，FNV）与旧列表行 shortId
+            const storedRockId = String(u.rockId || "").toUpperCase();
+            const derivedRockId = shortId(uid);
+            const hitStored = storedRockId && (storedRockId === rockIdLike || storedRockId.indexOf(rockIdLike) === 0);
+            const hitDerived = derivedRockId === rockIdLike || derivedRockId.indexOf(rockIdLike) === 0;
+            if (hitStored || hitDerived) {
               results.push({
                 openid: uid,
+                _openid: uid,
                 nickName: u.nickName || "",
                 avatarUrl: u.avatarUrl || "",
-                rockId: shortId(uid),
+                rockId: hitStored ? storedRockId : derivedRockId,
                 match: "rockId"
               });
               if (results.length >= 20) break;
@@ -190,7 +197,8 @@ exports.main = async (event) => {
           }
         } catch (e) {}
       }
-      return ok({ users: results }, tid);
+      // 【云函数改动】list 为 users 的兼容别名（旧前端曾读 r.list），行内 _openid 为 openid 的兼容别名
+      return ok({ users: results, list: results }, tid);
     }
 
     // action = list（兼容旧的 follow 模型数据）
