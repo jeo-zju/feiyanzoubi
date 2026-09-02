@@ -8,20 +8,34 @@ Page({
     city: "",
     gymId: "",
     gymName: "",
+    title: "岩友圈",
     list: [],
     membershipMap: {},
     total: 0,
     loading: false
   },
 
+  // 两种入口语义：
+  // - mine（无筛选参数，来自「我的-岩友圈-去列表」）：只展示当前用户已加入/待审批的圈（circleApi.myList）
+  // - explore（带 city/gymId/gymName，来自首页「更多岩友圈」）：展示可加入的全量圈（circleApi.list）
   onLoad(options) {
     const city = decodeURIComponent(safeText(options && options.city));
     const gymId = safeText(options && options.gymId);
     const gymName = decodeURIComponent(safeText(options && options.gymName));
+    const mine = !(gymId || city || gymName);
+    this._mode = mine ? "mine" : "explore";
+    let title = "岩友圈";
+    if (mine) {
+      title = "我的岩友圈";
+    } else {
+      const label = gymName || (gymId ? "该岩馆" : "");
+      if (label) title = `岩友圈 · ${label}`;
+    }
     this.setData({
       city,
       gymId,
-      gymName: gymName || (gymId ? "该岩馆" : "")
+      gymName: gymName || (gymId ? "该岩馆" : ""),
+      title
     });
   },
 
@@ -35,15 +49,30 @@ Page({
     if (this.data.loading) return;
     try {
       this.setData({ loading: true });
-      const res = await circleApi.list({
-        city: this.data.city,
-        gymId: this.data.gymId,
-        page: 1,
-        pageSize: 100
-      });
-      const list = Array.isArray(res && res.list) ? res.list : [];
-      const total = Number(res && res.total ? res.total : list.length);
-      const membershipMap = (res && res.myMembershipMap) || {};
+      let list = [];
+      let total = 0;
+      let membershipMap = {};
+      if (this._mode === "mine") {
+        // #24: 「我的岩友圈」只显示已加入/待审批，改用 myList
+        const res = await circleApi.myList();
+        list = Array.isArray(res && res.list) ? res.list : [];
+        total = list.length;
+        list.forEach((c) => {
+          const id = String(c && c._id || "");
+          if (!id) return;
+          membershipMap[id] = { role: safeText(c.myRole), status: safeText(c.myStatus) };
+        });
+      } else {
+        const res = await circleApi.list({
+          city: this.data.city,
+          gymId: this.data.gymId,
+          page: 1,
+          pageSize: 100
+        });
+        list = Array.isArray(res && res.list) ? res.list : [];
+        total = Number(res && res.total ? res.total : list.length);
+        membershipMap = (res && res.myMembershipMap) || {};
+      }
       this.setData({ list, total, membershipMap, loading: false });
     } catch (e) {
       console.warn("[circle-list] load fail", e && e.message);
