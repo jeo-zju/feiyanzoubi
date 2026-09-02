@@ -2,42 +2,58 @@
   <view class="card">
     <view class="card-hd">岩馆</view>
     <view class="card-bd">
-      <view class="search-shell">
-        <text class="search-shell__ic">🔍</text>
-        <input
-          class="search-shell__input"
-          placeholder="输入岩馆名称搜索"
-          placeholder-class="ph"
-          value="{{gymKeyword}}"
-          bindinput="onGymKeywordInput"
-        />
-      </view>
-
-      <view class="mt-sm">
-        <view wx:if="{{gymSearched.length}}" class="gym-list">
-          <view
-            wx:for="{{gymSearched}}"
-            wx:key="_id"
-            class="gym-row {{item._id === selectedGymId ? 'gym-row--active':''}}"
-            data-gymid="{{item._id}}"
-            data-gymname="{{item.name}}"
-            bindtap="onSelectGym"
-          >
-            <view class="gym-row__name">{{item.name}}</view>
-            <view class="muted">{{item.city}}{{item.address ? ' · '+item.address : ''}}</view>
+      <!-- 选择/搜索态（含未选引导）：无岩馆进入时自动打开；已选岩馆可点「切换」重新打开 -->
+      <block wx:if="{{gymPickOpen}}">
+        <view wx:if="{{!selectedGymId}}" class="gym-pick__tip">发布需要绑定岩馆，请先选择：</view>
+        <view class="search-shell">
+          <text class="search-shell__ic">🔍</text>
+          <input
+            class="search-shell__input"
+            placeholder="搜索岩馆名称 / 地址"
+            placeholder-class="ph"
+            value="{{gymKeyword}}"
+            confirm-type="search"
+            bindinput="onGymKeywordInput"
+          />
+        </view>
+        <scroll-view class="gym-pick__list" scroll-y lower-threshold="80" bindscrolltolower="onGymPickerScrollLower">
+          <block wx:if="{{gymOptions.length}}">
+            <view
+              wx:for="{{gymOptions}}"
+              wx:key="_id"
+              class="gym-row {{item._id === selectedGymId ? 'gym-row--active':''}}"
+              data-gymid="{{item._id}}"
+              data-gymname="{{item.name}}"
+              bindtap="onPickGym"
+            >
+              <view class="gym-row__name">{{item.name}}</view>
+              <view class="muted">{{item.city}}{{item.address ? ' · '+item.address : ''}}</view>
+            </view>
+            <view wx:if="{{_gymPickerState.loading}}" class="gym-pick__state muted">加载中…</view>
+            <view wx:elif="{{!_gymPickerState.hasMore}}" class="gym-pick__state muted">— 已显示全部 —</view>
+          </block>
+          <view wx:else class="gym-pick__state muted">
+            {{_gymPickerState.loading ? '加载中…' : (gymKeyword ? '没有找到匹配的岩馆，换个关键词试试？' : '当前城市暂无岩馆，换个城市试试')}}
           </view>
+        </scroll-view>
+        <view wx:if="{{selectedGymId}}" class="gym-pick__ops">
+          <text class="gym-pick__cancel" bindtap="onCloseGymPicker">取消，保留当前岩馆</text>
         </view>
-        <view wx:if="{{!gymSearched.length && gymKeyword}}" class="empty muted">
-          {{gymSearching ? '搜索中…' : '没有搜索到这个岩馆，换个关键词试试？'}}
+      </block>
+
+      <!-- 已选态：直接展示已选岩馆，点击可切换 -->
+      <view wx:elif="{{selectedGymId}}" class="gym-current" hover-class="gym-current--hover" bindtap="onTapChangeGym">
+        <view class="gym-current__body">
+          <view class="gym-current__name">{{selectedGymName || '已选择岩馆'}}</view>
+          <view class="gym-current__sub muted">发布将绑定该岩馆</view>
         </view>
+        <view class="gym-current__op">切换</view>
       </view>
 
-      <view wx:if="{{selectedGymName}}" class="panel mt-sm">
-        <view class="panel-row">
-          <text class="panel-row__k">已选：</text>
-          <text class="panel-row__v">{{selectedGymName}}</text>
-          <text class="panel-row__op" bindtap="onClearGym">清除</text>
-        </view>
+      <!-- 未选兑底（正常情况下无岩馆进入会自动打开选择态） -->
+      <view wx:else class="gym-empty" hover-class="gym-current--hover" bindtap="openGymPicker">
+        <view class="gym-empty__title">还未选择岩馆</view>
+        <view class="gym-empty__op">去选择 ›</view>
       </view>
     </view>
   </view>
@@ -144,7 +160,7 @@
   </view>
 
   <view class="pub-bottom">
-    <view class="btn btn-primary pub-bottom__btn" bindtap="onPublish">发布日历</view>
+    <view class="btn btn-primary pub-bottom__btn {{selectedGymId ? '' : 'is-off'}}" bindtap="onPublish">发布日历</view>
   </view>
   <view style="height: 40rpx;"></view>
 </view>
