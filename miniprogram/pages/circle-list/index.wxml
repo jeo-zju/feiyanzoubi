@@ -1,6 +1,6 @@
 <view class="page page--circle-list">
   <view class="topbar">
-    <view class="topbar__title">岩友圈{{gymName ? ' · '+gymName : ''}}</view>
+    <view class="topbar__title">{{title}}</view>
     <view class="topbar__plus" bindtap="onCreate">＋</view>
   </view>
 

@@ -405,3 +405,83 @@
   border-radius: 999rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.14);
 }
+
+/* #25: 成员行展示类（#22 扁平化后 wxml 引用但缺失，一并补齐）+ 成员名片弹窗 */
+.list--tight { gap: 2rpx; }
+.member-row { cursor: pointer; }
+.member-row:active { background: rgba(255, 255, 255, 0.04); border-radius: 16rpx; }
+.avatar-s {
+  width: 72rpx; height: 72rpx; border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+.row-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 4rpx;
+  margin-left: 18rpx;
+}
+.row-title {
+  font-size: 28rpx; font-weight: 600; color: #E7E9F3;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.row-sub {
+  font-size: 22rpx;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.btn-xs {
+  height: 52rpx; border-radius: 26rpx;
+  font-size: 22rpx; font-weight: 600;
+  padding: 0 20rpx; box-sizing: border-box;
+  flex-shrink: 0;
+}
+.btn-ghost-danger {
+  background: rgba(198, 90, 90, 0.12);
+  color: rgba(255, 200, 200, 0.96);
+  border: 1rpx solid rgba(198, 90, 90, 0.28);
+}
+.btn-ghost-danger:active { background: rgba(198, 90, 90, 0.26); }
+
+.sheet--member { max-height: 62vh; }
+.member-card-bd {
+  display: flex; justify-content: center;
+  padding: 36rpx 28rpx 48rpx;
+}
+.member-face {
+  width: 100%;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12rpx;
+  padding: 44rpx 28rpx 40rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(160deg, rgba(143, 123, 255, 0.16), rgba(242, 193, 78, 0.08));
+  border: 1rpx solid rgba(242, 193, 78, 0.16);
+  box-sizing: border-box;
+}
+.member-face__avatar {
+  width: 168rpx; height: 168rpx; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 4rpx solid rgba(255, 255, 255, 0.14);
+  box-sizing: border-box;
+}
+.member-face__name {
+  margin-top: 12rpx;
+  font-size: 38rpx; font-weight: 800; color: #fff;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.member-face__title {
+  font-size: 26rpx; color: #F2C14E;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.member-face__meta {
+  margin-top: 8rpx;
+  font-size: 22rpx; color: rgba(231, 233, 243, 0.5);
+}
+.member-face__role {
+  font-size: 22rpx; font-weight: 600; color: #8F7BFF;
+  background: rgba(143, 123, 255, 0.14);
+  border: 1rpx solid rgba(143, 123, 255, 0.3);
+  padding: 6rpx 22rpx; border-radius: 999rpx;
+}

@@ -16,6 +16,8 @@ Page({
     myMembership: null,
     myStatus: "",
     pendingCount: 0,
+    memberCardVisible: false,
+    memberCard: null,
     gymSheetVisible: false,
     settingSheetVisible: false,
     linkGymSheetVisible: false,
@@ -59,6 +61,19 @@ Page({
     } catch (e) {
       wx.showToast({ title: e && e.message || "加载失败", icon: "none" });
     }
+  },
+
+  // #25: 点击成员行 → 名片弹窗（展示主卡 displayName/称呼/头像/岩友号）
+  onTapMember(e) {
+    const openid = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.oid);
+    if (!openid) return;
+    const found = (this.data.members || []).find((m) => String(m.openid || "") === openid);
+    if (!found) return;
+    this.setData({ memberCard: found, memberCardVisible: true });
+  },
+
+  closeMemberCard() {
+    this.setData({ memberCardVisible: false, memberCard: null });
   },
 
   async onTapApply() {

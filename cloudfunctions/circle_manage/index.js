@@ -32,6 +32,58 @@ function shortId(openid) {
   return h.toString(36).toUpperCase().slice(-6);
 }
 
+// #25: 读取用户主名片（RockCards）——头像/称呼/标题真实存于名片 front，RockUsers 上通常是空的
+async function fetchMainCards(openids) {
+  const ids = Array.from(new Set((openids || []).filter(Boolean))).slice(0, 200);
+  const out = {};
+  if (!ids.length) return out;
+  const pick = (c) => {
+    if (!c) return;
+    const oid = safeText(c.ownerOpenid);
+    if (!oid || out[oid]) return;
+    const front = (c && c.front) || {};
+    // 与前端 wall 页一致：自定义头像用 avatarFileId（cloud fileID），微信头像用 avatarUrl
+    const avatarUrl =
+      front.avatarMode === "custom"
+        ? safeText(front.avatarFileId) || safeText(c.avatarUrl)
+        : safeText(front.avatarUrl) || safeText(c.avatarUrl);
+    out[oid] = {
+      cardId: safeText(c._id),
+      displayName: safeText(front.displayName) || safeText(c.displayName),
+      title: safeText(front.title) || safeText(c.title),
+      avatarUrl
+    };
+  };
+  try {
+    const primaryRes = await db
+      .collection("RockCards")
+      .where({ ownerOpenid: _.in(ids), isPrimary: true })
+      .limit(200)
+      .get();
+    ((primaryRes && primaryRes.data) || []).forEach(pick);
+  } catch (e) {}
+  const missing = ids.filter((id) => !out[id]);
+  if (missing.length) {
+    try {
+      // 兜底：没有 isPrimary 标记的用户，取任一 active 名片（优先带 isPrimary 的）
+      const fbRes = await db
+        .collection("RockCards")
+        .where({ ownerOpenid: _.in(missing), status: "active" })
+        .limit(200)
+        .get();
+      const byOwner = {};
+      ((fbRes && fbRes.data) || []).forEach((c) => {
+        const oid = safeText(c.ownerOpenid);
+        if (!oid || out[oid]) return;
+        if (!byOwner[oid]) byOwner[oid] = c;
+        else if (c.isPrimary && !byOwner[oid].isPrimary) byOwner[oid] = c;
+      });
+      Object.keys(byOwner).forEach((oid) => pick(byOwner[oid]));
+    } catch (e) {}
+  }
+  return out;
+}
+
 async function hydrateUsers(openids) {
   const ids = Array.from(new Set((openids || []).filter(Boolean))).slice(0, 200);
   if (!ids.length) return {};
@@ -42,14 +94,21 @@ async function hydrateUsers(openids) {
       .limit(200)
       .get();
     const list = (res && res.data) || [];
+    const userIds = list.map((u) => u.openid || u._openid || u.uid || "").filter(Boolean);
+    const cardMap = await fetchMainCards(userIds);
     const m = {};
     list.forEach((u) => {
       const uid = u.openid || u._openid || u.uid || "";
       if (!uid) return;
+      const card = cardMap[uid] || {};
       m[uid] = {
         openid: uid,
         nickName: u.nickName || "",
-        avatarUrl: u.avatarUrl || "",
+        // 名片主卡优先：displayName/title/avatarUrl，缺省回落 RockUsers
+        displayName: card.displayName || u.displayName || u.nickName || "",
+        title: card.title || u.title || "",
+        avatarUrl: card.avatarUrl || u.avatarUrl || "",
+        cardId: card.cardId || "",
         rockId: shortId(uid),
         city: u.city || ""
       };
@@ -350,13 +409,21 @@ exports.main = async (event) => {
       const pendings = [];
       rels.forEach((r) => {
         const openidVal = safeText(r.openid);
+        const u = userMap[openidVal] || null;
         const row = {
           openid: openidVal,
-          user: userMap[openidVal] || null,
+          user: u,
           role: safeText(r.role),
           status: safeText(r.status),
           joinedAt: Number(r.joinedAt || 0) || 0,
-          appliedAt: Number(r.appliedAt || 0) || 0
+          appliedAt: Number(r.appliedAt || 0) || 0,
+          // #25: 扁平化成员展示字段（主卡优先），wxml 直接消费
+          displayName: (u && u.displayName) || "",
+          nickName: (u && u.nickName) || "",
+          title: (u && u.title) || "",
+          avatarUrl: (u && u.avatarUrl) || "",
+          cardId: (u && u.cardId) || "",
+          rockId: (u && u.rockId) || ""
         };
         if (row.status === "accepted") members.push(row);
         else if (row.status === "pending") pendings.push(row);

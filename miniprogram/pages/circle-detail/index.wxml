@@ -46,21 +46,21 @@
     <view class="card-bd list list--tight">
       <view wx:if="{{members.length===0 && pendings.length===0}}" class="empty-state">暂无成员</view>
       <block wx:else>
-        <view class="list-row row" wx:for="{{members}}" wx:key="openid">
+        <view class="list-row row member-row" wx:for="{{members}}" wx:key="openid" data-oid="{{item.openid}}" bindtap="onTapMember">
           <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
           <view class="row-info">
-            <view class="row-title">{{item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
-            <view class="muted row-sub">{{item.rockId || '-'}}</view>
+            <view class="row-title">{{item.displayName || item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
+            <view class="muted row-sub">{{item.rockId || '-'}}{{item.title ? ' · ' + item.title : ''}}</view>
           </view>
-          <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-xs btn-ghost-danger" data-oid="{{item.openid}}" bindtap="onRemoveMember">移除</view>
+          <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-xs btn-ghost-danger" data-oid="{{item.openid}}" catchtap="onRemoveMember">移除</view>
           <view wx:elif="{{item.openid===myOpenid}}" class="btn btn-xs btn-ghost" data-oid="{{item.openid}}" catchtap="onConfirmLeave">退出</view>
         </view>
         <view wx:if="{{pendings.length>0}}" class="pending-divider">待审批申请</view>
         <view class="list-row row pending-row" wx:for="{{pendings}}" wx:key="openid">
           <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
           <view class="row-info">
-            <view class="row-title">{{item.nickName || '岩友'}}</view>
-            <view class="muted row-sub">{{item.rockId || '-'}}</view>
+            <view class="row-title">{{item.displayName || item.nickName || '岩友'}}</view>
+            <view class="muted row-sub">{{item.rockId || '-'}}{{item.title ? ' · ' + item.title : ''}}</view>
           </view>
           <view wx:if="{{isAdmin}}" class="sheet-item__actions">
             <view class="ic-btn ic-btn--ok" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
@@ -173,6 +173,24 @@
           </view>
         </block>
       </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{memberCardVisible && memberCard}}" class="sheet-mask" bindtap="closeMemberCard" catchtouchmove="noop">
+    <view class="sheet sheet--member" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">岩友名片</text>
+        <view class="sheet__close" bindtap="closeMemberCard">✕</view>
+      </view>
+      <view class="sheet__bd member-card-bd">
+        <view class="member-face">
+          <image class="member-face__avatar" src="{{memberCard.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          <view class="member-face__name">{{memberCard.displayName || memberCard.nickName || '岩友'}}</view>
+          <view wx:if="{{memberCard.title}}" class="member-face__title">{{memberCard.title}}</view>
+          <view class="member-face__meta">岩友号 {{memberCard.rockId || '-'}}</view>
+          <view wx:if="{{memberCard.role==='admin'}}" class="member-face__role">圈主 · 管理员</view>
+        </view>
+      </view>
     </view>
   </view>
 </view>
