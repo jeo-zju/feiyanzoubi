@@ -11,6 +11,41 @@ const CARD_PX_W = 960;
 const CARD_PX_H = 606;
 const CARD_RATIO = CARD_PX_W / CARD_PX_H;
 
+// issue #23: 名片预览指纹改为「内容哈希」而非字符串长度。
+// 旧指纹 [cardId|updatedAt|meUpdatedAt|JSON.stringify(card).length] 只反映长度，
+// 头像调整（cloud fileID 定长、随机段位数常相同）或字段同长度替换时指纹不变，
+// 缓存路径(ME_CARD_IMG_PATH)里的旧预览 PNG 会被继续复用（含旧布局/旧头像状态），
+// 表现为「调整头像后名片布局异常」。这里把头像/称呼/签名等展示字段纳入哈希，
+// 任何展示内容变化都必然触发重绘，杜绝陈旧预览被复用。
+function hashStub(s) {
+  const v = String(s || "").slice(0, 80);
+  let h = 0;
+  for (let i = 0; i < v.length; i++) h = (h * 31 + v.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function computeCardFingerprint(card, me) {
+  const c = card || {};
+  const m = me || {};
+  const finalSlogan = (m.slogan || (c.oneLiner || (c.front && c.front.oneLiner) || ""));
+  const contentSig = [
+    c.avatarUrl || "",
+    c.avatarFileId || "",
+    c.oneLiner || "",
+    c.displayName || m.nickName || "",
+    c.title || "",
+    c.mbti || "",
+    m.avatarUrl || "",
+    m.nickName || "",
+    finalSlogan
+  ].map(hashStub).join(",");
+  return [
+    c.cardId || "",
+    c._updateTime || c.updatedAt || 0,
+    m._updateTime || m.updatedAt || 0,
+    contentSig
+  ].join("|");
+}
+
 Page({
   data: {
     user: { nickName: "", avatarUrl: "", projectName: "Project" },
@@ -163,13 +198,10 @@ Page({
         cardSyncing: false
       });
       try {
-        const me = this.data.me || {};
-        const fp = [
-          nextPrimaryCard && nextPrimaryCard.cardId ? nextPrimaryCard.cardId : "",
-          nextPrimaryCard && nextPrimaryCard._updateTime ? nextPrimaryCard._updateTime : (nextPrimaryCard && nextPrimaryCard.updatedAt ? nextPrimaryCard.updatedAt : ""),
-          me._updateTime ? me._updateTime : (me.updatedAt ? me.updatedAt : ""),
-          nextPrimaryCard ? JSON.stringify(nextPrimaryCard).length : 0
-        ].join("|");
+        const meData = this.data.me || {};
+        const card = nextPrimaryCard || {};
+        // issue #23: 内容哈希指纹（含头像/称呼/签名），头像调整后必失配 → 强制重绘
+        const fp = computeCardFingerprint(card, meData);
         cache.set(cache.CACHE_KEYS.ME_CARD_FINGERPRINT, fp, 60 * 24, { saveL2: true });
         this._currentCardFingerprint = fp;
       } catch (_) {}
@@ -201,15 +233,7 @@ Page({
     try {
       const me = this.data.me || {};
       const primary = this.data.myPrimaryCard || {};
-      let currentFp = this._currentCardFingerprint || "";
-      if (!currentFp) {
-        currentFp = [
-          primary && primary.cardId ? primary.cardId : "",
-          primary && primary._updateTime ? primary._updateTime : (primary && primary.updatedAt ? primary.updatedAt : ""),
-          me._updateTime ? me._updateTime : (me.updatedAt ? me.updatedAt : ""),
-          primary ? JSON.stringify(primary).length : 0
-        ].join("|");
-      }
+      const currentFp = this._currentCardFingerprint || computeCardFingerprint(primary, me);
       if (currentFp) {
         try {
           const savedFp = await cache.get(cache.CACHE_KEYS.ME_CARD_FINGERPRINT, { useL2: true });
@@ -319,12 +343,8 @@ Page({
               cache.set(cache.CACHE_KEYS.ME_CARD_IMG_PATH, savedPath, 60 * 24, { saveL2: true });
               const me = this.data.me || {};
               const primaryCard = this.data.myPrimaryCard || {};
-              const fp = this._currentCardFingerprint || [
-                primaryCard && primaryCard.cardId ? primaryCard.cardId : "",
-                primaryCard && primaryCard._updateTime ? primaryCard._updateTime : (primaryCard && primaryCard.updatedAt ? primaryCard.updatedAt : ""),
-                me._updateTime ? me._updateTime : (me.updatedAt ? me.updatedAt : ""),
-                primaryCard ? JSON.stringify(primaryCard).length : 0
-              ].join("|");
+              // issue #23: 与 loadCardSummary 同源的内容哈希指纹
+              const fp = this._currentCardFingerprint || computeCardFingerprint(primaryCard, me);
               cache.set(cache.CACHE_KEYS.ME_CARD_FINGERPRINT, fp, 60 * 24, { saveL2: true });
             }
           } catch (_) {}
