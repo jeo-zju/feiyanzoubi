@@ -88,17 +88,27 @@ Page({
     this.setData({ searchMode: true, searching: true });
     try {
       const r = await friendshipApi.search({ keyword: kw, limit: 20 });
-      const me = (getApp() && getApp().globalData && getApp().globalData.me) || {};
+      const me = (getApp() && getApp().globalData && (getApp().globalData.me || getApp().globalData.user)) || {};
+      const meUid = me.openid || me._openid || "";
       const friends = new Set((this.data.accepted || []).map((x) => x.openid || x._openid).filter(Boolean));
       const outgoings = new Set((this.data.outgoing || []).map((x) => x.toOpenid || x.openid || x._openid).filter(Boolean));
       const incomings = new Set((this.data.incoming || []).map((x) => x.fromOpenid || x.openid || x._openid).filter(Boolean));
-      const res = ((r && r.list) || []).filter((u) => u._openid !== me._openid).map((u) => ({
-        ...u,
-        skillBadges: skillBadgesFrom(u),
-        isFriend: friends.has(u._openid),
-        outgoing: outgoings.has(u._openid),
-        incoming: incomings.has(u._openid)
-      }));
+      // 云函数 search 返回 { users: [...] }（老版本曾用 { list: [...] }）；用户行标识字段为 openid（老版本曾用 _openid），此处兼容两者
+      const rows = (r && (r.users || r.list)) || [];
+      const res = rows
+        .map((u) => {
+          const uid = u.openid || u._openid || "";
+          return {
+            ...u,
+            openid: uid,
+            _openid: uid,
+            skillBadges: skillBadgesFrom(u),
+            isFriend: friends.has(uid),
+            outgoing: outgoings.has(uid),
+            incoming: incomings.has(uid)
+          };
+        })
+        .filter((u) => u.openid && u.openid !== meUid);
       this.setData({ searchResult: res });
     } catch (e) {
       wx.showToast({ title: e && e.message ? e.message : "搜索失败", icon: "none" });
