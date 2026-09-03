@@ -306,7 +306,11 @@ Page({
         climbSkills: me.climbSkills || {},
         heightCm: me.heightCm || me.height || "",
         armspanCm: me.armspanCm || me.armspan || "",
-        rockId: me.rockId || ""
+        rockId: me.rockId || "",
+        wechatId: me.wechatId || "",
+        showWechat: !!me.showWechat,
+        xhsId: me.xhsId || "",
+        showXhs: !!me.showXhs
       }
     });
     try { await flushCanvas(ctx); } catch (_) {}

@@ -71,6 +71,10 @@ Page({
     title: "",
     mbti: "",
     slogan: "",
+    wechatId: "",
+    showWechat: false,
+    xhsId: "",
+    showXhs: false,
     hasLocalAvatar: false,
     saving: false,
     climbSkills: {
@@ -112,6 +116,8 @@ Page({
       const title = safeText(me.title || "");
       const mbti = safeText(me.mbti || "");
       const slogan = safeText(me.slogan || "");
+      const wechatId = safeText(me.wechatId || "");
+      const xhsId = safeText(me.xhsId || "");
       this.setData({
         form: {
           nickName: safeText(me.nickName || user && user.nickName),
@@ -121,6 +127,10 @@ Page({
         title,
         mbti,
         slogan,
+        wechatId,
+        showWechat: !!me.showWechat,
+        xhsId,
+        showXhs: !!me.showXhs,
         hasLocalAvatar: false,
         climbSkills: {
           boulder: safeText(cs.boulder || ""),
@@ -158,6 +168,11 @@ Page({
     const emoji = SLOGAN_EMOJIS[Math.floor(Math.random() * SLOGAN_EMOJIS.length)];
     this.setData({ slogan: `${emoji} ${SLOGAN_POOL[idx]}` });
   },
+  // issue #31: 微信号/小红书号（默认不展示，需主动开启）
+  onWechatInput(e) { this.setData({ wechatId: (e && e.detail && e.detail.value || "").slice(0, 30) }); },
+  onToggleShowWechat(e) { this.setData({ showWechat: !!(e && e.detail && e.detail.value) }); },
+  onXhsInput(e) { this.setData({ xhsId: (e && e.detail && e.detail.value || "").slice(0, 30) }); },
+  onToggleShowXhs(e) { this.setData({ showXhs: !!(e && e.detail && e.detail.value) }); },
   // issue #13: 手填的新话写入黑话临时库（user_added 标记，默认不展示给其他用户）
   async submitSloganToPool(text) {
     try {
@@ -281,7 +296,11 @@ Page({
         displayName: safeText(this.data.displayName),
         title: safeText(this.data.title),
         mbti: safeText(this.data.mbti),
-        slogan: safeText(this.data.slogan)
+        slogan: safeText(this.data.slogan),
+        wechatId: safeText(this.data.wechatId).slice(0, 30),
+        showWechat: !!this.data.showWechat,
+        xhsId: safeText(this.data.xhsId).slice(0, 30),
+        showXhs: !!this.data.showXhs
       };
       if (profilePayload && profilePayload.climbSkills) {
         delete profilePayload.climbSkills.protector;

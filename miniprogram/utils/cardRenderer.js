@@ -14,6 +14,8 @@ function drawFrontCard(ctx, options) {
   const heightCm = extra.heightCm || "";
   const armspanCm = extra.armspanCm || "";
   const rockId = extra.rockId || "";
+  const wechatId = (extra.showWechat && extra.wechatId) ? extra.wechatId : "";
+  const xhsId = (extra.showXhs && extra.xhsId) ? extra.xhsId : "";
 
   function drawChip(x, y, text, opts) {
     const padX = 24, padY = 14;
@@ -163,6 +165,16 @@ function drawFrontCard(ctx, options) {
     }
     if (armspanCm) {
       const t = `↔ ${armspanCm}cm`;
+      ctx.fillText(t, mx, metaRowY);
+      mx += ctx.measureText(t).width + 40;
+    }
+    if (wechatId) {
+      const t = `💬 ${wechatId}`;
+      ctx.fillText(t, mx, metaRowY);
+      mx += ctx.measureText(t).width + 40;
+    }
+    if (xhsId) {
+      const t = `🍠 ${xhsId}`;
       ctx.fillText(t, mx, metaRowY);
       mx += ctx.measureText(t).width + 40;
     }

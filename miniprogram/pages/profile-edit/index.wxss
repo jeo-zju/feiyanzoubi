@@ -103,3 +103,11 @@
   border: 1rpx solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
 }
+
+/* #31: 微信号/小红书号 */
+.contact-row { display: flex; align-items: center; gap: 12rpx; }
+.contact-row .compact-input { flex: 1; min-width: 0; }
+.contact-switch { display: flex; align-items: center; gap: 6rpx; flex-shrink: 0; }
+.contact-switch__label { font-size: 20rpx; color: rgba(231,233,243,0.5); }
+.divider-row { height: 1rpx; background: rgba(255,255,255,0.06); margin: 20rpx 0; }
+.tiny { font-size: 18rpx; }
