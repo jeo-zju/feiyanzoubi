@@ -670,6 +670,12 @@ Page({
   onTapDate(e) {
     const date = e.currentTarget.dataset.date;
     if (!date) return;
+    // issue #32: 进入日期详情前必须已选岩馆（与打卡/发布日历一致）
+    const gymId = safeText(this.data.gymId);
+    if (!gymId) {
+      wx.showToast({ title: "请先选择岩馆", icon: "none" });
+      return;
+    }
     const params = [`date=${date}`];
     if (safeText(this.data.city)) params.push(`city=${encodeURIComponent(safeText(this.data.city))}`);
     if (this.data.gymId) params.push(`gymId=${this.data.gymId}`);
@@ -688,9 +694,15 @@ Page({
   },
 
   onTapPublish() {
+    // issue #32: 发布日历前必须已选岩馆
+    const gymId = safeText(this.data.gymId);
+    if (!gymId) {
+      wx.showToast({ title: "请先选择岩馆再发布", icon: "none" });
+      return;
+    }
     const params = [];
     if (safeText(this.data.city)) params.push(`city=${encodeURIComponent(safeText(this.data.city))}`);
-    if (this.data.gymId) params.push(`gymId=${this.data.gymId}`);
+    if (gymId) params.push(`gymId=${gymId}`);
     wx.navigateTo({ url: `/pages/calendar-publish/index?${params.join("&")}` });
   },
 
