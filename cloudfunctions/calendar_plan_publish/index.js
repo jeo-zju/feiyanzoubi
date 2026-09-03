@@ -262,6 +262,7 @@ exports.main = async (event) => {
       if (action === "create") {
         const data = {
           uid: openid,
+          _openid: openid,
           userSnapshot,
           gymId,
           gymSnapshot,
