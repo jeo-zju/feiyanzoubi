@@ -22,11 +22,27 @@ function safeText(v) {
 }
 
 function shortId(openid) {
-  if (!openid) return "";
-  let h = 0;
-  for (let i = 0; i < openid.length; i++) h = (h * 31 + openid.charCodeAt(i)) >>> 0;
-  return h.toString(36).toUpperCase().slice(-6);
-}
+  // #30: 统一为与 user_manage hashOpenidToRockId 一致的 FNV-1a 算法，保证同一用户 ID 全局唯一稳定
+function hashOpenidToRockId(openid) {
+  if (!openid) return "000000";
+  let h = 0x811c9dc5;
+  for (let i = 0; i < openid.length; i++) {
+    h ^= openid.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  h = h >>> 0;
+  const base = 36;
+  const length = 6;
+  let out = "";
+  let v = h;
+  while (out.length < length) {
+    const r = v % base;
+    out = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[r] + out;
+    v = Math.floor(v / base);
+    if (v === 0) v = 1;
+  }
+  return out.slice(-length).toUpperCase();
+}}
 
 async function hydrateUsers(openids) {
   const ids = Array.from(new Set((openids || []).filter(Boolean))).slice(0, 200);
@@ -46,7 +62,7 @@ async function hydrateUsers(openids) {
         openid: uid,
         nickName: u.nickName || "",
         avatarUrl: u.avatarUrl || "",
-        rockId: shortId(uid),
+        rockId: u.rockId || shortId(uid),
         climbSkills: u.climbSkills || null,
         city: u.city || ""
       };
@@ -166,7 +182,7 @@ exports.main = async (event) => {
             _openid: uid,
             nickName: u.nickName || "",
             avatarUrl: u.avatarUrl || "",
-            rockId: shortId(uid),
+            rockId: u.rockId || shortId(uid),
             match: "nickName"
           };
         });
@@ -180,7 +196,7 @@ exports.main = async (event) => {
             if (!uid || uid === openid) continue;
             // 岩友 ID 同时兼容两种派生：文档里存的官方 rockId（名片/个人页展示，FNV）与旧列表行 shortId
             const storedRockId = String(u.rockId || "").toUpperCase();
-            const derivedRockId = shortId(uid);
+            const derivedRockId = u.rockId || shortId(uid);
             const hitStored = storedRockId && (storedRockId === rockIdLike || storedRockId.indexOf(rockIdLike) === 0);
             const hitDerived = derivedRockId === rockIdLike || derivedRockId.indexOf(rockIdLike) === 0;
             if (hitStored || hitDerived) {

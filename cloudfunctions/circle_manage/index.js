@@ -26,11 +26,27 @@ function pickColor() {
   return CIRCLE_COLORS[Math.floor(Math.random() * CIRCLE_COLORS.length)];
 }
 function shortId(openid) {
-  if (!openid) return "";
-  let h = 0;
-  for (let i = 0; i < openid.length; i++) h = (h * 31 + openid.charCodeAt(i)) >>> 0;
-  return h.toString(36).toUpperCase().slice(-6);
-}
+  // #30: 统一为与 user_manage hashOpenidToRockId 一致的 FNV-1a 算法，保证同一用户 ID 全局唯一稳定
+function hashOpenidToRockId(openid) {
+  if (!openid) return "000000";
+  let h = 0x811c9dc5;
+  for (let i = 0; i < openid.length; i++) {
+    h ^= openid.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  h = h >>> 0;
+  const base = 36;
+  const length = 6;
+  let out = "";
+  let v = h;
+  while (out.length < length) {
+    const r = v % base;
+    out = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[r] + out;
+    v = Math.floor(v / base);
+    if (v === 0) v = 1;
+  }
+  return out.slice(-length).toUpperCase();
+}}
 
 // #25: 读取用户主名片（RockCards）——头像/称呼/标题真实存于名片 front，RockUsers 上通常是空的
 async function fetchMainCards(openids) {
@@ -109,7 +125,7 @@ async function hydrateUsers(openids) {
         title: card.title || u.title || "",
         avatarUrl: card.avatarUrl || u.avatarUrl || "",
         cardId: card.cardId || "",
-        rockId: shortId(uid),
+        rockId: u.rockId || shortId(uid),
         city: u.city || ""
       };
     });
