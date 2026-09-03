@@ -60,6 +60,7 @@ Page({
 
     profileTabs: [],
     myPrimaryCard: null,
+    noCard: false,
     cardSyncing: false,
     myCardCssW: 0,
     myCardCssH: 0,
@@ -194,6 +195,7 @@ Page({
         credit,
         creditPercent,
         myPrimaryCard: nextPrimaryCard,
+        noCard: !nextPrimaryCard,
         me: Object.assign({}, me, { slogan: cardOneLiner || me.slogan || "" }),
         cardSyncing: false
       });
@@ -207,7 +209,8 @@ Page({
       } catch (_) {}
       this.renderMyCardSoon("summary");
     } catch (e) {
-      this.setData({ cardSyncing: false });
+      console.warn("[me] loadCardSummary failed", e && e.message);
+      this.setData({ cardSyncing: false, noCard: !this.data.myPrimaryCard });
     }
   },
 
@@ -220,7 +223,10 @@ Page({
 
   renderMyCardSoon(reason) {
     if (this.data.cardSyncing && reason !== "summary") return;
-    if (!this.data.myPrimaryCard) return;
+    if (!this.data.myPrimaryCard) {
+      if (!this.data.cardSyncing) console.warn("[me] renderMyCardSoon: 无主卡 myPrimaryCard=null", reason);
+      return;
+    }
     if (this._cardPreviewTimer) clearTimeout(this._cardPreviewTimer);
     this._cardPreviewTimer = setTimeout(() => { this._cardPreviewTimer = null; this.renderMyCard(); }, 60);
   },
@@ -316,9 +322,9 @@ Page({
           fileType: "png",
           quality: 1,
           success: (r) => resolve(r && r.tempFilePath ? r.tempFilePath : ""),
-          fail: () => resolve("")
+          fail: (err) => { console.warn("[me] canvasToTempFilePath fail", err && err.errMsg); resolve(""); }
         }, this);
-      } catch (_) { resolve(""); }
+      } catch (e) { console.warn("[me] canvasToTempFilePath throw", e && e.message); resolve(""); }
     });
     if (token !== this._cardPreviewToken) return;
     if (tempPath) {

@@ -4,6 +4,14 @@
       <view class="card-block">
         <view class="mycard mycard-render-box" style="width: {{myCardCssW}}px; height: {{myCardCssH}}px;">
           <image wx:if="{{myCardPreviewImage}}" class="mycard-render" src="{{myCardPreviewImage}}" mode="aspectFit" binderror="onCardPreviewImgError"></image>
+          <view wx:elif="{{noCard && !cardSyncing}}" class="mycard-skeleton mycard-empty" bindtap="goProfileEdit">
+            <view class="sk-empty">
+              <view class="sk-empty__ic">🧗</view>
+              <view class="sk-empty__t">还没有你的攀岩名片</view>
+              <view class="sk-empty__d">点击编辑资料，填写信息后自动生成</view>
+              <view class="sk-empty__btn">去创建</view>
+            </view>
+          </view>
           <view wx:else class="mycard-skeleton">
             <view class="sk-bar"></view>
             <view class="sk-row sk-row--1">
