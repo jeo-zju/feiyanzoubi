@@ -53,7 +53,7 @@ Page({
     defaultAvatar: DEFAULT_AVATAR,
     canSeeToolbox: false,
     drawerOpen: false,
-    version: "2.0.22",
+    version: "2.0.23",
 
     credit: { remaining: 0, limit: 10 },
     creditPercent: 0,
