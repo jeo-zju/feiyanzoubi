@@ -41,17 +41,37 @@ Page({
 
   noop() {},
 
+  // #25: cloud:// 云文件 ID 不能直接用于 <image>，批量转临时 URL
+  async resolveAvatars(list) {
+    if (!Array.isArray(list) || !list.length) return list;
+    const cloudIds = list.map((m) => m && m.avatarUrl).filter((v) => v && v.indexOf("cloud://") === 0);
+    if (!cloudIds.length) return list;
+    let urlMap = {};
+    try {
+      const r = await wx.cloud.getTempFileURL({ fileList: cloudIds });
+      ((r && r.fileList) || []).forEach((item) => {
+        if (item && item.fileID && item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
+      });
+    } catch (e) {}
+    return list.map((m) => {
+      if (m && m.avatarUrl && urlMap[m.avatarUrl]) return Object.assign({}, m, { avatarUrl: urlMap[m.avatarUrl] });
+      return m;
+    });
+  },
+
   async loadDetail() {
     try {
       const r = await circleApi.detail({ circleId: this.data.circleId });
       const app = getApp();
       const me = (app && app.globalData && app.globalData.me) || (app && app.globalData && app.globalData.user) || {};
       const myOpenid = String(me.openid || me._openid || "" );
+      const members = await this.resolveAvatars((r && r.members) || []);
+      const pendings = await this.resolveAvatars((r && r.pendings) || []);
       this.setData({
         myOpenid,
         circle: r && r.circle ? r.circle : null,
-        members: (r && r.members) || [],
-        pendings: (r && r.pendings) || [],
+        members,
+        pendings,
         gyms: (r && r.gyms) || [],
         isAdmin: !!(r && r.isAdmin),
         myMembership: (r && r.myMembership) || null,

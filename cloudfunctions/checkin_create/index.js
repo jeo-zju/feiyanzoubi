@@ -17,6 +17,10 @@ function fail(code, message, tid) {
   return { ok: false, error: { code, message }, traceId: tid };
 }
 
+function safeText(v) {
+  return v == null ? "" : String(v).trim();
+}
+
 function sumObject(obj) {
   let s = 0;
   if (!obj) return 0;
