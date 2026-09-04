@@ -1,58 +1,8 @@
 const cardApi = require("../../services/api/card");
 const { safeText } = require("../../utils/format");
 const { getImagePath } = require("../../utils/cardCanvas");
-const { drawFrontCard, drawBackCard, flushCanvas } = require("../../utils/cardRenderer");
+const { drawFrontCard, flushCanvas } = require("../../utils/cardRenderer");
 const { getWindowWidth } = require("../../utils/window");
-const { addLog } = require("../../utils/debugLog");
-
-// #region debug-point A:report-helper
-let _viewDebugPortDown = false;
-function reportDebug(location, hypothesisId, msg, data) {
-  const payload = {
-    sessionId: "card-face-overwrite",
-    runId: "pre-fix",
-    hypothesisId,
-    location,
-    msg: `[DEBUG] ${msg}`,
-    data,
-    ts: Date.now()
-  };
-  const fallbackLog = () => {
-    addLog({
-      type: "info",
-      category: "debug",
-      title: `[DEBUG] ${msg}`,
-      summary: location,
-      detail: payload,
-      page: "pages/card-view/index"
-    });
-  };
-  if (_viewDebugPortDown) { fallbackLog(); return; }
-  try {
-    wx.request({
-      url: "http://127.0.0.1:7777/event",
-      method: "POST",
-      data: payload,
-      timeout: 250,
-      success: () => {},
-      fail: () => {
-        _viewDebugPortDown = true;
-        fallbackLog();
-      }
-    });
-  } catch (e) {
-    _viewDebugPortDown = true;
-    addLog({
-      type: "info",
-      category: "debug",
-      title: `[DEBUG] ${msg}`,
-      summary: location,
-      detail: payload,
-      page: "pages/card-view/index"
-    });
-  }
-}
-// #endregion
 
 Page({
   data: {
@@ -71,9 +21,6 @@ Page({
     const cssW = Math.floor(getWindowWidth() * 0.92);
     const cssH = Math.floor((cssW * this.data.canvasH) / this.data.canvasW);
     this.setData({ canvasCssW: cssW, canvasCssH: cssH });
-    // #region debug-point A:on-load
-    reportDebug("card-view:onLoad", "A", "card-view onLoad", { cardId, cssW, cssH });
-    // #endregion
   },
 
   onShareAppMessage() {
@@ -98,9 +45,6 @@ Page({
     };
   },
   onShow() {
-    // #region debug-point A:on-show
-    reportDebug("card-view:onShow", "A", "card-view onShow", { cardId: this.data.cardId });
-    // #endregion
     if (this.data.cardId) this.load();
   },
   async load() {
@@ -119,17 +63,7 @@ Page({
         }
       }
       this.setData({ card, isMine });
-      // #region debug-point B:load-card
-      reportDebug("card-view:load", "B", "card-view load card", {
-        cardId: this.data.cardId,
-        hasFront: !!(card && card.front),
-        hasBack: !!(card && card.back),
-        hasStory: !!safeText(card && card.back && card.back.story),
-        hasPhoto: !!safeText(card && card.back && card.back.photoFileId),
-        isMine
-      });
-      // #endregion
-      await this.renderFront();
+      await this.render();
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     }
@@ -204,18 +138,10 @@ Page({
       wx.showToast({ title: (e && e.message) || "删除失败", icon: "none" });
     }
   },
-  async renderFront() {
+  async render() {
     const card = this.data.card;
     if (!card) return;
     const front = card.front || {};
-    // #region debug-point C:render-front
-    reportDebug("card-view:renderFront", "C", "card-view renderFront", {
-      cardId: this.data.cardId,
-      displayName: safeText(front.displayName),
-      title: safeText(front.title),
-      hasOneLiner: !!safeText(front.oneLiner)
-    });
-    // #endregion
 
     const ctx = wx.createCanvasContext("cardCanvas", this);
     const W = this.data.canvasW;
@@ -225,28 +151,6 @@ Page({
     const avatarSrc = front.avatarMode === "custom" ? front.avatarFileId : front.avatarUrl;
     const avatarPath = (await getImagePath(avatarSrc)) || (await getImagePath(this.data.defaultAvatar));
     drawFrontCard(ctx, { W, H, front, avatarPath, layout: "fixed" });
-    await flushCanvas(ctx);
-  },
-  async renderBack() {
-    const card = this.data.card;
-    if (!card) return;
-    const front = card.front || {};
-    const back = card.back || {};
-    // #region debug-point D:render-back
-    reportDebug("card-view:renderBack", "D", "card-view renderBack", {
-      cardId: this.data.cardId,
-      hasStory: !!safeText(back.story),
-      hasPhoto: !!safeText(back.photoFileId),
-      displayName: safeText(front.displayName)
-    });
-    // #endregion
-
-    const ctx = wx.createCanvasContext("cardCanvas", this);
-    const W = this.data.canvasW;
-    const H = this.data.canvasH;
-
-    const photoPath = await getImagePath(back.photoFileId);
-    drawBackCard(ctx, { W, H, front, back, photoPath, layout: "fixed" });
     await flushCanvas(ctx);
   },
   async ensureAlbumPermission() {
@@ -306,12 +210,8 @@ Page({
       })
     );
   },
-  async saveFront() {
-    await this.renderFront();
-    await this.saveCurrent();
-  },
-  async saveBack() {
-    await this.renderBack();
+  async onSave() {
+    await this.render();
     await this.saveCurrent();
   }
 });

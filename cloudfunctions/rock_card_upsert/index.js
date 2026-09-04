@@ -58,7 +58,6 @@ function normalizeGyms(list) {
 function normalizeCard(input) {
   const card = input && typeof input === "object" ? input : {};
   const front = card.front && typeof card.front === "object" ? card.front : {};
-  const back = card.back && typeof card.back === "object" ? card.back : {};
 
   const wanderer = !!front.wanderer;
   const gyms = wanderer ? [] : normalizeGyms(front.gyms);
@@ -75,10 +74,6 @@ function normalizeCard(input) {
       avatarUrl: safeText(front.avatarUrl),
       oneLiner: clampText(front.oneLiner, 60),
       oneLinerStyle: safeText(front.oneLinerStyle) === "encourage" ? "encourage" : "humor"
-    },
-    back: {
-      photoFileId: safeText(back.photoFileId),
-      story: clampText(back.story, 500)
     }
   };
 }
@@ -125,7 +120,6 @@ exports.main = async (event) => {
     if (normalized.front.avatarMode === "wechat" && !normalized.front.avatarFileId) {
       if (!normalized.front.avatarUrl && userAvatarUrl) normalized.front.avatarUrl = userAvatarUrl;
     }
-    if (!normalized.back.story) return fail("BAD_REQUEST", "背面故事不能为空", tid);
 
     const now = Date.now();
     const cardsCol = db.collection("RockCards");
@@ -168,7 +162,6 @@ exports.main = async (event) => {
         status: mode === "self" ? "active" : "draft",
         isPrimary,
         front: normalized.front,
-        back: normalized.back,
         createdAt: now,
         updatedAt: now,
         created_at: db.serverDate(),
@@ -179,7 +172,6 @@ exports.main = async (event) => {
     } else {
       const patch = {
         front: { ...(existing.front || {}), ...(normalized.front || {}) },
-        back: { ...(existing.back || {}), ...(normalized.back || {}) },
         updatedAt: now,
         updated_at: db.serverDate()
       };

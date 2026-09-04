@@ -246,88 +246,11 @@ function drawFrontCard(ctx, options) {
   ctx.fillText(front.oneLinerStyle === "humor" ? "风格：幽默" : "风格：鼓励", pad + Math.floor(W * 0.06), H - Math.floor(H * 0.06));
 }
 
-function drawBackCard(ctx, options) {
-  const W = Number(options && options.W) || 1080;
-  const H = Number(options && options.H) || 680;
-  const front = (options && options.front) || {};
-  const back = (options && options.back) || {};
-  const photoPath = (options && options.photoPath) || "";
-  const layout = (options && options.layout) || "responsive";
-
-  ctx.setFillStyle("#0B0D15");
-  ctx.fillRect(0, 0, W, H);
-
-  if (photoPath) {
-    ctx.drawImage(photoPath, 0, 0, W, H);
-    ctx.setFillStyle("rgba(11,13,21,0.55)");
-    ctx.fillRect(0, 0, W, H);
-  } else {
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, "rgba(143,123,255,0.55)");
-    g.addColorStop(1, "rgba(242,193,78,0.35)");
-    ctx.setFillStyle(g);
-    ctx.fillRect(0, 0, W, H);
-  }
-
-  if (layout === "fixed") {
-    ctx.setFillStyle("rgba(255,255,255,0.10)");
-    ctx.fillRect(60, 80, W - 120, H - 160);
-
-    ctx.setFillStyle("#FFFFFF");
-    ctx.setFontSize(40);
-    ctx.fillText(clampText(front.displayName || "岩友", 10), 120, 156);
-
-    ctx.setFillStyle("rgba(255,255,255,0.92)");
-    ctx.setFontSize(28);
-    ctx.fillText("背面故事", 120, 208);
-
-    ctx.setFillStyle("rgba(255,255,255,0.95)");
-    ctx.setFontSize(30);
-    const lines = wrapCanvasText(ctx, clampText(back.story, 220), W - 240);
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
-      ctx.fillText(lines[i], 120, 270 + i * 44);
-    }
-
-    ctx.setFillStyle("rgba(255,255,255,0.65)");
-    ctx.setFontSize(22);
-    ctx.fillText("飞岩走壁 · 攀岩名片", 120, H - 62);
-    return;
-  }
-
-  const pad = Math.floor(W * 0.06);
-  ctx.setFillStyle("rgba(255,255,255,0.10)");
-  ctx.fillRect(pad, pad, W - pad * 2, H - pad * 2);
-
-  const tx = pad + Math.floor(W * 0.06);
-  ctx.setFillStyle("#FFFFFF");
-  ctx.setFontSize(Math.floor(H * 0.10));
-  ctx.fillText(clampText(front.displayName || "岩友", 10), tx, pad + Math.floor(H * 0.18));
-
-  ctx.setFillStyle("rgba(255,255,255,0.92)");
-  ctx.setFontSize(Math.floor(H * 0.065));
-  ctx.fillText("背面故事", tx, pad + Math.floor(H * 0.30));
-
-  ctx.setFillStyle("rgba(255,255,255,0.95)");
-  ctx.setFontSize(Math.floor(H * 0.07));
-  const lines = wrapCanvasText(ctx, clampText(back.story, 220), W - tx * 2);
-  const startY = pad + Math.floor(H * 0.42);
-  const lh = Math.floor(H * 0.105);
-  const maxLines = Math.max(6, Math.floor((H - startY - Math.floor(H * 0.20)) / lh));
-  for (let i = 0; i < Math.min(maxLines, lines.length); i++) {
-    ctx.fillText(lines[i], tx, startY + i * lh);
-  }
-
-  ctx.setFillStyle("rgba(255,255,255,0.65)");
-  ctx.setFontSize(Math.floor(H * 0.05));
-  ctx.fillText("飞岩走壁 · 攀岩名片", tx, H - Math.floor(H * 0.08));
-}
-
 function flushCanvas(ctx, reserve) {
   return new Promise((resolve) => ctx.draw(!!reserve, resolve));
 }
 
 module.exports = {
   drawFrontCard,
-  drawBackCard,
   flushCanvas
 };

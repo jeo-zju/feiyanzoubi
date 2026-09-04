@@ -332,11 +332,9 @@ Page({
         if (primary && primary.cardId) {
           await cardApi.syncProfile(primary.cardId, frontSync);
         } else {
-          // 新用户：用资料创建主名片（upsert 要求背面故事非空，用默认占位）
           await cardApi.upsert({
             card: {
-              front: frontSync,
-              back: { story: "飞岩走壁，攀无止境" }
+              front: frontSync
             }
           });
         }

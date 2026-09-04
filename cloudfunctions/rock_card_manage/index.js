@@ -54,7 +54,6 @@ exports.main = async (event) => {
     }
 
     if (action === "sync_profile") {
-      // #13: 编辑资料保存时，将资料字段完整同步到主名片（不耗额度、不需要背面故事）
       const front = (event && event.front) && typeof event.front === "object" ? event.front : {};
       const patch = {};
       ["displayName", "title", "mbti", "oneLiner"].forEach((k) => {

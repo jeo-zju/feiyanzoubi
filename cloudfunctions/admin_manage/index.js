@@ -220,8 +220,7 @@ function formatCardDoc(doc) {
     isPrimary: !!item.isPrimary,
     createdAt: Number(item.createdAt) || 0,
     updatedAt: Number(item.updatedAt) || 0,
-    front: item.front && typeof item.front === "object" ? item.front : {},
-    back: item.back && typeof item.back === "object" ? item.back : {}
+    front: item.front && typeof item.front === "object" ? item.front : {}
   };
 }
 

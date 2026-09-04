@@ -181,8 +181,7 @@ exports.main = async (event) => {
           },
           card: {
             _id: String(card._id),
-            front: card.front || {},
-            back: giftStatus === "pending" && !canViewFullCard ? {} : card.back || {}
+            front: card.front || {}
           }
         },
         tid
