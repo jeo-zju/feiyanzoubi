@@ -6,13 +6,12 @@ const cache = require("../../utils/cache");
 
 const MAX_DAYS = 14;
 const WEEK_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
-// 时间段快速筛选预设：全天/上午/下午 + 自定义（时间段滚轮）。
-// 全天取 10:00-22:00，与时间轴可视窗口（calendar-timeline 的 START_HOUR=10 / END_HOUR=22）一致，
-// 同时满足云函数「单次计划不超过 12 小时」的约束（00:00-23:59 会触发后端 12 小时上限被拒绝）。
+// issue #44: 时段细化——上午/下午/晚上，与时间轴可视窗口（START_HOUR=10 / END_HOUR=22）对齐。
 const TIME_QUICK = [
   { key: "allday", label: "全天", hint: "10:00-22:00", startTime: "10:00", endTime: "22:00" },
   { key: "morning", label: "上午", hint: "10:00-14:00", startTime: "10:00", endTime: "14:00" },
-  { key: "afternoon", label: "下午", hint: "14:00-22:00", startTime: "14:00", endTime: "22:00" },
+  { key: "afternoon", label: "下午", hint: "14:00-18:00", startTime: "14:00", endTime: "18:00" },
+  { key: "evening", label: "晚上", hint: "18:00-22:00", startTime: "18:00", endTime: "22:00" },
   { key: "custom", label: "时间段", hint: "自定义", startTime: "", endTime: "" }
 ];
 

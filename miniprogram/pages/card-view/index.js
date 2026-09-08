@@ -204,10 +204,11 @@ Page({
     const can = await this.ensureAlbumPermission();
     if (!can) return wx.showToast({ title: "未获得相册权限", icon: "none" });
     const tempPath = await new Promise((resolve) => {
+      // issue #45: 不传 width/height，让小程序默认取 canvas 的 width/height 属性（1080x720）
+      // 作为导出区域。此前显式传 width=1080 但 canvas CSS 尺寸仅为屏宽×0.92，
+      // 导致只截取左上角一小块再放大到 1080x720，保存图片只有放大的左上角
       wx.canvasToTempFilePath({
         canvasId: "cardCanvas",
-        width: this.data.canvasW,
-        height: this.data.canvasH,
         destWidth: this.data.canvasW,
         destHeight: this.data.canvasH,
         success: (r) => resolve(r && r.tempFilePath ? r.tempFilePath : ""),

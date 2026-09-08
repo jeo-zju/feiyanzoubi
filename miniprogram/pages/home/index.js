@@ -10,7 +10,9 @@ const { parseYMD } = require("../../utils/date");
 const { DEFAULT_AVATAR, CIRCLE_COLORS } = require("../../utils/constants");
 const { CACHE_KEYS } = require("../../utils/cache");
 
-const WEEK_LABELS = ["今天", "周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+// issue #43: 星期标签必须按实际日期动态生成，不能写死。
+// 第一格永远是「今天」，后续 6 格取明天起各天的星期几
+const WEEK_NAMES = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const CITY_PRESETS = ["杭州", "上海", "北京", "深圳", "广州", "成都", "南京", "武汉"];
 const CALENDAR_DAYS = 14;
 const CIRCLE_HOME_LIMIT = 2;
@@ -50,7 +52,7 @@ Page({
   data: {
     defaultAvatar: DEFAULT_AVATAR,
     circleColors: CIRCLE_COLORS,
-    weekLabels: WEEK_LABELS.slice(0, 7),
+    weekLabels: ["今天", "周一", "周二", "周三", "周四", "周五", "周六"],
     visibility: "public",
     city: "",
     gymId: "",
@@ -182,7 +184,14 @@ Page({
           })();
       cells.push({ date: d, label, isToday, total: 0, heatCls: "" });
     }
-    this.setData({ dateCells: cells, calendarLabel: monthLabel(start) });
+    // issue #43: 星期标签按实际日期动态生成——第一格「今天」，后续 6 格取明天起各天星期几
+    const weekLabels = ["今天"];
+    for (let i = 1; i < 7; i++) {
+      const d = addDays(start, i);
+      const day = new Date(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10))).getDay();
+      weekLabels.push(WEEK_NAMES[day]);
+    }
+    this.setData({ dateCells: cells, calendarLabel: monthLabel(start), weekLabels });
   },
 
   async loadAllHome(force) {

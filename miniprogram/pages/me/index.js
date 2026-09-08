@@ -91,30 +91,40 @@ Page({
     footSummary: { totalDays: 0, gymCount: 0, total: 0 }
   },
 
-  onLoad() { this.computeMyCardSize(); },
+  onLoad() {
+    this.computeMyCardSize();
+    // issue #47: 开启右上角「分享到朋友圈」入口（onShareTimeline 已返回名片图作为预览）
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ["shareAppMessage", "shareTimeline"] });
+    } catch (e) {}
+  },
 
   onShareAppMessage() {
     const cardId = this.data.myPrimaryCard && this.data.myPrimaryCard.cardId ? this.data.myPrimaryCard.cardId : "";
     const nickName = (this.data.user && this.data.user.nickName) || "我";
+    // issue #46: 转发预览优先用已渲染的名片图片，没有则回落默认头像，避免空白图
+    const shareImg = this.data.myCardPreviewImage || "/images/avatar.png";
     if (cardId) {
       return {
         title: `${nickName}的攀岩名片`,
         path: `/pages/card-view/index?cardId=${cardId}`,
-        imageUrl: "/images/avatar.png"
+        imageUrl: shareImg
       };
     }
     return {
       title: "飞岩走壁｜攀岩人的日历与名片",
       path: "/pages/me/index",
-      imageUrl: "/images/avatar.png"
+      imageUrl: shareImg
     };
   },
 
   onShareTimeline() {
+    const nickName = (this.data.user && this.data.user.nickName) || "我";
+    const shareImg = this.data.myCardPreviewImage || "/images/avatar.png";
     return {
-      title: "飞岩走壁｜攀岩人的日历与名片",
+      title: `${nickName}的攀岩名片`,
       query: "",
-      imageUrl: "/images/avatar.png"
+      imageUrl: shareImg
     };
   },
 
@@ -238,10 +248,60 @@ Page({
   },
 
   goGift() { wx.navigateTo({ url: "/pages/card-gift/index" }); },
-  goSaveMyCard() {
+  // issue #45: 点击「保存」直接保存名片到相册，不再跳转 card-view 预览页二次确认。
+  // 复用 me 页已渲染好的 myCardPreviewImage（offscreen canvas 960x606 导出，尺寸完整），
+  // 避免 card-view 页 canvas CSS 尺寸与 width 属性不一致导致导出图片只有放大的左上角
+  async goSaveMyCard() {
     const cardId = this.data.myPrimaryCard && this.data.myPrimaryCard.cardId ? this.data.myPrimaryCard.cardId : "";
     if (!cardId) { wx.showToast({ title: "先创建你的名片", icon: "none" }); return; }
-    wx.navigateTo({ url: `/pages/card-view/index?cardId=${cardId}` });
+    let imgPath = this.data.myCardPreviewImage;
+    // 预览图还没生成时，先触发一次渲染并等待结果
+    if (!imgPath) {
+      try {
+        await this.renderMyCard();
+        imgPath = this.data.myCardPreviewImage;
+      } catch (e) {
+        console.warn("[me] save: 渲染名片失败", e && e.message);
+      }
+    }
+    if (!imgPath) { wx.showToast({ title: "名片生成中，请稍后再试", icon: "none" }); return; }
+
+    const can = await new Promise((resolve) => {
+      wx.getSetting({
+        success: (s) => {
+          const auth = (s && s.authSetting) || {};
+          if (auth["scope.writePhotosAlbum"]) return resolve(true);
+          wx.authorize({
+            scope: "scope.writePhotosAlbum",
+            success: () => resolve(true),
+            fail: () => resolve(false)
+          });
+        },
+        fail: () => resolve(false)
+      });
+    });
+    if (!can) {
+      await new Promise((resolve) =>
+        wx.showModal({
+          title: "需要相册权限",
+          content: "用来保存名片到相册",
+          confirmText: "去设置",
+          success: (r) => {
+            if (!r.confirm) return resolve();
+            wx.openSetting({ complete: resolve });
+          },
+          fail: resolve
+        })
+      );
+    }
+    wx.saveImageToPhotosAlbum({
+      filePath: imgPath,
+      success: () => wx.showToast({ title: "已保存到相册", icon: "success" }),
+      fail: (err) => {
+        console.warn("[me] saveImageToPhotosAlbum fail", err && err.errMsg);
+        wx.showToast({ title: "保存失败，请重试", icon: "none" });
+      }
+    });
   },
 
   renderMyCardSoon(reason) {
