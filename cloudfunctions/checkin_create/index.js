@@ -154,7 +154,14 @@ function toCategory(mode) {
 
 async function upsertDaily(uid, date, gymId, cycleId, category, deltas) {
   const col = db.collection("RockUserDailyProgress");
-  const found = await col.where({ uid, date, gym_id: gymId, cycle_id: cycleId }).limit(1).get();
+  const found = await col
+    .where(_.or([
+      { uid, date, gym_id: gymId, cycle_id: cycleId },
+      { openid: uid, date, gym_id: gymId, cycle_id: cycleId },
+      { _openid: uid, date, gym_id: gymId, cycle_id: cycleId }
+    ]))
+    .limit(1)
+    .get();
   const doc = found && found.data && found.data[0] ? found.data[0] : null;
   if (!doc) {
     const today = {};
@@ -162,6 +169,8 @@ async function upsertDaily(uid, date, gymId, cycleId, category, deltas) {
     await col.add({
       data: {
         uid,
+        openid: uid,
+        _openid: uid,
         gym_id: gymId,
         cycle_id: cycleId,
         date,
@@ -186,7 +195,14 @@ async function upsertDaily(uid, date, gymId, cycleId, category, deltas) {
 
 async function upsertCycle(uid, gymId, cycleId, category, deltas) {
   const col = db.collection("RockUserCycleProgress");
-  const found = await col.where({ uid, gym_id: gymId, cycle_id: cycleId }).limit(1).get();
+  const found = await col
+    .where(_.or([
+      { uid, gym_id: gymId, cycle_id: cycleId },
+      { openid: uid, gym_id: gymId, cycle_id: cycleId },
+      { _openid: uid, gym_id: gymId, cycle_id: cycleId }
+    ]))
+    .limit(1)
+    .get();
   const doc = found && found.data && found.data[0] ? found.data[0] : null;
 
   if (!doc) {
@@ -195,6 +211,8 @@ async function upsertCycle(uid, gymId, cycleId, category, deltas) {
     await col.add({
       data: {
         uid,
+        openid: uid,
+        _openid: uid,
         gym_id: gymId,
         cycle_id: cycleId,
         totals,
@@ -241,7 +259,7 @@ exports.main = async (event) => {
       const nowTs = Date.now();
       const latest = await db
         .collection("RockCheckinRecords")
-        .where({ uid: openid })
+        .where(_.or([{ uid: openid }, { openid }, { _openid: openid }]))
         .orderBy("created_at", "desc")
         .limit(100)
         .get();
@@ -281,7 +299,16 @@ exports.main = async (event) => {
       for (let i = 0; i < keys.length; i++) {
         const row = deltaAgg[keys[i]];
         try {
-          const dFound = await db.collection("RockUserDailyProgress").where({ uid: openid, gym_id: row.gid, cycle_id: row.cid, date: row.dt }).limit(1).get();
+          const dFound = await db
+            .collection("RockUserDailyProgress")
+            .where(
+              _.and([
+                _.or([{ uid: openid }, { openid }, { _openid: openid }]),
+                { gym_id: row.gid, cycle_id: row.cid, date: row.dt }
+              ])
+            )
+            .limit(1)
+            .get();
           const dDoc = dFound && dFound.data && dFound.data[0] ? dFound.data[0] : null;
           if (dDoc) {
             const today = dDoc.today && typeof dDoc.today === "object" ? { ...dDoc.today } : {};
@@ -296,7 +323,16 @@ exports.main = async (event) => {
           }
         } catch (e) {}
         try {
-          const cFound = await db.collection("RockUserCycleProgress").where({ uid: openid, gym_id: row.gid, cycle_id: row.cid }).limit(1).get();
+          const cFound = await db
+            .collection("RockUserCycleProgress")
+            .where(
+              _.and([
+                _.or([{ uid: openid }, { openid }, { _openid: openid }]),
+                { gym_id: row.gid, cycle_id: row.cid }
+              ])
+            )
+            .limit(1)
+            .get();
           const cDoc = cFound && cFound.data && cFound.data[0] ? cFound.data[0] : null;
           if (cDoc) {
             const totals = cDoc.totals && typeof cDoc.totals === "object" ? { ...cDoc.totals } : { boulder: {}, rope: {}, lead: {} };
@@ -375,6 +411,8 @@ exports.main = async (event) => {
       if (!Number.isFinite(count) || count <= 0) continue;
       const rec = {
         uid: openid,
+        openid: openid,
+        _openid: openid,
         gym_id: gymId,
         cycle_id: cycleKey,
         category,

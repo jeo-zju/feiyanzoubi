@@ -1,100 +1,54 @@
 <view class="page page--mine">
   <view class="card-hero hero-cal">
-    <view class="hero-stats hero-stats--top">
-      <view class="stat-cell">
-        <view class="stat-cell__num">{{summary.topGymName || '—'}}</view>
-        <view class="stat-cell__k">最常去岩馆</view>
+    <view class="hero-hd">
+      <view class="hero-title">嗨，{{userName}}</view>
+      <view class="hero-sub">近30天概览</view>
+    </view>
+
+    <view class="hero-grid">
+      <view class="hg-cell">
+        <view class="hg-num">{{summary.thisMonthPlans || 0}}</view>
+        <view class="hg-k">本月计划</view>
       </view>
-      <view class="stat-cell stat-cell--mid">
-        <view class="stat-cell__num">{{summary.totalPartners || 0}}</view>
-        <view class="stat-cell__k">本月搭子</view>
+      <view class="hg-cell">
+        <view class="hg-num">{{stats.recent.length || 0}}</view>
+        <view class="hg-k">打卡次数</view>
       </view>
-      <view class="stat-cell">
-        <view class="stat-cell__num">{{summary.thisMonthPlans || 0}}</view>
-        <view class="stat-cell__k">本月计划</view>
+      <view class="hg-cell">
+        <view class="hg-num">{{summary.thisMonthCheckinRate || 0}}%</view>
+        <view class="hg-k">完成率</view>
+      </view>
+      <view class="hg-cell">
+        <view class="hg-num">{{summary.totalPartners || 0}}</view>
+        <view class="hg-k">搭子</view>
       </view>
     </view>
 
-    <view class="chart-block">
-      <view class="chart-block__kicker">近一个月攀爬轨迹</view>
-      <view wx:if="{{events.length}}" class="gtl">
-        <view class="gtl__today" style="left: {{todayPct}}%;"></view>
-        <view class="gtl__tracks">
-          <view class="gtl__track" wx:for="{{trackCount}}" wx:for-item="trackIdx" wx:key="trackIdx"></view>
-        </view>
-        <block wx:for="{{events}}" wx:key="key">
-          <view class="gtl__ev"
-            style="left: {{item.xPct}}%; top: {{item.yRpx}}rpx; width: 0;">
-            <view class="gtl__dot {{item.isPlan ? 'gtl__dot--plan' : 'gtl__dot--actual'}}"></view>
-            <view class="gtl__label {{item.isPlan ? 'gtl__label--plan' : 'gtl__label--actual'}}">{{item.gymShort}}</view>
-          </view>
-        </block>
-        <view class="gtl__xrow">
-          <view wx:for="{{xLabels}}" wx:key="idx" class="gtl__x"
-            style="left: {{item.pct}}%;">{{item.label}}</view>
-        </view>
-      </view>
-      <view wx:else class="gtl gtl--empty">
-        <view class="gtl-empty__emoji">🧗🏽‍♀️🧺</view>
-        <view class="gtl-empty__text">该去岩馆野餐啦！</view>
-      </view>
-      <view class="chart-block__legend muted">
-        <text class="legend-dot legend-dot--actual"></text><text>已打卡</text>
-        <text class="legend-dot legend-dot--plan"></text><text>计划中</text>
-        <text class="gtl__today-label">▎今天</text>
-      </view>
-    </view>
+    <view class="hero-foot muted" wx:if="{{summary.topGymName}}">最常去 · {{summary.topGymName}}</view>
   </view>
 
   <view class="card mt-lg">
-    <view class="card-hd card-hd--tabs">
-      <seg-tabs tabs="{{mineTabs}}" value="{{mineTab}}" bind:change="onMineTabChange" />
+    <view class="card-hd">
+      <view class="card-title">活动记录</view>
+      <view class="muted card-sub" wx:if="{{activityTotal}}">共 {{activityTotal}} 条 · 第 {{activityPage}}/{{activityPageCount}} 页</view>
     </view>
     <view class="card-bd list">
-
-      <block wx:if="{{mineTab==='myPlans'}}">
-        <view wx:for="{{myPlansList}}" wx:key="id" class="list-row rec">
-          <view class="rec-left">
-            <view class="rec-title">{{item.gymName}}</view>
-            <view class="muted rec-sub">{{item.date}} · {{item.rangeText}}{{item.note ? ' · ' + item.note : ''}}</view>
+      <view wx:for="{{activityList}}" wx:key="key" class="list-row rec">
+        <view class="rec-left">
+          <view class="rec-title">
+            <text class="badge badge--{{item.badgeType}}">{{item.badgeText}}</text>
+            <text class="rec-gym">{{item.gymName}}</text>
           </view>
-          <view class="rec-right">
-            <text class="tag tag--xs">{{item.statusText || '计划中'}}</text>
-            <text class="muted rec-meta">{{item.joinedCount}}人</text>
-          </view>
+          <view class="muted rec-sub">{{item.date}} · {{item.subText}}</view>
         </view>
-        <view wx:if="{{!myPlansList.length && !stats.loading}}" class="empty-state">还没发布过约爬计划</view>
-      </block>
-
-      <block wx:if="{{mineTab==='checkins'}}">
-        <view wx:for="{{stats.recent}}" wx:key="id" class="list-row rec">
-          <view class="rec-left">
-            <view class="rec-title">{{item.gymName}}</view>
-            <view class="muted rec-sub">{{item.date}} · {{item.modeText}}</view>
-          </view>
-          <view class="rec-right">+{{item.delta}}</view>
-        </view>
-        <view wx:if="{{!stats.recent.length && !stats.loading}}" class="empty-state">暂无打卡记录</view>
-        <view wx:if="{{stats.recent.length}}" class="paginator">
-          <view class="pager {{stats.page>1?'pager--on':''}}" bindtap="onStatsPrev">上一页</view>
-          <view class="pager pager--center">第 {{stats.page}} 页</view>
-          <view class="pager {{stats.hasNext?'pager--on':''}}" bindtap="onStatsNext">下一页</view>
-        </view>
-      </block>
-
-      <block wx:if="{{mineTab==='joined'}}">
-        <view wx:for="{{joinedList}}" wx:key="id" class="list-row rec">
-          <view class="rec-left">
-            <view class="rec-title">{{item.gymName}}</view>
-            <view class="muted rec-sub">{{item.date}} · {{item.rangeText}}{{item.note ? ' · ' + item.note : ''}}</view>
-          </view>
-          <view class="rec-right">
-            <text class="muted rec-meta">{{item.joinedCount}}人</text>
-          </view>
-        </view>
-        <view wx:if="{{!joinedList.length}}" class="empty-state">还没报名其他人的约爬</view>
-      </block>
-
+        <view class="rec-right muted">{{item.rightText}}</view>
+      </view>
+      <view wx:if="{{!activityList.length && !stats.loading}}" class="empty-state">暂无活动，去发布一个吧～</view>
+      <view wx:if="{{activityPageCount > 1}}" class="paginator">
+        <view class="pg-btn {{activityPage<=1?'pg-btn--off':''}}" bindtap="onActivityPrev">上一页</view>
+        <view class="pg-info">{{activityPage}} / {{activityPageCount}}</view>
+        <view class="pg-btn {{activityPage>=activityPageCount?'pg-btn--off':''}}" bindtap="onActivityNext">下一页</view>
+      </view>
     </view>
   </view>
 </view>

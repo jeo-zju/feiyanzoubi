@@ -68,10 +68,11 @@
   <view wx:if="{{selectedPlan}}" class="plan-modal-mask" catchtouchmove="noop" bindtap="onClosePlan">
     <view class="plan-modal" catchtap="noop">
       <view class="plan-modal__hd">
-        <image class="plan-modal__avatar" src="{{selectedPlan.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <!-- issue #35: 弹窗里不直接展示名片，点头像才弹名片 sheet -->
+        <image class="plan-modal__avatar plan-modal__avatar--tap" src="{{selectedPlan.avatarUrl || defaultAvatar}}" mode="aspectFill" catchtap="onTapPlanAvatar"></image>
         <view class="plan-modal__info">
           <view class="plan-modal__name">{{selectedPlan.displayName || selectedPlan.nickName || '岩友'}}</view>
-          <view class="plan-modal__meta muted">{{selectedPlan.rangeText}} · {{selectedPlan.date}}</view>
+          <view class="plan-modal__meta muted">{{selectedPlan.rangeText}} · {{selectedPlan.date}} · 点头像看名片</view>
         </view>
         <view class="plan-modal__close" bindtap="onClosePlan">×</view>
       </view>
@@ -94,25 +95,26 @@
           <view class="join-list">
             <block wx:if="{{joinOwner}}">
               <view class="join-row">
-                <image class="join-row__img" src="{{joinOwner.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+                <image class="join-row__img join-row__img--tap" src="{{joinOwner.avatarUrl || defaultAvatar}}" mode="aspectFill" catchtap="onTapJoinerAvatar" data-role="owner"></image>
                 <view class="join-row__bd">
                   <text class="join-row__name">{{joinOwner.displayName || joinOwner.nickName || '发起者'}}</text>
-                  <text class="join-row__sub muted">{{joinOwner.title || '发起者'}}</text>
+                  <text class="join-row__sub muted">{{joinOwner.title || (joinOwner.rockId ? '岩友号 ' + joinOwner.rockId : '发起者')}}</text>
                 </view>
                 <text class="pill pill--xs pill--tag">发起者</text>
               </view>
             </block>
             <block wx:for="{{joinList}}" wx:key="joinId">
               <view class="join-row">
-                <image class="join-row__img" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+                <image class="join-row__img join-row__img--tap" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" catchtap="onTapJoinerAvatar" data-role="joiner" data-idx="{{index}}"></image>
                 <view class="join-row__bd">
                   <text class="join-row__name">{{item.displayName || item.nickName || '岩友'}}</text>
-                  <text class="join-row__sub muted">{{item.title || '报名啦'}}</text>
+                  <text class="join-row__sub muted">{{item.title || (item.rockId ? '岩友号 ' + item.rockId : '报名啦')}}</text>
                 </view>
                 <view wx:if="{{selectedPlan.isMe}}" class="btn btn-xs btn-ghost-danger" data-uid="{{item.openid}}" catchtap="onTapRemoveJoiner">移除</view>
               </view>
             </block>
-            <view wx:if="{{!joinOwner && !joinList.length}}" class="empty-line muted">加载中…</view>
+            <view wx:if="{{joinLoading}}" class="empty-line muted">加载中…</view>
+            <view wx:elif="{{!joinOwner && !joinList.length}}" class="empty-line muted">暂无报名信息</view>
           </view>
         </view>
       </view>
@@ -120,6 +122,26 @@
         <view wx:if="{{!selectedPlan.isMe && !selectedPlan.isFriend}}" class="btn btn-ghost plan-modal__btn" bindtap="onTapAddFriend">加为岩友</view>
         <view wx:if="{{!selectedPlan.isMe}}" class="btn plan-modal__btn {{selectedPlanJoined || selectedPlan.meJoined ? 'btn-ghost' : 'btn-primary'}}" bindtap="onTapJoin">{{selectedPlanJoined || selectedPlan.meJoined ? '取消报名' : '我要去'}}</view>
         <view wx:if="{{selectedPlan.isMe}}" class="btn btn-warn plan-modal__btn" bindtap="onTapCancelMine">取消我的计划</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- issue #35: 二级名片 sheet——弹窗内点头像才展示，不直接铺在弹窗里 -->
+  <view wx:if="{{memberCardVisible && memberCard}}" class="member-sheet-mask" catchtouchmove="noop" bindtap="closeMemberCard">
+    <view class="member-sheet" catchtap="noop">
+      <view class="member-sheet__hd">
+        <text class="member-sheet__title">岩友名片</text>
+        <view class="member-sheet__close" bindtap="closeMemberCard">✕</view>
+      </view>
+      <view class="member-sheet__bd">
+        <view class="member-face">
+          <image class="member-face__avatar" src="{{memberCard.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+          <view class="member-face__name">{{memberCard.displayName || memberCard.nickName || '岩友'}}</view>
+          <view wx:if="{{memberCard.title}}" class="member-face__title">{{memberCard.title}}</view>
+          <view class="member-face__meta">岩友号 {{memberCard.rockId || '-'}}</view>
+          <view wx:if="{{memberCard.city}}" class="member-face__meta">坐标 {{memberCard.city}}</view>
+          <view wx:if="{{memberCard.role === 'owner'}}" class="member-face__tag">计划发起者</view>
+        </view>
       </view>
     </view>
   </view>

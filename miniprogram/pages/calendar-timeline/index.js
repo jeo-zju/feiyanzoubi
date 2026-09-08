@@ -4,6 +4,7 @@ const friendshipApi = require("../../services/api/friendship");
 const { ensureAppLogin } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 const { DEFAULT_AVATAR } = require("../../utils/constants");
+const { resolveCloudAvatars } = require("../../utils/avatar");
 
 const WEEK_NAMES = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const COLOR_COUNT = 8;
@@ -57,7 +58,10 @@ Page({
     tlWidth: 0,
     colsWidth: 0,
     colWidth: 200,
-    friendIds: []
+    friendIds: [],
+    // issue #35: 弹窗里不直接展示名片，点击弹窗内头像才弹出二级名片 sheet
+    memberCardVisible: false,
+    memberCard: null
   },
 
   onLoad(options) {
@@ -114,6 +118,12 @@ Page({
     } catch (e) {}
   },
 
+  // #35: cloud:// 头像统一走 utils/avatar：转临时 https URL；转换失败的一律置空，
+  // 由 wxml `avatarUrl || defaultAvatar` 兜底，杜绝 cloud:// 进 <image> 报 500
+  async resolveAvatars(list) {
+    return resolveCloudAvatars(list, "avatarUrl");
+  },
+
   async loadTimeline() {
     try {
       const params = {
@@ -139,7 +149,7 @@ Page({
 
       const visiblePlans = [];
       rawPlans.forEach((p) => {
-        const uid = p._openid || p.uid || "";
+        const uid = p._openid || p.openid || p.uid || "";
         const gymName = (p.gymSnapshot && p.gymSnapshot.name) || p.outdoorName || "";
         const startMin = hmToMinutes(p.startTime);
         const endMin = hmToMinutes(p.endTime);
@@ -151,14 +161,21 @@ Page({
         const rangeText = `${p.startTime}-${p.endTime}`;
         const colorIdx = uidColors[uid] != null ? uidColors[uid] : colorForUser(uid, null);
         const snap = p.userSnapshot || {};
+        // issue #35: 云函数已按 owner id 查 RockUsers 做 hydration（ownerInfo），
+        // 实时资料优先、计划快照兜底——解决「自己能看到头像、他人看不到」
+        const oi = p.ownerInfo || {};
         const plan = {
           id: p._id || `${uid}_${p.date}_${p.startTime}_${p.endTime}`,
           rawPlanId: String(p._id || ""),
           uid,
           date: p.date,
-          displayName: snap.displayName || snap.nickName || "",
-          nickName: snap.nickName || "",
-          avatarUrl: snap.avatarUrl || "",
+          displayName: oi.displayName || snap.displayName || snap.nickName || "",
+          nickName: oi.nickName || snap.nickName || "",
+          avatarUrl: oi.avatarUrl || snap.avatarUrl || "",
+          title: oi.title || snap.title || "",
+          rockId: oi.rockId || snap.rockId || "",
+          city: oi.city || "",
+          climbSkills: oi.climbSkills || null,
           rangeText,
           gymName,
           outdoorName: p.outdoorName || "",
@@ -183,7 +200,9 @@ Page({
             nickName: plan.nickName,
             avatarUrl: plan.avatarUrl,
             displayName: plan.displayName,
-            title: ""
+            title: plan.title,
+            rockId: plan.rockId,
+            city: plan.city
           };
           userList.push(newUser);
         }
@@ -209,11 +228,15 @@ Page({
       const colsWidth = colCount * colWidth;
       const tlWidth = 92 + colsWidth;
 
+      // #35: 头像可能是 cloud:// 云文件 ID（<image> 无法直接显示，只剩圆圈），统一转临时 URL
+      const resolvedUsers = await this.resolveAvatars(userList);
+      const resolvedPlans = await this.resolveAvatars(visiblePlans);
+
       this.setData({
-        plans: visiblePlans,
-        planMap: visiblePlans.reduce((m, p) => { m[p.id] = p; return m; }, {}),
-        userList,
-        userCount: userList.length,
+        plans: resolvedPlans,
+        planMap: resolvedPlans.reduce((m, p) => { m[p.id] = p; return m; }, {}),
+        userList: resolvedUsers,
+        userCount: resolvedUsers.length,
         colList,
         colWidth,
         colsWidth,
@@ -246,26 +269,19 @@ Page({
     }, () => this.loadTimeline());
   },
 
+  // #35: 点头像/点时间块都要打开弹窗并加载报名者；统一入口避免两处逻辑不一致
+  openPlanModal(plan) {
+    if (!plan) return;
+    this.setData({ selectedPlan: plan, joinList: [], joinOwner: null, joinLoading: true });
+    if (plan.rawPlanId) this.loadSelectedPlanJoiners(plan.rawPlanId);
+  },
+
   onTapAvatar(e) {
     const uid = e.currentTarget.dataset.uid;
     if (!uid) return;
+    // #35: 点头像之前只 setData 不加载报名者，弹窗底部永远「加载中…」
     const plan = (this.data.plans || []).find((p) => p.uid === uid);
-    if (plan) this.setData({ selectedPlan: plan });
-  },
-
-  onTapBar(e) {
-    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
-    const rid = ds.rawplanid;
-    const uid = ds.uid;
-    const map = this.data.planMap || {};
-    let found = null;
-    if (rid) {
-      found = Object.values(map).find((p) => p.id === rid);
-    }
-    if (!found && uid) {
-      found = Object.values(map).find((p) => p.uid === uid);
-    }
-    if (found) this.setData({ selectedPlan: found });
+    this.openPlanModal(plan);
   },
 
   onTapPublish() {
@@ -276,26 +292,85 @@ Page({
   },
 
   onClosePlan() {
-    this.setData({ selectedPlan: null, joinList: [], joinOwner: null });
+    this.setData({ selectedPlan: null, joinList: [], joinOwner: null, joinLoading: false, memberCardVisible: false, memberCard: null });
+  },
+
+  // issue #35: 弹窗内不直接展示名片；点击发起者头像弹出二级名片 sheet
+  onTapPlanAvatar() {
+    const p = this.data.selectedPlan;
+    if (!p) return;
+    this.setData({
+      memberCard: {
+        avatarUrl: p.avatarUrl || "",
+        displayName: p.displayName || p.nickName || "",
+        nickName: p.nickName || "",
+        title: p.title || "",
+        rockId: p.rockId || "",
+        city: p.city || "",
+        role: "owner"
+      },
+      memberCardVisible: true
+    });
+  },
+
+  // issue #35: 点击报名列表里的头像（发起者行/报名者行）弹出对应名片 sheet
+  onTapJoinerAvatar(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    let target = null;
+    let role = "joiner";
+    if (ds.role === "owner") {
+      target = this.data.joinOwner;
+      role = "owner";
+    } else {
+      const idx = Number(ds.idx);
+      target = (this.data.joinList || [])[idx];
+    }
+    if (!target) return;
+    this.setData({
+      memberCard: {
+        avatarUrl: target.avatarUrl || "",
+        displayName: target.displayName || target.nickName || "",
+        nickName: target.nickName || "",
+        title: target.title || "",
+        rockId: target.rockId || "",
+        city: target.city || "",
+        role
+      },
+      memberCardVisible: true
+    });
+  },
+
+  closeMemberCard() {
+    this.setData({ memberCardVisible: false, memberCard: null });
   },
 
   async loadSelectedPlanJoiners(planId) {
-    if (!planId) return;
+    if (!planId) { this.setData({ joinLoading: false }); return; }
+    this.setData({ joinLoading: true });
     try {
       const r = await calendarApi.getJoiners(planId);
       const ownerInfo = (r && r.ownerInfo) || null;
       const joiners = (r && r.joiners) || [];
       const joined = !!(r && r.joined);
-      const isOwner = !!(r && r.isOwner);
-      this.setData({ joinOwner: ownerInfo, joinList: joiners, joinCount: Number(r && r.joinedCount ? r.joinedCount : (ownerInfo ? 1 : 0) + joiners.length), selectedPlanJoined: joined });
+      // #35: 发起者/报名者头像同样可能是 cloud:// fileID，批量转临时 URL
+      const resolvedAll = await this.resolveAvatars([ownerInfo].concat(joiners).filter(Boolean));
+      const ownerResolved = ownerInfo ? (resolvedAll[0] || ownerInfo) : null;
+      const joinersResolved = ownerInfo ? resolvedAll.slice(1) : resolvedAll;
+      this.setData({
+        joinOwner: ownerResolved,
+        joinList: joinersResolved,
+        joinCount: Number(r && r.joinedCount ? r.joinedCount : (ownerResolved ? 1 : 0) + joinersResolved.length),
+        selectedPlanJoined: joined,
+        joinLoading: false
+      });
     } catch (e) {
-      this.setData({ joinList: [], joinOwner: null });
+      this.setData({ joinList: [], joinOwner: null, joinLoading: false });
     }
   },
 
   noop() {},
 
-  async onTapBar(e) {
+  onTapBar(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
     const rid = ds.rawplanid;
     const uid = ds.uid;
@@ -307,10 +382,7 @@ Page({
     if (!found && uid) {
       found = Object.values(map).find((p) => p.uid === uid);
     }
-    if (found) {
-      this.setData({ selectedPlan: found, joinList: [], joinOwner: null });
-      if (found.rawPlanId) this.loadSelectedPlanJoiners(found.rawPlanId);
-    }
+    this.openPlanModal(found);
   },
 
   async onTapAddFriend() {

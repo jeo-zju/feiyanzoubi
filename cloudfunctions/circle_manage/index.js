@@ -22,6 +22,35 @@ function fail(code, message, tid) {
 function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
+
+// issue #35: 云函数端用管理端权限批量把 cloud:// fileID 换成临时 https URL。
+// 客户端 wx.cloud.getTempFileURL 受云存储安全规则约束，读他人头像可能被拒
+// （现象：自己头像可见、他人头像空白，渲染层报 /pages/.../cloud:// 500）；
+// 云函数端为管理端权限，不受存储规则限制。
+async function resolveCloudAvatarFields(items, field) {
+  if (!Array.isArray(items)) return items;
+  const f = field || "avatarUrl";
+  const ids = [];
+  items.forEach((it) => {
+    const v = it && it[f];
+    if (v && String(v).indexOf("cloud://") === 0 && ids.indexOf(v) < 0) ids.push(String(v));
+  });
+  if (!ids.length) return items;
+  const urlMap = {};
+  try {
+    for (let i = 0; i < ids.length; i += 50) {
+      const r = await cloud.getTempFileURL({ fileList: ids.slice(i, i + 50) });
+      ((r && r.fileList) || []).forEach((fi) => {
+        if (fi && fi.fileID && fi.tempFileURL) urlMap[fi.fileID] = fi.tempFileURL;
+      });
+    }
+  } catch (e) {}
+  return items.map((it) => {
+    const v = it && it[f];
+    if (v && urlMap[v]) return Object.assign({}, it, { [f]: urlMap[v] });
+    return it;
+  });
+}
 function pickColor() {
   return CIRCLE_COLORS[Math.floor(Math.random() * CIRCLE_COLORS.length)];
 }
@@ -474,11 +503,15 @@ exports.main = async (event) => {
         };
       }
 
+      // issue #35: 成员/待审批头像 cloud:// 在云函数端换成临时 https URL（管理端权限）
+      const resolvedMembers = await resolveCloudAvatarFields(members, "avatarUrl");
+      const resolvedPendings = await resolveCloudAvatarFields(pendings, "avatarUrl");
+
       return ok(
         {
           circle,
-          members,
-          pendings,
+          members: resolvedMembers,
+          pendings: resolvedPendings,
           pendingCount: pendings.length,
           gyms: gymDetails,
           myMembership,
@@ -641,6 +674,7 @@ exports.main = async (event) => {
         data: {
           circleId,
           openid,
+          _openid: openid,
           nickName,
           avatarUrl,
           content: String(content || "").slice(0, 2000),

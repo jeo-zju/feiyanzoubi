@@ -20,7 +20,6 @@
     "pages/gym-merge-result/index",
     "pages/backstage/index",
     "pages/backstage-auth/index",
-    "pages/backstage-card-detail/index",
     "pages/backstage-data/index",
     "pages/backstage-gym-auth/index",
     "pages/backstage-health/index",

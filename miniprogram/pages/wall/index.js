@@ -1,6 +1,7 @@
 const wallApi = require("../../services/api/wall");
 const cardApi = require("../../services/api/card");
 const { safeText } = require("../../utils/format");
+const { cloudIdsToTempUrl } = require("../../utils/avatar");
 
 Page({
   data: {
@@ -18,6 +19,36 @@ Page({
   onShow() {
     if (this.data.gymId) this.load();
   },
+  // #35: 名片快照 avatarFileId / avatarUrl 都可能是 cloud:// fileID，统一转临时 URL；
+  // 转换失败的 cloud:// 一律置空（wxml 走默认头像），杜绝 cloud:// 进 <image> 报 500
+  async resolveCardAvatars(cards) {
+    if (!Array.isArray(cards) || !cards.length) return cards;
+    const ids = [];
+    cards.forEach((c) => {
+      const s = c && c.snapshot;
+      if (!s) return;
+      [s.avatarFileId, s.avatarUrl].forEach((v) => {
+        if (v && String(v).indexOf("cloud://") === 0 && ids.indexOf(v) < 0) ids.push(String(v));
+      });
+    });
+    const urlMap = await cloudIdsToTempUrl(ids);
+    return cards.map((c) => {
+      const s = c && c.snapshot;
+      if (!s) return c;
+      const fix = (v) => {
+        if (!v || String(v).indexOf("cloud://") !== 0) return v;
+        if (urlMap[v]) return urlMap[v];
+        console.warn("[wall] 名片头像转换失败，兜底默认头像", String(v).slice(0, 90));
+        return "";
+      };
+      return Object.assign({}, c, {
+        snapshot: Object.assign({}, s, {
+          avatarFileId: fix(s.avatarFileId),
+          avatarUrl: fix(s.avatarUrl)
+        })
+      });
+    });
+  },
   async load() {
     try {
       const meta = await wallApi.get({ gymId: this.data.gymId });
@@ -26,7 +57,7 @@ Page({
         gym: (meta && meta.gym) || {},
         capacity: Number(meta && meta.capacity ? meta.capacity : 100),
         total: Number(meta && meta.total ? meta.total : 0),
-        cards: (list && list.cards) || []
+        cards: await this.resolveCardAvatars((list && list.cards) || [])
       });
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });

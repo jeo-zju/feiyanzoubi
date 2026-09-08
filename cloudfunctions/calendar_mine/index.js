@@ -81,9 +81,11 @@ exports.main = async (event) => {
     const monthStart = monthStartYMD();
 
     const col = db.collection("RockCalendarPlans");
-    const mineWhere = _.or([{ _openid: openid }, { uid: openid }]);
+    const mineWhere = _.or([{ _openid: openid }, { openid }, { uid: openid }]);
+    const activeWhere = _.or([{ status: "active" }, { status: _.exists(false) }, { status: null }]);
+    const baseActiveMine = _.and([mineWhere, activeWhere]);
 
-    const monthRes = await col.where(_.and([mineWhere, { date: _.gte(monthStart) }])).limit(200).get();
+    const monthRes = await col.where(_.and([baseActiveMine, { date: _.gte(monthStart) }])).limit(200).get();
     const monthPlans = (monthRes && monthRes.data) || [];
 
     const thisMonthPlans = monthPlans.length;
@@ -146,7 +148,7 @@ exports.main = async (event) => {
 
     const last14Start = daysAgo(13);
     const recent = await col
-      .where(_.and([mineWhere, { date: _.gte(last14Start) }]))
+      .where(_.and([baseActiveMine, { date: _.gte(last14Start) }]))
       .orderBy("date", "desc")
       .limit(200)
       .get();
@@ -177,7 +179,7 @@ exports.main = async (event) => {
 
     if (tab !== "joined" && (range === "upcoming" || range === "all")) {
       const uRes = await col
-        .where(_.and([mineWhere, { date: _.gte(today) }]))
+        .where(_.and([baseActiveMine, { date: _.gte(today) }]))
         .orderBy("date", "asc")
         .orderBy("startTime", "asc")
         .skip(skip)
@@ -189,7 +191,7 @@ exports.main = async (event) => {
     }
     if (tab !== "joined" && (range === "past" || range === "all")) {
       const pRes = await col
-        .where(_.and([mineWhere, { date: _.lt(today) }]))
+        .where(_.and([baseActiveMine, { date: _.lt(today) }]))
         .orderBy("date", "desc")
         .orderBy("startTime", "desc")
         .skip(skip)
@@ -203,8 +205,9 @@ exports.main = async (event) => {
     if (includeJoined || tab === "joined") {
       try {
         const joinCol = db.collection("RockCalendarJoins");
+        const joinIdentityWhere = _.or([{ _openid: openid }, { openid }, { uid: openid }]);
         const jRes = await joinCol
-          .where({ _openid: openid })
+          .where(joinIdentityWhere)
           .orderBy("createdAt", "desc")
           .skip(tab === "joined" ? skip : 0)
           .limit(tab === "joined" ? pageSize + 1 : 100)

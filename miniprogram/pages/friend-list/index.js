@@ -3,6 +3,7 @@ const { ensureAppLogin } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 const { DEFAULT_AVATAR } = require("../../utils/constants");
 const cache = require("../../utils/cache");
+const { resolveCloudAvatars } = require("../../utils/avatar");
 
 function skillBadgesFrom(u) {
   const s = (u && u.climbSkills) || {};
@@ -55,13 +56,28 @@ Page({
     this.setData({ loading: true });
     try {
       const r = await friendshipApi.list({ pageSize: 50 });
-      const accepted = ((r && r.accepted) || []).map((u) => ({ ...u, skillBadges: skillBadgesFrom(u) }));
-      const incoming = ((r && r.incoming) || []).map((u) => ({
-        ...u,
-        skillBadges: skillBadgesFrom(u),
-        createdAtText: fmtTs(u.createdAt)
-      }));
-      const outgoing = ((r && r.outgoing) || []).map((u) => ({ ...u, skillBadges: skillBadgesFrom(u) }));
+      // issue #35: 云函数 list 行是 { id, openid, user:{ nickName, avatarUrl, rockId,
+      // climbSkills, city } } 嵌套结构，wxml 绑定的是行级扁平字段——必须拍平，
+      // 否则昵称/头像/ID 全部 undefined（头像只剩默认圆圈）
+      const toRow = (u, extra) => {
+        const profile = (u && u.user && typeof u.user === "object") ? u.user : {};
+        return Object.assign({}, u, profile, extra || {});
+      };
+      const accepted = await resolveCloudAvatars(
+        ((r && r.accepted) || []).map((u) => toRow(u, { skillBadges: skillBadgesFrom(u.user || u) })),
+        "avatarUrl"
+      );
+      const incoming = await resolveCloudAvatars(
+        ((r && r.incoming) || []).map((u) => toRow(u, {
+          skillBadges: skillBadgesFrom(u.user || u),
+          createdAtText: fmtTs(u.createdAt)
+        })),
+        "avatarUrl"
+      );
+      const outgoing = await resolveCloudAvatars(
+        ((r && r.outgoing) || []).map((u) => toRow(u, { skillBadges: skillBadgesFrom(u.user || u) })),
+        "avatarUrl"
+      );
       this.setData({ incoming, accepted, outgoing });
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
@@ -109,7 +125,8 @@ Page({
           };
         })
         .filter((u) => u.openid && u.openid !== meUid);
-      this.setData({ searchResult: res });
+      // issue #35: 头像统一走 utils/avatar（此前 this.resolveAvatars 方法不存在，搜索必报错）
+      this.setData({ searchResult: await resolveCloudAvatars(res, "avatarUrl") });
     } catch (e) {
       wx.showToast({ title: e && e.message ? e.message : "搜索失败", icon: "none" });
     } finally {

@@ -150,7 +150,26 @@ Page({
     ctx.setFillStyle("#0B0D15");
     const avatarSrc = front.avatarMode === "custom" ? front.avatarFileId : front.avatarUrl;
     const avatarPath = (await getImagePath(avatarSrc)) || (await getImagePath(this.data.defaultAvatar));
-    drawFrontCard(ctx, { W, H, front, avatarPath, layout: "fixed" });
+
+    const app = getApp();
+    const me = (app && app.globalData && app.globalData.me) || {};
+    const user = (app && app.globalData && app.globalData.user) || {};
+    const gyms = front.gyms || [];
+    const gymsLabel = (Array.isArray(gyms) && gyms[0] && (gyms[0].city || gyms[0].name)) || me.city || "浪迹天涯";
+
+    drawFrontCard(ctx, {
+      W, H, front, me, user, gymsLabel, avatarPath, layout: "fixed",
+      extra: {
+        climbSkills: me.climbSkills || {},
+        heightCm: me.heightCm || me.height || "",
+        armspanCm: me.armspanCm || me.armspan || "",
+        rockId: me.rockId || "",
+        wechatId: me.wechatId || "",
+        showWechat: !!me.showWechat,
+        xhsId: me.xhsId || "",
+        showXhs: !!me.showXhs
+      }
+    });
     await flushCanvas(ctx);
   },
   async ensureAlbumPermission() {

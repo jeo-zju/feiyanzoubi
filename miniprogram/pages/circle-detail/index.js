@@ -3,6 +3,7 @@ const gymApi = require("../../services/api/gym");
 const { safeText } = require("../../utils/format");
 const { DEFAULT_AVATAR } = require("../../utils/constants");
 const cache = require("../../utils/cache");
+const { resolveCloudAvatars } = require("../../utils/avatar");
 
 Page({
   data: {
@@ -21,12 +22,7 @@ Page({
     gymSheetVisible: false,
     settingSheetVisible: false,
     linkGymSheetVisible: false,
-    linkGymOptions: [],
-    postsList: [],
-    postsLoading: false,
-    postSheetVisible: false,
-    postContent: "",
-    postImages: []
+    linkGymOptions: []
   },
 
   onLoad(options) {
@@ -41,22 +37,10 @@ Page({
 
   noop() {},
 
-  // #25: cloud:// 云文件 ID 不能直接用于 <image>，批量转临时 URL
+  // #35: cloud:// 头像统一走 utils/avatar：转临时 https URL；转换失败的一律置空，
+  // 由 wxml `avatarUrl || defaultAvatar` 兜底，杜绝 cloud:// 进 <image> 报 500
   async resolveAvatars(list) {
-    if (!Array.isArray(list) || !list.length) return list;
-    const cloudIds = list.map((m) => m && m.avatarUrl).filter((v) => v && v.indexOf("cloud://") === 0);
-    if (!cloudIds.length) return list;
-    let urlMap = {};
-    try {
-      const r = await wx.cloud.getTempFileURL({ fileList: cloudIds });
-      ((r && r.fileList) || []).forEach((item) => {
-        if (item && item.fileID && item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
-      });
-    } catch (e) {}
-    return list.map((m) => {
-      if (m && m.avatarUrl && urlMap[m.avatarUrl]) return Object.assign({}, m, { avatarUrl: urlMap[m.avatarUrl] });
-      return m;
-    });
+    return resolveCloudAvatars(list, "avatarUrl");
   },
 
   async loadDetail() {
@@ -225,172 +209,60 @@ Page({
 
   goBack() { wx.navigateBack({ fail: () => wx.switchTab({ url: "/pages/home/index" }) }); },
 
-  async loadPosts(reset) {
-    if (this.data.postsLoading) return;
-    try {
-      this.setData({ postsLoading: true });
-      const app = getApp();
-      const me = (app && app.globalData && app.globalData.me) || null;
-      const myOpenid = (me && me.openid) || (app && app.globalData && app.globalData.openid) || "";
-      const r = await circleApi.listPosts({
-        circleId: this.data.circleId,
-        page: reset ? 1 : (this._postPage || 1),
-        pageSize: 30
-      });
-      const raw = (r && r.posts) || [];
-      const admin = !!this.data.isAdmin;
-      const list = raw.map((p) => {
-        const pid = String(p._openid || p.openid || "");
-        const canDelete = admin || pid === myOpenid;
-        const c = p.createdAt;
-        let text = "";
-        if (c) {
-          try {
-            const d = typeof c === "number" ? new Date(c) : c && c.getTime ? new Date(c.getTime()) : (c.toDate ? c.toDate() : new Date(c));
-            if (d && d.getFullYear) {
-              const m = d.getMonth() + 1;
-              const dd = d.getDate();
-              const hh = d.getHours();
-              const mm = d.getMinutes();
-              text = `${m}/${dd} ${hh < 10 ? "0" : ""}${hh}:${mm < 10 ? "0" : ""}${mm}`;
-            }
-          } catch (_) {}
-        }
-        return {
-          _id: String(p._id || ""),
-          openid: pid,
-          nickName: safeText(p.nickName || ""),
-          avatarUrl: p.avatarUrl || "",
-          role: safeText(p.role || ""),
-          content: safeText(p.content || ""),
-          images: Array.isArray(p.images) ? p.images.slice(0, 9) : [],
-          createdAtText: text,
-          canDelete
-        };
-      }).filter((x) => x._id);
-      this._postsLoaded = true;
-      this._postPage = (this._postPage || 1) + 1;
-      this.setData({ postsList: list, postsLoading: false });
-    } catch (e) {
-      this.setData({ postsLoading: false });
-      wx.showToast({ title: (e && e.message) || "加载失败", icon: "none" });
-    }
+  // #41: 补回设置/岩馆/退出/解散处理函数（wxml 已绑定但 js 缺失，入口点了无反应）
+  openSettingSheet() { this.setData({ settingSheetVisible: true }); },
+  closeSettingSheet() { this.setData({ settingSheetVisible: false }); },
+
+  goEdit() {
+    this.setData({ settingSheetVisible: false });
+    wx.navigateTo({ url: `/pages/circle-edit/index?mode=edit&circleId=${this.data.circleId}` });
   },
 
-  openPostSheet() {
-    if (this.data.myStatus !== "accepted" && !this.data.isAdmin) {
-      wx.showToast({ title: "加入后才能发帖", icon: "none" });
-      return;
-    }
-    this.setData({ postSheetVisible: true, postContent: "", postImages: [] });
+  openGymSheet() {
+    // 关联岩馆列表已展示在顶部卡片；这里保留管理能力（管理员移除/新增关联）
+    this.setData({ gymSheetVisible: true, settingSheetVisible: false });
   },
+  closeGymSheet() { this.setData({ gymSheetVisible: false }); },
 
-  closePostSheet() {
-    this.setData({ postSheetVisible: false });
-  },
-
-  onPostInput(e) {
-    const v = (e && e.detail && e.detail.value) || "";
-    this.setData({ postContent: safeText(v) });
-  },
-
-  async onPickPostImages() {
-    const left = 9 - this.data.postImages.length;
-    if (left <= 0) return;
-    try {
-      const res = await new Promise((resolve, reject) => {
-        wx.chooseMedia({
-          count: left,
-          mediaType: ["image"],
-          sizeType: ["compressed"],
-          sourceType: ["album", "camera"],
-          success: resolve,
-          fail: reject
-        });
-      });
-      const files = (res && res.tempFiles) || [];
-      const paths = [];
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i];
-        const p = f && f.tempFilePath;
-        if (!p) continue;
-        try {
-          const up = await wx.cloud.uploadFile({
-            cloudPath: `circle-posts/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`,
-            filePath: p
-          });
-          if (up && up.fileID) paths.push(up.fileID);
-        } catch (_) {}
-      }
-      if (paths.length) {
-        const merged = this.data.postImages.concat(paths).slice(0, 9);
-        this.setData({ postImages: merged });
-      }
-    } catch (e) {}
-  },
-
-  onRemovePostImage(e) {
-    const i = Number((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.i) || 0);
-    const arr = this.data.postImages.slice();
-    if (i < 0 || i >= arr.length) return;
-    arr.splice(i, 1);
-    this.setData({ postImages: arr });
-  },
-
-  async onSubmitPost() {
-    const content = safeText(this.data.postContent);
-    const images = (this.data.postImages || []).slice();
-    if (!content && !images.length) {
-      wx.showToast({ title: "写点内容或加张图片吧", icon: "none" });
-      return;
-    }
-    try {
-      await circleApi.createPost({
-        circleId: this.data.circleId,
-        content,
-        images
-      });
-      wx.showToast({ title: "已发布", icon: "success" });
-      this.setData({ postSheetVisible: false, postContent: "", postImages: [] });
-      this._postsLoaded = false;
-      this._postPage = 1;
-      this.loadPosts(true).catch(() => {});
-    } catch (e) {
-      wx.showToast({ title: (e && e.message) || "发布失败", icon: "none" });
-    }
-  },
-
-  onTapDeletePost(e) {
-    const pid = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.pid);
-    if (!pid) return;
+  onConfirmDisband() {
+    if (!this.data.isAdmin) return;
     const self = this;
     wx.showModal({
-      title: "删除这条动态？",
-      confirmText: "删除",
+      title: "解散岩友圈？",
+      content: "解散后不可恢复，成员将看不到这个圈子",
+      confirmText: "解散",
       confirmColor: "#C65A5A",
       async success(r) {
-        if (!r || !r.confirm) return;
+        if (!r.confirm) return;
         try {
-          await circleApi.deletePost(pid);
-          wx.showToast({ title: "已删除", icon: "success" });
-          self._postsLoaded = false;
-          self._postPage = 1;
-          self.loadPosts(true).catch(() => {});
-        } catch (err) {
-          wx.showToast({ title: (err && err.message) || "删除失败", icon: "none" });
+          await circleApi.disband({ circleId: self.data.circleId });
+          try { cache.invalidate(cache.CACHE_KEYS.MY_CIRCLES); } catch (_) {}
+          wx.showToast({ title: "已解散", icon: "success" });
+          setTimeout(() => self.goBack(), 600);
+        } catch (e) {
+          wx.showToast({ title: (e && e.message) || "解散失败", icon: "none" });
         }
       }
     });
   },
 
-  onTapPostImage(e) {
-    const src = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.src) || "";
-    if (!src) return;
-    const urls = [];
-    (this.data.postsList || []).forEach((p) => {
-      (p.images || []).forEach((im) => { if (im) urls.push(im); });
+  onConfirmLeave() {
+    const self = this;
+    wx.showModal({
+      title: "退出岩友圈？",
+      confirmText: "退出",
+      confirmColor: "#C65A5A",
+      async success(r) {
+        if (!r.confirm) return;
+        try {
+          await circleApi.leave({ circleId: self.data.circleId });
+          try { cache.invalidate(cache.CACHE_KEYS.MY_CIRCLES); } catch (_) {}
+          wx.showToast({ title: "已退出", icon: "success" });
+          setTimeout(() => self.goBack(), 600);
+        } catch (e) {
+          wx.showToast({ title: (e && e.message) || "退出失败", icon: "none" });
+        }
+      }
     });
-    const show = urls.length ? urls : [src];
-    try { wx.previewImage({ urls: show, current: src }); } catch (_) {}
   }
 });

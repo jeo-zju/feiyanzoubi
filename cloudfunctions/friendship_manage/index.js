@@ -21,6 +21,35 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
+// issue #35: 云函数端用管理端权限批量把 cloud:// fileID 换成临时 https URL。
+// 客户端 wx.cloud.getTempFileURL 受云存储安全规则约束，读他人头像可能被拒
+// （现象：自己头像可见、他人头像空白，渲染层报 /pages/.../cloud:// 500）；
+// 云函数端为管理端权限，不受存储规则限制。
+async function resolveCloudAvatarFields(items, field) {
+  if (!Array.isArray(items)) return items;
+  const f = field || "avatarUrl";
+  const ids = [];
+  items.forEach((it) => {
+    const v = it && it[f];
+    if (v && String(v).indexOf("cloud://") === 0 && ids.indexOf(v) < 0) ids.push(String(v));
+  });
+  if (!ids.length) return items;
+  const urlMap = {};
+  try {
+    for (let i = 0; i < ids.length; i += 50) {
+      const r = await cloud.getTempFileURL({ fileList: ids.slice(i, i + 50) });
+      ((r && r.fileList) || []).forEach((fi) => {
+        if (fi && fi.fileID && fi.tempFileURL) urlMap[fi.fileID] = fi.tempFileURL;
+      });
+    }
+  } catch (e) {}
+  return items.map((it) => {
+    const v = it && it[f];
+    if (v && urlMap[v]) return Object.assign({}, it, { [f]: urlMap[v] });
+    return it;
+  });
+}
+
 function shortId(openid) {
   // #30: 统一为与 user_manage hashOpenidToRockId 一致的 FNV-1a 算法，保证同一用户 ID 全局唯一稳定
 function hashOpenidToRockId(openid) {
@@ -67,6 +96,10 @@ async function hydrateUsers(openids) {
         city: u.city || ""
       };
     });
+    // issue #35: 头像 cloud:// 换成临时 https URL（管理端权限，他人也可读）
+    const mKeys = Object.keys(m);
+    const mResolved = await resolveCloudAvatarFields(mKeys.map((k) => m[k]), "avatarUrl");
+    mKeys.forEach((k, i) => { m[k] = mResolved[i]; });
     return m;
   } catch (e) {
     return {};
@@ -213,8 +246,10 @@ exports.main = async (event) => {
           }
         } catch (e) {}
       }
+      // issue #35: 搜索结果头像 cloud:// 换成临时 https URL（管理端权限，他人也可读）
+      const resolvedResults = await resolveCloudAvatarFields(results, "avatarUrl");
       // 【云函数改动】list 为 users 的兼容别名（旧前端曾读 r.list），行内 _openid 为 openid 的兼容别名
-      return ok({ users: results, list: results }, tid);
+      return ok({ users: resolvedResults, list: resolvedResults }, tid);
     }
 
     // action = list（兼容旧的 follow 模型数据）

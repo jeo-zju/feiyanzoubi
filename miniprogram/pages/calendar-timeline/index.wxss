@@ -300,3 +300,153 @@
 }
 
 .muted { color: rgba(231, 233, 243, 0.6); }
+
+/* issue #35: 报名列表此前无样式（<image> 会按默认尺寸渲染成大图），补齐行布局与圆形头像 */
+.plan-section { margin-top: 8rpx; }
+.section-kicker--sm { font-size: 24rpx; }
+.join-list {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.join-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx 14rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.04);
+}
+.join-row__img {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+.join-row__bd {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.join-row__name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #e7e9f3;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.join-row__sub {
+  font-size: 22rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* issue #35: 弹窗内点头像弹出的二级名片 sheet（层级需高于 plan-modal-mask 的 99） */
+.plan-modal__avatar--tap,
+.join-row__img--tap {
+  position: relative;
+}
+.plan-modal__avatar--tap:active,
+.join-row__img--tap:active {
+  opacity: 0.82;
+}
+.member-sheet-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.56);
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.member-sheet {
+  width: 100%;
+  background: #121420;
+  border-top-left-radius: 28rpx;
+  border-top-right-radius: 28rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.member-sheet__hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 28rpx 18rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+.member-sheet__title { font-size: 30rpx; font-weight: 600; color: #e7e9f3; }
+.member-sheet__close {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(231, 233, 243, 0.72);
+  font-size: 26rpx;
+}
+.member-sheet__bd {
+  padding: 24rpx 28rpx 40rpx;
+}
+.member-face {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 44rpx 28rpx 40rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(160deg, rgba(143, 123, 255, 0.16), rgba(242, 193, 78, 0.08));
+  border: 1rpx solid rgba(242, 193, 78, 0.16);
+  box-sizing: border-box;
+}
+.member-face__avatar {
+  width: 168rpx;
+  height: 168rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 4rpx solid rgba(255, 255, 255, 0.14);
+  box-sizing: border-box;
+}
+.member-face__name {
+  margin-top: 12rpx;
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.member-face__title {
+  font-size: 26rpx;
+  color: #F2C14E;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.member-face__meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(231, 233, 243, 0.5);
+}
+.member-face__tag {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #8F7BFF;
+  background: rgba(143, 123, 255, 0.14);
+  border: 1rpx solid rgba(143, 123, 255, 0.3);
+  padding: 6rpx 22rpx;
+  border-radius: 999rpx;
+}

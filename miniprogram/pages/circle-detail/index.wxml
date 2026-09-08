@@ -25,16 +25,8 @@
         <text class="hero__meta-label">城市</text>
       </view>
     </view>
-  </view>
-
-  <view class="detail-actions">
-    <view class="round-btn" bindtap="openGymSheet">
-      <view class="round-btn__ic">🏟️</view>
-      <text class="round-btn__label">关联岩馆</text>
-    </view>
-    <view wx:if="{{myStatus==='accepted' || isAdmin}}" class="round-btn round-btn--accent" bindtap="openPostSheet">
-      <view class="round-btn__ic">＋</view>
-      <text class="round-btn__label">发帖</text>
+    <view wx:if="{{gyms.length}}" class="hero__gyms">
+      <view wx:for="{{gyms}}" wx:key="_id" class="hero__gym-chip">📍 {{item.name}}</view>
     </view>
   </view>
 
@@ -83,28 +75,6 @@
     </view>
   </view>
 
-  <view wx:if="{{postSheetVisible}}" class="sheet-mask" bindtap="closePostSheet" catchtouchmove="noop">
-    <view class="sheet sheet--post" catchtap="noop">
-      <view class="sheet__hd">
-        <text class="sheet__title">发帖</text>
-        <view class="sheet__close" bindtap="onSubmitPost">✓</view>
-      </view>
-      <view class="sheet__bd">
-        <textarea class="post-input" placeholder="分享点什么…（2000字内）" maxlength="2000" value="{{postContent}}" bindinput="onPostInput" auto-height />
-        <view class="post-images-grid">
-          <view wx:for="{{postImages}}" wx:for-item="img" wx:key="*this" class="post-thumb-wrap">
-            <image class="post-thumb" src="{{img}}" mode="aspectFill" />
-            <view class="post-thumb-del" data-i="{{index}}" catchtap="onRemovePostImage">×</view>
-          </view>
-          <view wx:if="{{postImages.length < 9}}" class="post-thumb-add" bindtap="onPickPostImages">
-            <text class="post-thumb-add__ic">＋</text>
-            <text class="post-thumb-add__tx">{{postImages.length}}/9</text>
-          </view>
-        </view>
-      </view>
-    </view>
-  </view>
-
   <view wx:if="{{gymSheetVisible}}" class="sheet-mask" bindtap="closeGymSheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -138,6 +108,11 @@
         <block wx:if="{{isAdmin}}">
           <view class="sheet-item" bindtap="goEdit">
             <text class="sheet-item__label">编辑资料</text>
+            <text class="sheet-item__arrow">›</text>
+          </view>
+          <view class="sheet-divider"></view>
+          <view class="sheet-item" bindtap="openGymSheet">
+            <text class="sheet-item__label">关联岩馆管理</text>
             <text class="sheet-item__arrow">›</text>
           </view>
           <view class="sheet-divider"></view>

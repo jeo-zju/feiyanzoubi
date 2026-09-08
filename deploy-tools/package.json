@@ -1,0 +1,15 @@
+{
+  "name": "feiyanzoubi-deploy-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "微信小程序上传/云函数/数据库工具链（基于官方 miniprogram-ci，无需微信开发者工具）",
+  "scripts": {
+    "upload": "node scripts/upload.js",
+    "preview": "node scripts/preview.js",
+    "functions": "node scripts/upload-functions.js",
+    "db:create": "node scripts/create-collection.js"
+  },
+  "dependencies": {
+    "miniprogram-ci": "^2.1.31"
+  }
+}

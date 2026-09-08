@@ -419,6 +419,7 @@ Page({
         const q = [`date=${this.data.selectedDate}`];
         if (this.data.city) q.push(`city=${encodeURIComponent(this.data.city)}`);
         if (this.data.selectedGymId) q.push(`gymId=${this.data.selectedGymId}`);
+        if (this.data.visibility) q.push(`visibility=${this.data.visibility}`);
         wx.redirectTo({ url: `/pages/calendar-timeline/index?${q.join("&")}` });
       }, 450);
     } catch (e) {

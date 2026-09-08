@@ -33,10 +33,6 @@
           <view class="section-title">审核详情</view>
           <view class="btn btn-ghost mini">修正</view>
         </view>
-        <view class="list-row" bindtap="goCardDetail">
-          <view class="section-title">名片归属</view>
-          <view class="btn btn-ghost mini">修正</view>
-        </view>
         <view class="list-row" bindtap="goReviewQueue">
           <view class="section-title">审核队列</view>
           <view class="btn btn-ghost mini">处理</view>

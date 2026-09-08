@@ -97,26 +97,102 @@ async function getFriendOpenids(openid) {
   }
 }
 
+// issue #35: timeline 以前只把计划创建时写入的 userSnapshot 透传给前端，
+// 若快照里头像为空/是旧值，他人看 timeline 就是空头像（本人靠前端 globalData
+// 兜底所以"自己能看到"）。这里按 owner id 批量查 RockUsers 做 hydration，
+// 快照仅作兜底；rockId 也一并补齐（#38 他人侧岩友号空白）。
+async function hydrateUserMap(openids) {
+  const ids = Array.from(new Set((openids || []).filter(Boolean))).slice(0, 200);
+  if (!ids.length) return {};
+  try {
+    const res = await db
+      .collection("RockUsers")
+      .where(_.or([{ openid: _.in(ids) }, { _openid: _.in(ids) }, { uid: _.in(ids) }]))
+      .limit(200)
+      .get();
+    const list = (res && res.data) || [];
+    const m = {};
+    list.forEach((u) => {
+      const info = {
+        openid: u.openid || u._openid || u.uid || "",
+        nickName: u.nickName || "",
+        avatarUrl: u.avatarUrl || "",
+        displayName: u.displayName || u.nickName || "",
+        title: u.title || "",
+        rockId: u.rockId || "",
+        climbSkills: u.climbSkills || null,
+        city: u.city || ""
+      };
+      // 记录可能只存 openid/_openid/uid 中的某一个，按所有存在的 id 字段建索引
+      [u.openid, u._openid, u.uid].forEach((k) => { if (k) m[k] = info; });
+    });
+    return m;
+  } catch (e) {
+    return {};
+  }
+}
+
+// issue #35: 云函数端用管理端权限批量把 cloud:// fileID 换成临时 https URL。
+// 客户端 wx.cloud.getTempFileURL 受云存储安全规则约束，读他人头像可能被拒
+// （现象：自己头像可见、他人头像空白，渲染层报 /pages/.../cloud:// 500）；
+// 云函数端为管理端权限，不受存储规则限制。
+async function resolveCloudAvatarFields(items, field) {
+  if (!Array.isArray(items)) return items;
+  const f = field || "avatarUrl";
+  const ids = [];
+  items.forEach((it) => {
+    const v = it && it[f];
+    if (v && String(v).indexOf("cloud://") === 0 && ids.indexOf(v) < 0) ids.push(String(v));
+  });
+  if (!ids.length) return items;
+  const urlMap = {};
+  try {
+    for (let i = 0; i < ids.length; i += 50) {
+      const r = await cloud.getTempFileURL({ fileList: ids.slice(i, i + 50) });
+      ((r && r.fileList) || []).forEach((fi) => {
+        if (fi && fi.fileID && fi.tempFileURL) urlMap[fi.fileID] = fi.tempFileURL;
+      });
+    }
+  } catch (e) {}
+  return items.map((it) => {
+    const v = it && it[f];
+    if (v && urlMap[v]) return Object.assign({}, it, { [f]: urlMap[v] });
+    return it;
+  });
+}
+
 function buildVisibilityWhere(visibility, openid, friendIds, myCircleIds) {
   const v = safeText(visibility);
+  const identityIn = (ids) => {
+    const arr = Array.from(new Set((ids || []).filter(Boolean)));
+    if (!arr.length) return { _openid: "__no_match__" };
+    return _.or([
+      { _openid: _.in(arr) },
+      { openid: _.in(arr) },
+      { uid: _.in(arr) }
+    ]);
+  };
+  const identityEq = _.or([{ _openid: openid }, { openid }, { uid: openid }]);
   if (v === "friends") {
     const allowed = new Set(friendIds || []);
     allowed.add(openid);
     return _.and([
       { visibility: _.in(["public", "friends"]) },
-      _.or([{ _openid: _.in(Array.from(allowed)) }, { uid: _.in(Array.from(allowed)) }])
+      identityIn(Array.from(allowed))
     ]);
   }
   if (v === "circle") {
     const mine = Array.from(new Set((myCircleIds || []).filter(Boolean)));
     const ors = [
-      { visibility: "circle", _openid: openid },
-      { visibility: "circle", uid: openid }
+      _.and([{ visibility: "circle" }, identityEq])
     ];
     if (mine.length) ors.push({ visibility: "circle", circleIds: _.in(mine) });
     return _.or(ors);
   }
-  return _.or([{ visibility: "public" }, _.and([{ visibility: "friends" }, _.or([{ _openid: openid }, { uid: openid }])])]);
+  return _.or([
+    { visibility: "public" },
+    _.and([{ visibility: "friends" }, identityEq])
+  ]);
 }
 
 exports.main = async (event) => {
@@ -151,7 +227,6 @@ exports.main = async (event) => {
         buildVisibilityWhere(visibility, openid, friendIds, myCircleIds)
       ];
       if (gymId) baseWhere.push({ gymId });
-      if (city) baseWhere.push({ "gymSnapshot.city": city });
       const where = _.and(baseWhere);
 
       const raw = await col.where(where).limit(1000).get();
@@ -185,16 +260,24 @@ exports.main = async (event) => {
       const baseWhere = [{ status: "active" }, { date }, buildVisibilityWhere(visibility, openid, friendIds, myCircleIds)];
       if (gymId) baseWhere.push({ gymId });
       if (filterGymId) baseWhere.push({ gymId: filterGymId });
-      if (city) baseWhere.push({ "gymSnapshot.city": city });
       if (onlyFriends) {
         const allowed = new Set(friendIds || []);
         allowed.add(openid);
-        baseWhere.push(_.or([{ _openid: _.in(Array.from(allowed)) }, { uid: _.in(Array.from(allowed)) }]));
+        baseWhere.push(_.or([
+          { _openid: _.in(Array.from(allowed)) },
+          { openid: _.in(Array.from(allowed)) },
+          { uid: _.in(Array.from(allowed)) }
+        ]));
       }
       const where = _.and(baseWhere);
 
       const raw = await col.where(where).limit(200).orderBy("startTime", "asc").get();
       let plans = (raw && raw.data) || [];
+
+      // issue #35: 批量 hydration 发起者资料（头像/岩友号/称呼），RockUsers 实时数据优先、
+      // 计划快照兜底；结果挂到 plan.ownerInfo 供前端弹窗/名片直接使用
+      const ownerIds = plans.map((p) => String(p._openid || p.openid || p.uid || "")).filter(Boolean);
+      const userMap = await hydrateUserMap(ownerIds);
 
       const planIds = plans.map((p) => String(p._id || "")).filter(Boolean);
       let joinAgg = {};
@@ -207,36 +290,71 @@ exports.main = async (event) => {
             const pid = String(j.planId || "");
             if (!pid) return;
             joinAgg[pid] = Number(joinAgg[pid] || 0) + 1;
-            if (String(j.openid || "") === openid) meJoinedSet.add(pid);
+            const joiner = String(j._openid || j.openid || j.uid || "");
+            if (joiner === openid) meJoinedSet.add(pid);
           });
         } catch (e) {}
       }
       plans = plans.map((p) => {
         const pid = String(p._id || "");
-        const owner = p._openid || p.uid || "";
+        const owner = String(p._openid || p.openid || p.uid || "");
         const jcount = Number(joinAgg[pid] || 0) + (owner ? 1 : 0);
+        const snap = (p && p.userSnapshot) || {};
+        const hu = (owner && userMap[owner]) || null;
+        // issue #35: ownerInfo = RockUsers 实时资料优先，计划快照兜底
+        const ownerInfo = owner ? {
+          openid: owner,
+          nickName: (hu && hu.nickName) || snap.nickName || "",
+          avatarUrl: (hu && hu.avatarUrl) || snap.avatarUrl || "",
+          displayName: (hu && hu.displayName) || snap.displayName || "",
+          title: (hu && hu.title) || snap.title || "",
+          rockId: (hu && hu.rockId) || snap.rockId || "",
+          climbSkills: (hu && hu.climbSkills) || null,
+          city: (hu && hu.city) || "",
+          isOwner: true
+        } : null;
         return Object.assign({}, p, {
           joinedCount: jcount,
-          meJoined: meJoinedSet.has(pid) || owner === openid
+          meJoined: meJoinedSet.has(pid) || owner === openid,
+          ownerInfo
         });
       });
 
       const userSeen = {};
       const userList = [];
       plans.forEach((p) => {
-        const uid = p._openid || p.uid || "";
+        const uid = String(p._openid || p.openid || p.uid || "");
         if (!uid) return;
         if (!userSeen[uid]) {
           userSeen[uid] = true;
           const snap = (p && p.userSnapshot) || {};
+          // issue #35: hydration 实时资料优先，快照兜底
+          const hu = userMap[uid] || {};
           userList.push({
             _openid: uid,
-            nickName: snap.nickName || "",
-            avatarUrl: snap.avatarUrl || "",
-            displayName: snap.displayName || "",
-            title: snap.title || ""
+            nickName: hu.nickName || snap.nickName || "",
+            avatarUrl: hu.avatarUrl || snap.avatarUrl || "",
+            displayName: hu.displayName || snap.displayName || "",
+            title: hu.title || snap.title || "",
+            rockId: hu.rockId || snap.rockId || "",
+            city: hu.city || snap.city || ""
           });
         }
+      });
+
+      // issue #35: 头像 cloud:// 在云函数端换成临时 https URL（管理端权限，不受存储
+      // 安全规则限制，他人查看也能正常显示）；plans.ownerInfo 与 userList 都要换
+      const resolvedUserList = await resolveCloudAvatarFields(userList, "avatarUrl");
+      const resolvedOwners = await resolveCloudAvatarFields(
+        plans.map((p) => p.ownerInfo).filter(Boolean),
+        "avatarUrl"
+      );
+      const ownerByOpenid = {};
+      resolvedOwners.forEach((o) => { if (o && o.openid) ownerByOpenid[o.openid] = o; });
+      plans = plans.map((p) => {
+        if (!p.ownerInfo) return p;
+        const fixed = ownerByOpenid[p.ownerInfo.openid];
+        return fixed ? Object.assign({}, p, { ownerInfo: fixed }) : p;
       });
 
       if (sortBy === "match") {
@@ -251,7 +369,7 @@ exports.main = async (event) => {
         });
       }
 
-      return ok({ plans, userList }, tid);
+      return ok({ plans, userList: resolvedUserList }, tid);
     }
 
     return fail("BAD_MODE", `不支持的 mode: ${mode}`, tid);

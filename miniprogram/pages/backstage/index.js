@@ -28,9 +28,6 @@ Page({
   goReviewDetail() {
     wx.navigateTo({ url: "/pages/backstage-review-detail/index" });
   },
-  goCardDetail() {
-    wx.navigateTo({ url: "/pages/backstage-card-detail/index" });
-  },
   goUserAdmin() {
     wx.navigateTo({ url: "/pages/user-admin/index" });
   },

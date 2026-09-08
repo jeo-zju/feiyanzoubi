@@ -40,10 +40,10 @@
             <view class="sk-ft">飞岩走壁 · 攀岩名片</view>
           </view>
         </view>
-        <view class="mycard-foot-actions mycard-foot-actions--3">
+        <view class="mycard-foot-actions mycard-foot-actions--{{canSeeToolbox ? '3' : '2'}}">
           <view class="action-pill" catchtap="goSaveMyCard">保存</view>
           <view class="action-pill" catchtap="goProfileEdit">编辑资料</view>
-          <view class="action-pill action-pill--gear" catchtap="onOpenDrawer">⚙</view>
+          <view wx:if="{{canSeeToolbox}}" class="action-pill action-pill--gear" catchtap="onOpenDrawer">⚙</view>
         </view>
       </view>
     </view>

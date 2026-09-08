@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "名片归属",
-  "usingComponents": {
-    "seg-tabs": "/components/segmentedTabs/index"
-  }
-}

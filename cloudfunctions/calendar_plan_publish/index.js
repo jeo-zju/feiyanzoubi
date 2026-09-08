@@ -21,6 +21,35 @@ function safeText(v) {
   return v == null ? "" : String(v).trim();
 }
 
+// issue #35: 云函数端用管理端权限批量把 cloud:// fileID 换成临时 https URL。
+// 客户端 wx.cloud.getTempFileURL 受云存储安全规则约束，读他人头像可能被拒
+// （现象：自己头像可见、他人头像空白，渲染层报 /pages/.../cloud:// 500）；
+// 云函数端为管理端权限，不受存储规则限制。
+async function resolveCloudAvatarFields(items, field) {
+  if (!Array.isArray(items)) return items;
+  const f = field || "avatarUrl";
+  const ids = [];
+  items.forEach((it) => {
+    const v = it && it[f];
+    if (v && String(v).indexOf("cloud://") === 0 && ids.indexOf(v) < 0) ids.push(String(v));
+  });
+  if (!ids.length) return items;
+  const urlMap = {};
+  try {
+    for (let i = 0; i < ids.length; i += 50) {
+      const r = await cloud.getTempFileURL({ fileList: ids.slice(i, i + 50) });
+      ((r && r.fileList) || []).forEach((fi) => {
+        if (fi && fi.fileID && fi.tempFileURL) urlMap[fi.fileID] = fi.tempFileURL;
+      });
+    }
+  } catch (e) {}
+  return items.map((it) => {
+    const v = it && it[f];
+    if (v && urlMap[v]) return Object.assign({}, it, { [f]: urlMap[v] });
+    return it;
+  });
+}
+
 function pad2(n) {
   return n < 10 ? `0${n}` : String(n);
 }
@@ -129,6 +158,7 @@ async function autoPostToCircles(opts) {
         data: {
           circleId,
           openid,
+          _openid: openid,
           nickName: "",
           avatarUrl: "",
           content,
@@ -156,17 +186,21 @@ async function hydrateUserMap(openids) {
     const list = (res && res.data) || [];
     const m = {};
     list.forEach((u) => {
-      const uid = u.openid || u._openid || u.uid || "";
-      if (!uid) return;
-      m[uid] = {
-        openid: uid,
+      const info = {
+        openid: u.openid || u._openid || u.uid || "",
         nickName: u.nickName || "",
         avatarUrl: u.avatarUrl || "",
         displayName: u.displayName || u.nickName || "",
         title: u.title || "",
+        // issue #35/#38: 岩友号 hydration 以前缺失，导致 ownerInfo.rockId 恒空、
+        // 名片/弹窗里他人 ID 不展示
+        rockId: u.rockId || "",
         climbSkills: u.climbSkills || null,
         city: u.city || ""
       };
+      // 记录可能只存 openid/_openid/uid 中的某一个，按所有存在的 id 字段建索引，
+      // 调用方用任一 id 都能命中
+      [u.openid, u._openid, u.uid].forEach((k) => { if (k) m[k] = info; });
     });
     return m;
   } catch (e) {
@@ -257,11 +291,14 @@ exports.main = async (event) => {
       const card = await getPrimaryCard(openid);
       const displayName = (card && card.displayName) || nickName || "";
       const title = (card && card.title) || "";
-      const userSnapshot = { nickName, avatarUrl, displayName, title };
+      // issue #35/#38: 快照带上岩友号，旧版快照缺 rockId 导致他人侧 ID 空白
+      const rockId = (user && user.rockId) || "";
+      const userSnapshot = { nickName, avatarUrl, displayName, title, rockId };
 
       if (action === "create") {
         const data = {
           uid: openid,
+          openid,
           _openid: openid,
           userSnapshot,
           gymId,
@@ -303,6 +340,8 @@ exports.main = async (event) => {
         const data = {
           gymId,
           gymSnapshot,
+          // issue #35: 编辑计划时一并刷新发起者快照，避免旧快照里的空头像继续被他人看到
+          userSnapshot,
           mode,
           outdoorName,
           date,
@@ -341,13 +380,16 @@ exports.main = async (event) => {
       const card = await getPrimaryCard(openid);
       const displayName = (card && card.displayName) || nickName || "";
       const title = (card && card.title) || "";
+      // issue #35/#38: 报名快照同样带岩友号
+      const joinRockId = (user && user.rockId) || "";
       const r = await joinsCol.add({
         data: {
           planId,
           openid,
+          _openid: openid,
           planOwnerOpenid: owner,
           date: plan.date || "",
-          userSnapshot: { nickName, avatarUrl, displayName, title },
+          userSnapshot: { nickName, avatarUrl, displayName, title, rockId: joinRockId },
           status: "joined",
           createdAt: now,
           created_at: db.serverDate(),
@@ -360,7 +402,10 @@ exports.main = async (event) => {
     if (action === "unjoin_plan") {
       if (!planId) return fail("BAD_REQUEST", "缺少 planId", tid);
       const joinsCol = db.collection("RockCalendarJoins");
-      const existRes = await joinsCol.where({ planId, openid }).limit(1).get();
+      const existRes = await joinsCol.where(_.and([
+        { planId },
+        _.or([{ openid }, { _openid: openid }, { uid: openid }])
+      ])).limit(1).get();
       const row = existRes && existRes.data && existRes.data[0] ? existRes.data[0] : null;
       if (!row) return ok({ planId, joined: false }, tid);
       await joinsCol.doc(row._id).remove();
@@ -389,8 +434,10 @@ exports.main = async (event) => {
           avatarUrl: u.avatarUrl || snap.avatarUrl || "",
           displayName: u.displayName || snap.displayName || "",
           title: u.title || snap.title || "",
+          // issue #35/#38: 报名者岩友号，hydration 优先、快照兜底
+          rockId: u.rockId || snap.rockId || "",
           climbSkills: u.climbSkills || null,
-          city: u.city || "",
+          city: u.city || snap.city || "",
           joinedAt: Number(x.createdAt || 0)
         };
       });
@@ -404,14 +451,21 @@ exports.main = async (event) => {
           avatarUrl: ou.avatarUrl || planSnap.avatarUrl || "",
           displayName: ou.displayName || planSnap.displayName || "",
           title: ou.title || planSnap.title || "",
+          rockId: ou.rockId || planSnap.rockId || "",
           climbSkills: ou.climbSkills || null,
           city: ou.city || "",
           isOwner: true
         };
       }
+      // issue #35: 头像 cloud:// 在云函数端换成临时 https URL（管理端权限，他人也可读）
+      const resolvedJoiners = await resolveCloudAvatarFields(joiners, "avatarUrl");
+      let resolvedOwnerInfo = ownerInfo;
+      if (ownerInfo) {
+        resolvedOwnerInfo = (await resolveCloudAvatarFields([ownerInfo], "avatarUrl"))[0] || ownerInfo;
+      }
       const joined = joiners.some((x) => x.openid === openid) || owner === openid;
       const isOwner = owner === openid;
-      return ok({ planId, ownerInfo, joiners, joinedCount: joiners.length + (owner ? 1 : 0), joined, isOwner }, tid);
+      return ok({ planId, ownerInfo: resolvedOwnerInfo, joiners: resolvedJoiners, joinedCount: joiners.length + (owner ? 1 : 0), joined, isOwner }, tid);
     }
 
     if (action === "remove_joiner") {

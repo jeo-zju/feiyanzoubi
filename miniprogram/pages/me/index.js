@@ -1,7 +1,7 @@
 const cardApi = require("../../services/api/card");
 const userApi = require("../../services/api/user");
 const { getImagePath } = require("../../utils/cardCanvas");
-const { drawFrontCard, flushCanvas } = require("../../utils/cardRenderer");
+const { drawFrontCard, flushCanvas, RENDER_VERSION } = require("../../utils/cardRenderer");
 const { ensureAppLogin, isAdminUser } = require("../../utils/session");
 const { getWindowWidth } = require("../../utils/window");
 const { DEFAULT_AVATAR, DEFAULT_AVATAR_CANVAS } = require("../../utils/constants");
@@ -11,14 +11,15 @@ const CARD_PX_W = 960;
 const CARD_PX_H = 606;
 const CARD_RATIO = CARD_PX_W / CARD_PX_H;
 
-// issue #23: 名片预览指纹改为「内容哈希」而非字符串长度。
-// 旧指纹 [cardId|updatedAt|meUpdatedAt|JSON.stringify(card).length] 只反映长度，
-// 头像调整（cloud fileID 定长、随机段位数常相同）或字段同长度替换时指纹不变，
-// 缓存路径(ME_CARD_IMG_PATH)里的旧预览 PNG 会被继续复用（含旧布局/旧头像状态），
-// 表现为「调整头像后名片布局异常」。这里把头像/称呼/签名等展示字段纳入哈希，
-// 任何展示内容变化都必然触发重绘，杜绝陈旧预览被复用。
+// issue #23/#38/#40: 名片预览指纹 = 渲染版本 + 内容哈希。
+// 旧指纹只含头像/称呼/签名等少数字段，导致：
+// ①修改抱石能力、身高臂展、微信/小红书开关与内容、岩友号、城市后指纹不变，
+//   持久化的旧名片 PNG 被复用（#40「改了资料名片不变化」）；
+// ②名片绘制代码（布局/emoji/标签）更新后旧 PNG 仍被复用（#38 LEHRKS 旧布局）。
+// 这里把画布上所有展示字段纳入哈希，并加入 RENDER_VERSION：
+// 任何展示内容变化或渲染代码版本 bump 都必然失配 → 强制重绘。
 function hashStub(s) {
-  const v = String(s || "").slice(0, 80);
+  const v = String(s == null ? "" : s).slice(0, 120);
   let h = 0;
   for (let i = 0; i < v.length; i++) h = (h * 31 + v.charCodeAt(i)) >>> 0;
   return h.toString(36);
@@ -27,18 +28,39 @@ function computeCardFingerprint(card, me) {
   const c = card || {};
   const m = me || {};
   const finalSlogan = (m.slogan || (c.oneLiner || (c.front && c.front.oneLiner) || ""));
+  const skills = m.climbSkills || c.climbSkills || {};
+  const skillSig = ["boulder", "lead", "toprope", "protector"]
+    .map((k) => `${k}:${skills[k] == null ? "" : skills[k]}`)
+    .join(",");
   const contentSig = [
+    RENDER_VERSION,
+    c.avatarMode || "",
     c.avatarUrl || "",
     c.avatarFileId || "",
     c.oneLiner || "",
+    c.oneLinerStyle || "",
     c.displayName || m.nickName || "",
     c.title || "",
     c.mbti || "",
+    (c.front && c.front.signature) || c.signature || (c.front && c.front.note) || c.note || "",
     m.avatarUrl || "",
     m.nickName || "",
-    finalSlogan
+    m.displayName || "",
+    m.title || "",
+    m.mbti || "",
+    finalSlogan,
+    skillSig,
+    m.heightCm || m.height || "",
+    m.armspanCm || m.armspan || "",
+    m.rockId || "",
+    m.city || "",
+    m.wechatId || "",
+    m.showWechat ? "1" : "0",
+    m.xhsId || "",
+    m.showXhs ? "1" : "0"
   ].map(hashStub).join(",");
   return [
+    RENDER_VERSION,
     c.cardId || "",
     c._updateTime || c.updatedAt || 0,
     m._updateTime || m.updatedAt || 0,
@@ -97,6 +119,7 @@ Page({
   },
 
   async onShow() {
+    this._cardImgErrCount = 0;
     this.setData({ cardSyncing: true });
     this.computeMyCardSize();
     await this.ensureLogin();
@@ -331,40 +354,68 @@ Page({
       } catch (e) { console.warn("[me] canvasToTempFilePath throw", e && e.message); resolve(""); }
     });
     if (token !== this._cardPreviewToken) return;
-    if (tempPath) {
-      try {
-        const savedPath = await new Promise((resolve) => {
-          try {
-            wx.saveFile({
-              tempFilePath: tempPath,
-              success: (r) => resolve(r && r.savedFilePath ? r.savedFilePath : ""),
-              fail: () => resolve("")
-            });
-          } catch (_) { resolve(""); }
-        });
-        if (savedPath) {
-          try {
-            const isTemp = (p) => {
-              if (!p) return true;
-              const s = String(p).toLowerCase();
-              return s.includes("__tmp__") || s.includes("/tmp_") || s.includes("\\tmp_") || (s.startsWith("http://") && s.includes("tmp"));
-            };
-            if (!isTemp(savedPath)) {
-              cache.set(cache.CACHE_KEYS.ME_CARD_IMG_PATH, savedPath, 60 * 24, { saveL2: true });
-              const me = this.data.me || {};
-              const primaryCard = this.data.myPrimaryCard || {};
-              // issue #23: 与 loadCardSummary 同源的内容哈希指纹
-              const fp = this._currentCardFingerprint || computeCardFingerprint(primaryCard, me);
-              cache.set(cache.CACHE_KEYS.ME_CARD_FINGERPRINT, fp, 60 * 24, { saveL2: true });
-            }
-          } catch (_) {}
-        }
-      } catch (_) {}
+    if (!tempPath) {
+      // issue #36: 导出失败时记录日志并保留重试机会，避免静默卡死在骨架屏
+      console.warn("[me] canvasToTempFilePath 未返回临时路径，本轮跳过渲染，等待下次进入页面重试");
+      return;
     }
-    this.setData({ myCardPreviewImage: tempPath || "" });
+    try {
+      // issue #36: wx.saveFile 已在新版基础库废弃（vConsole 持续告警且可能失败），
+      // 改用 FileSystemManager.saveFile 持久化名片预览；失败时降级直接使用临时路径展示
+      const savedPath = await new Promise((resolve) => {
+        try {
+          const fs = wx.getFileSystemManager();
+          fs.saveFile({
+            tempFilePath: tempPath,
+            success: (r) => resolve(r && r.savedFilePath ? r.savedFilePath : ""),
+            fail: (err) => {
+              console.warn("[me] FileSystemManager.saveFile fail", err && err.errMsg);
+              resolve("");
+            }
+          });
+        } catch (e) {
+          console.warn("[me] FileSystemManager.saveFile throw", e && e.message);
+          resolve("");
+        }
+      });
+      if (savedPath) {
+        try {
+          const isPersistedPath = (p) => {
+            if (!p) return false;
+            const s = String(p).toLowerCase();
+            if (s.includes("__tmp__") || s.includes("/tmp_") || s.includes("\\tmp_")) return false;
+            if (s.startsWith("http://") || s.startsWith("https://")) return false;
+            return true;
+          };
+          if (isPersistedPath(savedPath)) {
+            cache.set(cache.CACHE_KEYS.ME_CARD_IMG_PATH, savedPath, 60 * 24, { saveL2: true });
+            const meNow = this.data.me || {};
+            const primaryNow = this.data.myPrimaryCard || {};
+            // issue #23: 与 loadCardSummary 同源的内容哈希指纹
+            const fp = this._currentCardFingerprint || computeCardFingerprint(primaryNow, meNow);
+            cache.set(cache.CACHE_KEYS.ME_CARD_FINGERPRINT, fp, 60 * 24, { saveL2: true });
+          }
+        } catch (e) {
+          console.warn("[me] 持久化名片预览缓存失败", e && e.message);
+        }
+      }
+    } catch (e) {
+      console.warn("[me] 名片预览持久化异常，降级使用临时路径", e && e.message);
+    }
+    this._cardImgErrCount = 0;
+    this.setData({ myCardPreviewImage: tempPath });
   },
 
   onCardPreviewImgError() {
+    // issue #36: 限制重绘次数，避免「预览图报错 → 清缓存 → 重绘 → 再报错」死循环
+    // 导致名片区域持续刷新、骨架屏常显；超过上限后本轮不再重绘，下次 onShow 重置
+    const retryCount = this._cardImgErrCount || 0;
+    if (retryCount >= 2) {
+      console.warn("[me] 名片预览图连续加载失败，已停止本轮重绘循环");
+      this.setData({ myCardPreviewImage: "" });
+      return;
+    }
+    this._cardImgErrCount = retryCount + 1;
     try {
       cache.invalidate(cache.CACHE_KEYS.ME_CARD_IMG_PATH);
       cache.invalidate(cache.CACHE_KEYS.ME_CARD_FINGERPRINT);
@@ -376,7 +427,7 @@ Page({
     try {
       const self = this;
       if (this.data.me && this.data.myPrimaryCard) {
-        setTimeout(() => { self.renderMyCard && self.renderMyCard(); }, 50);
+        setTimeout(() => { self.renderMyCard && self.renderMyCard(); }, 200);
       }
     } catch (_) {}
   },
