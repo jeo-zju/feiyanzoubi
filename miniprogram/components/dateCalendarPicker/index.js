@@ -32,6 +32,9 @@ function buildYears(minY, maxY) {
 }
 
 Component({
+  options: {
+    addGlobalClass: true
+  },
   properties: {
     visible: { type: Boolean, value: false },
     value: { type: String, value: "" },

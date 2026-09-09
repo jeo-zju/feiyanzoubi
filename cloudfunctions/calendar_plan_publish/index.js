@@ -1,4 +1,6 @@
 const cloud = require("wx-server-sdk");
+const lifecycle = require("./lifecycle");
+const community = require("./community");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -59,7 +61,9 @@ function formatYMD(d) {
 }
 
 function isValidYMD(v) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v || ""))) return false;
+  const parsed = new Date(`${v}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === v;
 }
 
 function isValidHM(v) {
@@ -223,22 +227,13 @@ exports.main = async (event) => {
     const action = safeText(event && event.action) || "create";
     const payload = (event && event.payload) || {};
     const planId = safeText(event && event.planId);
+    if (community.supported.has(action)) return ok(await community.manage({db,openid,event:{...event,action}}),tid);
+    if (lifecycle.supported.has(action)) return ok(await lifecycle.manage({db,cloud,openid,event:{...event,action}}),tid);
 
     const col = db.collection("RockCalendarPlans");
     const now = Date.now();
     const today = todayYMD();
     const maxDate = addDays(today, 13);
-
-    if (action === "cancel") {
-      if (!planId) return fail("BAD_REQUEST", "缺少 planId", tid);
-      const doc = await col.doc(planId).get().catch(() => null);
-      const plan = doc && doc.data ? doc.data : null;
-      if (!plan) return fail("NOT_FOUND", "计划不存在", tid);
-      const owner = plan._openid || plan.uid || "";
-      if (owner !== openid) return fail("PERMISSION_DENIED", "无权取消他人计划", tid);
-      await col.doc(planId).update({ data: { status: "cancelled", updatedAt: now, updated_at: db.serverDate() } });
-      return ok({ planId }, tid);
-    }
 
     if (action === "create" || action === "update") {
       const mode = safeText(payload.mode) === "outdoor" ? "outdoor" : "gym";
@@ -249,9 +244,20 @@ exports.main = async (event) => {
       const endTime = safeText(payload.endTime);
       const rawVisibility = safeText(payload.visibility);
       const visibility = ["public", "friends", "circle"].includes(rawVisibility) ? rawVisibility : "public";
-      const note = safeText(payload.note);
+      const note = safeText(payload.note).slice(0,1000);
+      const capacity = Number(payload.capacity || 4);
+      if (!Number.isInteger(capacity) || capacity < 2 || capacity > 12) return fail("BAD_REQUEST","总人数需为 2–12 人（包含发起人）",tid);
+      const startAt = Date.parse(payload.date + "T" + payload.startTime + ":00+08:00");
+      const endAt = Date.parse(payload.date + "T" + payload.endTime + ":00+08:00");
+      const socialFields = {
+        schemaVersion:2, title:safeText(payload.title).slice(0,40), capacity,
+        joinMode:payload.joinMode === "approval" ? "approval" : "direct", startAt, endAt, joinDeadline:startAt,
+        atmosphereTags:Array.isArray(payload.atmosphereTags) ? payload.atmosphereTags.map(safeText).filter(Boolean).slice(0,3) : [],
+        meetingPoint:safeText(payload.meetingPoint).slice(0,100), contact:safeText(payload.contact).slice(0,100)
+      };
       const needPartner = !!(payload && payload.needPartner);
       const skillTags = normalizeSkillTags(payload && payload.skillTags);
+      if (!skillTags.some(t => ["boulder","lead","toprope","auto"].includes(t))) return fail("BAD_REQUEST","请选择攀爬类型",tid);
 
       if (!date) return fail("BAD_REQUEST", "缺少 date", tid);
       if (!isValidYMD(date)) return fail("BAD_REQUEST", "date 格式应为 YYYY-MM-DD", tid);
@@ -266,6 +272,7 @@ exports.main = async (event) => {
       const durationMin = endMin - startMin;
       if (durationMin < 30) return fail("BAD_REQUEST", "时间段至少 30 分钟", tid);
       if (durationMin > 12 * 60) return fail("BAD_REQUEST", "单次计划不超过 12 小时", tid);
+      if (Date.parse(`${date}T${startTime}:00+08:00`) <= now) return fail("DATE_PAST", "请选择尚未开始的时间", tid);
 
       let gym = null;
       let gymSnapshot = null;
@@ -287,6 +294,7 @@ exports.main = async (event) => {
 
       const user = await getUser(openid);
       const nickName = (user && (user.nickName || user.wechatName || user.name)) || "";
+      if(!nickName) return fail("PROFILE_REQUIRED","请先在我的页面填写昵称，让新岩友认识你",tid);
       const avatarUrl = (user && user.avatarUrl) || "";
       const card = await getPrimaryCard(openid);
       const displayName = (card && card.displayName) || nickName || "";
@@ -297,6 +305,7 @@ exports.main = async (event) => {
 
       if (action === "create") {
         const data = {
+          ...socialFields, cityKey: safeText(gymSnapshot && gymSnapshot.city).replace(/市$/, ""), confirmedCount:1, isFull:false, participantIds:[openid], joinSchemaVersion:2, version:1,
           uid: openid,
           openid,
           _openid: openid,
@@ -321,11 +330,15 @@ exports.main = async (event) => {
           created_at: db.serverDate(),
           updated_at: db.serverDate()
         };
-        const r = await col.add({ data });
-        const planId = r && r._id ? String(r._id) : "";
-        if (planId && circleIds.length) {
-          await autoPostToCircles({ planId, circleIds, openid, date, startTime, endTime, gymSnapshot, note });
-        }
+        const requestId=safeText(event.requestId);
+        if(!/^[A-Za-z0-9_-]{8,100}$/.test(requestId)) return fail("REQUEST_ID_REQUIRED","请更新小程序后发布",tid);
+        const planId="p_"+require("crypto").createHash("sha256").update(openid+"|"+requestId).digest("hex").slice(0,32);
+        const fingerprint=JSON.stringify(payload);
+        await db.runTransaction(async tx=>{
+          const ref=tx.collection("RockCalendarPlans").doc(planId), previous=await lifecycle.optionalDoc(ref);
+          if(previous){if(previous.requestFingerprint!==fingerprint)throw Object.assign(new Error("本次发布内容已改变，请重新打开发布页"),{code:"REQUEST_CONFLICT"});return;}
+          await ref.set({data:{...data,requestFingerprint:fingerprint}});
+        });
         return ok({ planId }, tid);
       }
 
@@ -338,6 +351,7 @@ exports.main = async (event) => {
         if (owner !== openid) return fail("PERMISSION_DENIED", "无权修改他人计划", tid);
         if (plan.status && plan.status !== "active") return fail("BAD_REQUEST", "该计划状态不可修改", tid);
         const data = {
+          ...socialFields, cityKey: safeText(gymSnapshot && gymSnapshot.city).replace(/市$/, ""),
           gymId,
           gymSnapshot,
           // issue #35: 编辑计划时一并刷新发起者快照，避免旧快照里的空头像继续被他人看到
@@ -356,137 +370,27 @@ exports.main = async (event) => {
           updatedAt: now,
           updated_at: db.serverDate()
         };
-        await col.doc(planId).update({ data });
+        const members = await lifecycle.rows(db,"RockCalendarJoins",{planId});
+        const audience = [...new Set(members.filter(j=>lifecycle.confirmed(j)||j.status === "pending").map(j=>j.openid))];
+        await db.runTransaction(async tx => {
+          const ref=tx.collection("RockCalendarPlans").doc(planId);
+          const current=(await ref.get()).data;
+          if(!current || current.status !== "active") throw Object.assign(new Error("该约爬已取消"),{code:"INVALID_STATE"});
+          if(payload.version != null && Number(payload.version) !== Number(current.version || 0)) throw Object.assign(new Error("约爬已更新，请重新打开编辑"),{code:"PLAN_CHANGED"});
+          const confirmedCount=current.joinSchemaVersion===2 ? current.confirmedCount : 1+new Set(members.filter(lifecycle.confirmed).map(j=>j.openid)).size;
+          const recipientIds=Array.isArray(current.participantIds)?current.participantIds:audience;
+          if(capacity < confirmedCount) throw Object.assign(new Error("人数不能少于已确认人数"),{code:"CAPACITY_TOO_SMALL"});
+          if(recipientIds.length && (visibility !== current.visibility || JSON.stringify(circleIds) !== JSON.stringify(current.circleIds || []))) throw Object.assign(new Error("已有岩友报名，暂不能修改可见范围"),{code:"VISIBILITY_LOCKED"});
+          const version=Number(current.version || 0)+1;
+          await ref.update({data:{...data,version,confirmedCount,joinSchemaVersion:2,participantIds:recipientIds,isFull:capacity<=confirmedCount}});
+          if(recipientIds.length) await tx.collection("RockPlanEvents").doc(planId+"_"+version).set({data:{planId,audience:recipientIds,actor:openid,title:"约爬信息有更新，请查看时间和集合位置",gymName:(gymSnapshot||{}).name||"攀岩馆",createdAt:now}});
+        });
         return ok({ planId }, tid);
       }
     }
 
-    if (action === "join_plan") {
-      if (!planId) return fail("BAD_REQUEST", "缺少 planId", tid);
-      const doc = await col.doc(planId).get().catch(() => null);
-      const plan = doc && doc.data ? doc.data : null;
-      if (!plan) return fail("NOT_FOUND", "计划不存在", tid);
-      if (plan.status && plan.status !== "active") return fail("BAD_REQUEST", "计划不可报名", tid);
-      const owner = plan._openid || plan.uid || "";
-      if (owner === openid) return fail("BAD_REQUEST", "不能报名自己的计划", tid);
-      const joinsCol = db.collection("RockCalendarJoins");
-      const existRes = await joinsCol.where({ planId, openid }).limit(1).get();
-      if (existRes && existRes.data && existRes.data[0]) {
-        return ok({ planId, joined: true, joinId: String(existRes.data[0]._id) }, tid);
-      }
-      const user = await getUser(openid);
-      const nickName = (user && (user.nickName || user.wechatName || user.name)) || "";
-      const avatarUrl = (user && user.avatarUrl) || "";
-      const card = await getPrimaryCard(openid);
-      const displayName = (card && card.displayName) || nickName || "";
-      const title = (card && card.title) || "";
-      // issue #35/#38: 报名快照同样带岩友号
-      const joinRockId = (user && user.rockId) || "";
-      const r = await joinsCol.add({
-        data: {
-          planId,
-          openid,
-          _openid: openid,
-          planOwnerOpenid: owner,
-          date: plan.date || "",
-          userSnapshot: { nickName, avatarUrl, displayName, title, rockId: joinRockId },
-          status: "joined",
-          createdAt: now,
-          created_at: db.serverDate(),
-          updated_at: db.serverDate()
-        }
-      });
-      return ok({ planId, joined: true, joinId: r && r._id ? String(r._id) : "" }, tid);
-    }
-
-    if (action === "unjoin_plan") {
-      if (!planId) return fail("BAD_REQUEST", "缺少 planId", tid);
-      const joinsCol = db.collection("RockCalendarJoins");
-      const existRes = await joinsCol.where(_.and([
-        { planId },
-        _.or([{ openid }, { _openid: openid }, { uid: openid }])
-      ])).limit(1).get();
-      const row = existRes && existRes.data && existRes.data[0] ? existRes.data[0] : null;
-      if (!row) return ok({ planId, joined: false }, tid);
-      await joinsCol.doc(row._id).remove();
-      return ok({ planId, joined: false }, tid);
-    }
-
-    if (action === "get_joiners") {
-      if (!planId) return fail("BAD_REQUEST", "缺少 planId", tid);
-      const doc = await col.doc(planId).get().catch(() => null);
-      const plan = doc && doc.data ? doc.data : null;
-      if (!plan) return fail("NOT_FOUND", "计划不存在", tid);
-      const owner = plan._openid || plan.uid || "";
-      const joinsCol = db.collection("RockCalendarJoins");
-      const listRes = await joinsCol.where({ planId, status: "joined" }).orderBy("createdAt", "asc").limit(200).get();
-      const list = (listRes && listRes.data) || [];
-      const uids = list.map((x) => x.openid || "").filter(Boolean);
-      if (owner) uids.push(owner);
-      const userMap = await hydrateUserMap(uids);
-      const joiners = list.map((x) => {
-        const u = userMap[x.openid] || {};
-        const snap = (x && x.userSnapshot) || {};
-        return {
-          joinId: String(x._id || ""),
-          openid: x.openid || "",
-          nickName: u.nickName || snap.nickName || "",
-          avatarUrl: u.avatarUrl || snap.avatarUrl || "",
-          displayName: u.displayName || snap.displayName || "",
-          title: u.title || snap.title || "",
-          // issue #35/#38: 报名者岩友号，hydration 优先、快照兜底
-          rockId: u.rockId || snap.rockId || "",
-          climbSkills: u.climbSkills || null,
-          city: u.city || snap.city || "",
-          joinedAt: Number(x.createdAt || 0)
-        };
-      });
-      let ownerInfo = null;
-      if (owner) {
-        const ou = userMap[owner] || {};
-        const planSnap = (plan && plan.userSnapshot) || {};
-        ownerInfo = {
-          openid: owner,
-          nickName: ou.nickName || planSnap.nickName || "",
-          avatarUrl: ou.avatarUrl || planSnap.avatarUrl || "",
-          displayName: ou.displayName || planSnap.displayName || "",
-          title: ou.title || planSnap.title || "",
-          rockId: ou.rockId || planSnap.rockId || "",
-          climbSkills: ou.climbSkills || null,
-          city: ou.city || "",
-          isOwner: true
-        };
-      }
-      // issue #35: 头像 cloud:// 在云函数端换成临时 https URL（管理端权限，他人也可读）
-      const resolvedJoiners = await resolveCloudAvatarFields(joiners, "avatarUrl");
-      let resolvedOwnerInfo = ownerInfo;
-      if (ownerInfo) {
-        resolvedOwnerInfo = (await resolveCloudAvatarFields([ownerInfo], "avatarUrl"))[0] || ownerInfo;
-      }
-      const joined = joiners.some((x) => x.openid === openid) || owner === openid;
-      const isOwner = owner === openid;
-      return ok({ planId, ownerInfo: resolvedOwnerInfo, joiners: resolvedJoiners, joinedCount: joiners.length + (owner ? 1 : 0), joined, isOwner }, tid);
-    }
-
-    if (action === "remove_joiner") {
-      if (!planId) return fail("BAD_REQUEST", "缺少 planId", tid);
-      const targetOpenid = safeText(event && event.targetOpenid);
-      if (!targetOpenid) return fail("BAD_REQUEST", "缺少 targetOpenid", tid);
-      const doc = await col.doc(planId).get().catch(() => null);
-      const plan = doc && doc.data ? doc.data : null;
-      if (!plan) return fail("NOT_FOUND", "计划不存在", tid);
-      const owner = plan._openid || plan.uid || "";
-      if (owner !== openid) return fail("PERMISSION_DENIED", "仅计划发起者可移除", tid);
-      if (owner === targetOpenid) return fail("BAD_REQUEST", "不能移除发起者", tid);
-      const joinsCol = db.collection("RockCalendarJoins");
-      const existRes = await joinsCol.where({ planId, openid: targetOpenid }).limit(1).get();
-      const row = existRes && existRes.data && existRes.data[0] ? existRes.data[0] : null;
-      if (row) await joinsCol.doc(row._id).remove();
-      return ok({ planId, removed: true, targetOpenid }, tid);
-    }
-
     return fail("BAD_ACTION", `不支持的 action: ${action}`, tid);
   } catch (e) {
-    return fail("PUBLISH_FAILED", e && e.message ? e.message : "提交失败", tid);
+    return fail(e.code || "PUBLISH_FAILED", e && e.message ? e.message : "提交失败", tid);
   }
 };

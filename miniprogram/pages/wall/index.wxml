@@ -4,7 +4,7 @@
       <view class="section-kicker">攀岩墙</view>
       <view class="section-title-lg">{{gym.name || '攀岩墙'}}</view>
       <view class="section-desc">容量 {{capacity}}，当前 {{total}}。满了会请最早那位先下去透气。</view>
-      <view class="btn btn-warn mt2" bindtap="onHang">我要上墙</view>
+      <view class="btn btn-warn mt" bindtap="onHang">我要上墙</view>
     </view>
   </view>
 
@@ -20,8 +20,8 @@
             src="{{(item.snapshot.avatarMode==='custom'?item.snapshot.avatarFileId:item.snapshot.avatarUrl) || defaultAvatar}}"
           ></image>
           <view class="name">{{item.snapshot.displayName}}</view>
-          <view class="muted small">{{item.snapshot.title}}</view>
-          <view class="muted tiny">{{item.snapshot.oneLiner}}</view>
+          <view class="muted cell-sub">{{item.snapshot.title}}</view>
+          <view class="muted cell-desc">{{item.snapshot.oneLiner}}</view>
         </view>
       </view>
     </view>

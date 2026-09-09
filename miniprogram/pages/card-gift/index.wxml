@@ -4,24 +4,22 @@
       <view class="section-kicker">送卡</view>
       <view class="section-title-lg">做一张送给朋友</view>
       <view class="section-desc">每次创建链接或直送都会消耗 1 次灵感，先准备草稿，再选择赠送方式。</view>
-      <view class="row mt2">
+      <view class="row mt">
         <view class="btn btn-primary flex" bindtap="goMake">1. 先做草稿</view>
         <view class="btn btn-ghost flex ml" bindtap="goSaveDraft" wx:if="{{draftCardId}}">保存草稿图</view>
       </view>
-      <view class="section-tip mt2">当前草稿：{{draftCardId || '暂无'}}</view>
+      <view class="section-tip mt">当前草稿：{{draftCardId || '暂无'}}</view>
     </view>
   </view>
 
   <view class="card mt">
     <view class="card-hd">2. 选择赠送方式</view>
     <view class="card-bd">
-      <view class="split">
-        <view class="panel split-left">
-          <view class="split-title">链接领取</view>
-          <view class="section-tip split-tip">生成后可直接转发给好友，或者让对方扫码领取。</view>
-          <view class="btn btn-warn mt2" bindtap="onCreateLink">生成领取码</view>
-          <view class="btn btn-ghost mt2" open-type="share" wx:if="{{giftId}}">转发给微信好友</view>
-        </view>
+      <view class="panel">
+        <view class="section-title">链接领取</view>
+        <view class="section-tip">生成后可直接转发给好友，或者让对方扫码领取。</view>
+        <view class="btn btn-warn btn--block mt" bindtap="onCreateLink">生成领取码</view>
+        <view class="btn btn-ghost btn--block mt" open-type="share" wx:if="{{giftId}}">转发给微信好友</view>
       </view>
     </view>
   </view>
@@ -34,7 +32,7 @@
         <view class="btn btn-ghost ml" bindtap="onCopyGiftId">复制</view>
       </view>
       <image wx:if="{{qrFileId}}" class="qr" mode="aspectFit" src="{{qrFileId}}"></image>
-      <view class="section-tip mt2">让朋友扫码即可领取</view>
+      <view class="section-tip">让朋友扫码即可领取</view>
     </view>
   </view>
 </view>

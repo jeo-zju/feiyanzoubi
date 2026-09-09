@@ -1,0 +1,8 @@
+{
+  "disableScroll": false,
+  "usingComponents": {
+    "gym-card": "../../components/gymCard/index",
+    "seg-tabs": "../../components/segmentedTabs/index",
+    "paginator": "../../components/paginator/index"
+  }
+}

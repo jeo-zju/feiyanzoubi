@@ -15,7 +15,7 @@
         />
       </view>
 
-      <view class="action-row">
+      <view class="row mt-sm">
         <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始查询'}}</view>
         <view class="btn btn-ghost mini ml" bindtap="onCopyResult">复制原始数据</view>
       </view>
@@ -76,7 +76,7 @@
           <textarea class="textarea" auto-height value="{{draft.manager_uids}}" data-key="manager_uids" bindinput="onDraftInput"></textarea>
         </view>
         <view class="section-tip mt">数组字段支持换行或逗号分隔。</view>
-        <view class="action-row">
+        <view class="row mt-sm">
           <view class="tag tag-warn">保存后会直接写入 `RockGyms`</view>
           <view class="btn btn-primary save-btn" bindtap="onSave">{{saving ? '保存中' : '保存权限'}}</view>
         </view>

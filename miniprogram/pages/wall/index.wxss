@@ -1,19 +1,4 @@
-.viewport-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.viewport-scroll {
-  flex: 1;
-  min-height: 0;
-}
-
-.mt2 {
-  margin-top: 24rpx;
-}
-
+/* 页面特有布局：墙上名片网格 */
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -43,14 +28,14 @@
   font-size: 28rpx;
 }
 
-.small {
+.cell-sub {
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
 }
 
-.tiny {
+.cell-desc {
   margin-top: 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.45;
   opacity: 0.85;
   display: -webkit-box;

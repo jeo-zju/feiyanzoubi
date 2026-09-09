@@ -1,14 +1,14 @@
 <view class="page page--circle-list">
   <view class="topbar">
-    <view class="topbar__title">{{title}}</view>
-    <view class="topbar__plus" bindtap="onCreate">＋</view>
+    <view class="page-title flex">{{title}}</view>
+    <view class="icon-btn" bindtap="onCreate">＋</view>
   </view>
 
   <view class="list-stage">
-    <view wx:if="{{loading && list.length===0}}" class="empty-stage">加载中…</view>
-    <view wx:elif="{{list.length===0}}" class="empty-stage">暂无可展示的岩友圈</view>
+    <view wx:if="{{loading && list.length===0}}" class="empty-state">加载中…</view>
+    <view wx:elif="{{list.length===0}}" class="empty-state">暂无可展示的岩友圈</view>
     <block wx:else>
-      <view class="circle-row card mt-sm" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="onTapCard">
+      <view class="card circle-row" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="onTapCard">
         <view class="circle-row__color" style="background:{{item.avatarColor || '#5D5A88'}};"></view>
         <view class="circle-row__main">
           <view class="circle-row__title">{{item.name}}</view>
@@ -21,10 +21,10 @@
         </view>
         <view class="circle-row__side">
           <block wx:if="{{membershipMap[item._id]}}">
-            <view wx:if="{{membershipMap[item._id].status==='accepted'}}" class="circle-row__tag circle-row__tag--in">已在</view>
-            <view wx:elif="{{membershipMap[item._id].status==='pending'}}" class="circle-row__tag circle-row__tag--pending">待审批</view>
+            <view wx:if="{{membershipMap[item._id].status==='accepted'}}" class="tag">已在</view>
+            <view wx:elif="{{membershipMap[item._id].status==='pending'}}" class="tag tag-warn">待审批</view>
           </block>
-          <view wx:else class="circle-row__btn" catchtap="onTapApply" data-id="{{item._id}}">申请</view>
+          <view wx:else class="btn btn-primary mini" catchtap="onTapApply" data-id="{{item._id}}">申请</view>
         </view>
       </view>
     </block>

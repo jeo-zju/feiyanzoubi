@@ -1,9 +1,13 @@
 <view class="page">
   <view class="card card-hero">
     <view class="top">
-      <view class="section-kicker">打卡</view>
-      <view wx:if="{{revertAvailable || revertJustNow}}" class="top-action right">
-        <view class="btn {{revertAvailable ? 'btn-warn' : 'btn-ghost btn--disabled'}} top-btn" bindtap="onTapRevert">撤销本次打卡</view>
+      <view class="row">
+        <view class="section-kicker">打卡</view>
+        <view
+          wx:if="{{revertAvailable || revertJustNow}}"
+          class="btn mini {{revertAvailable ? 'btn-warn' : 'btn-ghost btn--disabled'}}"
+          bindtap="onTapRevert"
+        >撤销本次打卡</view>
       </view>
       <view class="top-row">
         <view class="gym-wrap">
@@ -11,16 +15,13 @@
           <view class="section-desc top-desc">记录今天在馆里的完成情况</view>
         </view>
         <view class="actions">
-          <view class="btn btn-ghost top-btn" bindtap="goWall">攀岩墙</view>
-          <view class="btn btn-warn top-btn" bindtap="goHome">去爬其他馆</view>
+          <view class="btn btn-ghost mini" bindtap="goWall">攀岩墙</view>
+          <view class="btn btn-warn mini" bindtap="goHome">去爬其他馆</view>
         </view>
       </view>
       <view class="top-sub">
-        <view class="tag cycle-tag">{{cycleLabel}}</view>
-        <view class="date-chip" bindtap="openCalendar">
-          <view class="muted date-label">打卡日期</view>
-          <view class="tag tag-warn date-tag">{{date}}</view>
-        </view>
+        <view class="tag">{{cycleLabel}}</view>
+        <view class="tag tag-warn" bindtap="openCalendar">打卡日期 {{date}} ▾</view>
       </view>
     </view>
     <view class="card-bd">
@@ -34,13 +35,13 @@
         <view class="tbody">
           <view class="tr" wx:for="{{rows}}" wx:key="key">
             <view class="td td-grade">
-              <view class="tag grade-tag">{{item.label}}</view>
+              <view class="tag">{{item.label}}</view>
             </view>
             <view class="td td-total">{{item.progressText}}</view>
             <view class="td td-check">
               <view class="stepper">
                 <view
-                  class="step-btn {{item.delta>0?'':'step-btn--disabled'}}"
+                  class="icon-btn {{item.delta>0?'':'step-disabled'}}"
                   data-key="{{item.key}}"
                   bindtap="onDec"
                 >
@@ -48,7 +49,7 @@
                 </view>
                 <view class="delta-text">{{item.deltaText}}</view>
                 <view
-                  class="step-btn step-btn--inc {{item.canInc?'':'step-btn--disabled'}}"
+                  class="icon-btn icon-btn--warn {{item.canInc?'':'step-disabled'}}"
                   data-key="{{item.key}}"
                   bindtap="onInc"
                 >
@@ -62,7 +63,7 @@
     </view>
   </view>
 
-  <view class="btn btn-primary submit" bindtap="onSubmit">今天就爬到这了！</view>
+  <view class="btn btn-primary mt" bindtap="onSubmit">今天就爬到这了！</view>
 
   <date-cal
     visible="{{calendarVisible}}"

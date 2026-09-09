@@ -152,92 +152,6 @@ function toCategory(mode) {
   return "rope";
 }
 
-async function upsertDaily(uid, date, gymId, cycleId, category, deltas) {
-  const col = db.collection("RockUserDailyProgress");
-  const found = await col
-    .where(_.or([
-      { uid, date, gym_id: gymId, cycle_id: cycleId },
-      { openid: uid, date, gym_id: gymId, cycle_id: cycleId },
-      { _openid: uid, date, gym_id: gymId, cycle_id: cycleId }
-    ]))
-    .limit(1)
-    .get();
-  const doc = found && found.data && found.data[0] ? found.data[0] : null;
-  if (!doc) {
-    const today = {};
-    today[category] = { ...(deltas || {}) };
-    await col.add({
-      data: {
-        uid,
-        openid: uid,
-        _openid: uid,
-        gym_id: gymId,
-        cycle_id: cycleId,
-        date,
-        today,
-        created_at: db.serverDate(),
-        updated_at: db.serverDate()
-      }
-    });
-    return;
-  }
-  const today = doc.today && typeof doc.today === "object" ? { ...doc.today } : {};
-  const byCat = today[category] && typeof today[category] === "object" ? { ...today[category] } : {};
-  addCounts(byCat, deltas);
-  today[category] = byCat;
-  await col.doc(doc._id).update({
-    data: {
-      today,
-      updated_at: db.serverDate()
-    }
-  });
-}
-
-async function upsertCycle(uid, gymId, cycleId, category, deltas) {
-  const col = db.collection("RockUserCycleProgress");
-  const found = await col
-    .where(_.or([
-      { uid, gym_id: gymId, cycle_id: cycleId },
-      { openid: uid, gym_id: gymId, cycle_id: cycleId },
-      { _openid: uid, gym_id: gymId, cycle_id: cycleId }
-    ]))
-    .limit(1)
-    .get();
-  const doc = found && found.data && found.data[0] ? found.data[0] : null;
-
-  if (!doc) {
-    const totals = { boulder: {}, rope: {}, lead: {} };
-    addCounts(totals[category] || totals.rope, deltas);
-    await col.add({
-      data: {
-        uid,
-        openid: uid,
-        _openid: uid,
-        gym_id: gymId,
-        cycle_id: cycleId,
-        totals,
-        targets: { boulder: {}, rope: {}, lead: {} },
-        cap_locked: false,
-        created_at: db.serverDate(),
-        updated_at: db.serverDate()
-      }
-    });
-    return;
-  }
-
-  const totals = doc.totals && typeof doc.totals === "object" ? { ...doc.totals } : { boulder: {}, rope: {}, lead: {} };
-  const byCat = totals[category] && typeof totals[category] === "object" ? { ...totals[category] } : {};
-  addCounts(byCat, deltas);
-  totals[category] = byCat;
-
-  await col.doc(doc._id).update({
-    data: {
-      totals,
-      updated_at: db.serverDate()
-    }
-  });
-}
-
 exports.main = async (event) => {
   const tid = traceId();
   try {
@@ -246,122 +160,55 @@ exports.main = async (event) => {
 
     const action = safeText(event && event.action) || "create";
 
-    const userRes = await db
-      .collection("RockUsers")
-      .where(_.or([{ openid }, { _openid: openid }, { uid: openid }]))
-      .limit(1)
-      .get();
-    const userDoc = userRes && userRes.data && userRes.data[0] ? userRes.data[0] : null;
-    const userId = userDoc && userDoc._id ? String(userDoc._id) : "";
-
+    if (!openid) return fail("AUTH_REQUIRED", "请登录后操作", tid);
     if (action === "revert_last") {
-      const WINDOW_MS = 30 * 60 * 1000;
-      const nowTs = Date.now();
-      const latest = await db
-        .collection("RockCheckinRecords")
-        .where(_.or([{ uid: openid }, { openid }, { _openid: openid }]))
-        .orderBy("created_at", "desc")
-        .limit(100)
-        .get();
-      const list = (latest && latest.data) || [];
-      let anchorTs = 0;
-      const candidates = [];
-      for (let i = 0; i < list.length; i++) {
-        const rec = list[i];
-        let ts = rec.createdAtMs || 0;
-        if (!ts && rec.created_at && typeof rec.created_at === "object" && typeof rec.created_at.getTime === "function") ts = rec.created_at.getTime();
-        if (!ts) continue;
-        if (!anchorTs) anchorTs = ts;
-        if (anchorTs - ts > 180 * 1000) break;
-        candidates.push(rec);
-      }
-      if (!candidates.length) return fail("NOT_FOUND", "最近没有打卡记录", tid);
-      if (nowTs - anchorTs > WINDOW_MS) return fail("OUTSIDE_REVOCATION_WINDOW", "超过 30 分钟撤销窗口", tid);
-      const deltaAgg = {};
-      const removedIds = [];
-      for (let i = 0; i < candidates.length; i++) {
-        const r = candidates[i];
-        const id = String(r._id || "");
-        const gid = String(r.gym_id || "");
-        const cid = String(r.cycle_id || "");
-        const cat = String(r.category || "");
-        const dt = String(r.date || "");
-        const grade = String(r.grade || "");
-        const n = Number(r.count || 0);
-        if (gid && cid && dt && grade && Number.isFinite(n) && n > 0) {
-          const k = `${gid}|${cid}|${cat}|${dt}`;
-          if (!deltaAgg[k]) deltaAgg[k] = { gid, cid, cat, dt, deltas: {} };
-          deltaAgg[k].deltas[grade] = Number(deltaAgg[k].deltas[grade] || 0) + n;
-        }
-        if (id) { try { await db.collection("RockCheckinRecords").doc(id).remove(); removedIds.push(id); } catch (e) {} }
-      }
-      const keys = Object.keys(deltaAgg);
-      for (let i = 0; i < keys.length; i++) {
-        const row = deltaAgg[keys[i]];
-        try {
-          const dFound = await db
-            .collection("RockUserDailyProgress")
-            .where(
-              _.and([
-                _.or([{ uid: openid }, { openid }, { _openid: openid }]),
-                { gym_id: row.gid, cycle_id: row.cid, date: row.dt }
-              ])
-            )
-            .limit(1)
-            .get();
-          const dDoc = dFound && dFound.data && dFound.data[0] ? dFound.data[0] : null;
-          if (dDoc) {
-            const today = dDoc.today && typeof dDoc.today === "object" ? { ...dDoc.today } : {};
-            const catData = today[row.cat] && typeof today[row.cat] === "object" ? { ...today[row.cat] } : {};
-            Object.keys(row.deltas).forEach((g) => {
-              const old = Number(catData[g] || 0);
-              const nv = Math.max(0, old - Number(row.deltas[g] || 0));
-              if (nv <= 0) delete catData[g]; else catData[g] = nv;
-            });
-            today[row.cat] = catData;
-            await db.collection("RockUserDailyProgress").doc(String(dDoc._id)).update({ data: { today, updated_at: db.serverDate() } });
-          }
-        } catch (e) {}
-        try {
-          const cFound = await db
-            .collection("RockUserCycleProgress")
-            .where(
-              _.and([
-                _.or([{ uid: openid }, { openid }, { _openid: openid }]),
-                { gym_id: row.gid, cycle_id: row.cid }
-              ])
-            )
-            .limit(1)
-            .get();
-          const cDoc = cFound && cFound.data && cFound.data[0] ? cFound.data[0] : null;
-          if (cDoc) {
-            const totals = cDoc.totals && typeof cDoc.totals === "object" ? { ...cDoc.totals } : { boulder: {}, rope: {}, lead: {} };
-            const catData = totals[row.cat] && typeof totals[row.cat] === "object" ? { ...totals[row.cat] } : {};
-            Object.keys(row.deltas).forEach((g) => {
-              const old = Number(catData[g] || 0);
-              const nv = Math.max(0, old - Number(row.deltas[g] || 0));
-              if (nv <= 0) delete catData[g]; else catData[g] = nv;
-            });
-            totals[row.cat] = catData;
-            await db.collection("RockUserCycleProgress").doc(String(cDoc._id)).update({ data: { totals, updated_at: db.serverDate() } });
-          }
-        } catch (e) {}
-      }
-      return ok({ removedCount: removedIds.length, createdAtTs: anchorTs }, tid);
+      const submissionId = safeText(event && event.submissionId);
+      if (!submissionId) return fail("BATCH_REQUIRED", "旧版打卡无法精确撤销，请更新后重新提交", tid);
+      const result = await db.runTransaction(async tx => {
+        const ref = tx.collection("RockCheckinSubmissions").doc(submissionId);
+        const batch = await readDoc(ref);
+        if (!batch || batch.openid !== openid) throw businessError("NOT_FOUND", "打卡批次不存在");
+        if (batch.status === "revoked") return { submissionId, removedCount: 0 };
+        if (Date.now() - batch.createdAtMs > 30 * 60 * 1000) throw businessError("OUTSIDE_REVOCATION_WINDOW", "超过 30 分钟撤销窗口");
+        const dailyRef = tx.collection("RockUserDailyProgress").doc(batch.dailyId);
+        const cycleRef = tx.collection("RockUserCycleProgress").doc(batch.cycleProgressId);
+        const daily = await readDoc(dailyRef);
+        const cycle = await readDoc(cycleRef);
+        if (!daily || !cycle) throw businessError("INCONSISTENT_DATA", "汇总数据缺失，请联系管理员");
+        const today = adjust(daily.today, batch.items, -1);
+        const totals = adjust(cycle.totals, batch.items, -1);
+        for (const id of batch.recordIds) await tx.collection("RockCheckinRecords").doc(id).remove();
+        await dailyRef.update({ data: { today, updated_at: db.serverDate() } });
+        await cycleRef.update({ data: { totals, updated_at: db.serverDate() } });
+        await ref.update({ data: { status: "revoked", revokedAt: Date.now() } });
+        return { submissionId, removedCount: batch.recordIds.length };
+      });
+      return ok(result, tid);
     }
+    if (action !== "create") return fail("BAD_ACTION", "不支持的操作", tid);
 
     const gymId = event && event.gymId ? String(event.gymId) : "";
     const date = event && event.date ? String(event.date) : "";
-    const mode = normalizeMode(event && event.mode);
-    const category = toCategory(mode);
+
 
     if (!gymId) return fail("BAD_REQUEST", "缺少 gymId", tid);
     if (!date) return fail("BAD_REQUEST", "缺少 date", tid);
     if (!isValidYMD(date)) return fail("BAD_REQUEST", "date 格式应为 YYYY-MM-DD", tid);
 
-    const deltas = normalizeDeltas(event && event.deltas ? event.deltas : null);
-    const deltaSum = sumObject(deltas);
-    if (!deltaSum) return fail("BAD_REQUEST", "deltas 为空", tid);
+    const requestId = safeText(event && event.requestId);
+    if (!/^[A-Za-z0-9_-]{8,100}$/.test(requestId)) return fail("REQUEST_ID_REQUIRED", "请更新小程序后重新提交", tid);
+    const items = {};
+    const input = event.items || { [normalizeMode(event.mode)]: event.deltas };
+    for (const mode of ["boulder", "difficulty", "lead"]) {
+      const counts = normalizeDeltas(input[mode]);
+      for (const grade of Object.keys(counts)) {
+        if (!/^[A-Za-z0-9.+-]{1,12}$/.test(grade) || counts[grade] > 999) return fail("BAD_REQUEST", "等级或数量无效", tid);
+      }
+      if (sumObject(counts)) items[toCategory(mode)] = counts;
+    }
+    if (!Object.keys(items).length) return fail("BAD_REQUEST", "请选择打卡数量", tid);
+    const parsedDate = Date.parse(date + "T00:00:00+08:00");
+    if (!Number.isFinite(parsedDate) || new Date(parsedDate + 8 * 3600000).toISOString().slice(0,10) !== date || parsedDate > Date.now()) return fail("BAD_REQUEST", "打卡日期无效", tid);
 
     const gym = await getGym(gymId);
     if (!gym) return fail("NOT_FOUND", "岩馆不存在", tid);
@@ -403,47 +250,73 @@ exports.main = async (event) => {
       };
     }
 
-    const recordIds = [];
-    const grades = Object.keys(deltas);
-    for (let i = 0; i < grades.length; i++) {
-      const grade = grades[i];
-      const count = Number(deltas[grade] || 0);
-      if (!Number.isFinite(count) || count <= 0) continue;
-      const rec = {
-        uid: openid,
-        openid: openid,
-        _openid: openid,
-        gym_id: gymId,
-        cycle_id: cycleKey,
-        category,
-        grade,
-        count,
-        date,
-        note: "",
-        black_talk_tags: [],
-        created_at: db.serverDate(),
-        updated_at: db.serverDate()
-      };
-      const r = await db.collection("RockCheckinRecords").add({ data: rec });
-      if (r && r._id) recordIds.push(r._id);
-    }
-
-    await upsertDaily(openid, date, gymId, cycleKey, category, deltas);
-    await upsertCycle(openid, gymId, cycleKey, category, deltas);
-
-    await db
-      .collection("RockGyms")
-      .doc(gymId)
-      .update({
-        data: {
-          last_checkin_at: date,
-          updated_at: db.serverDate()
-        }
-      });
-
-    return ok({ recordIds }, tid);
+    const crypto = require("crypto");
+    const hash = value => crypto.createHash("sha256").update(value).digest("hex").slice(0,32);
+    const submissionId = "s_" + hash(openid + "|" + requestId);
+    const identity = _.or([{ uid: openid }, { openid }, { _openid: openid }]);
+    const findProgressId = async (collection, where, fallback) => {
+      const r = await db.collection(collection).where(_.and([identity, where])).limit(2).get();
+      if (r.data.length > 1) throw businessError("DUPLICATE_PROGRESS", "发现重复汇总，请联系管理员修复后提交");
+      return r.data[0] ? r.data[0]._id : fallback;
+    };
+    const dailyId = await findProgressId("RockUserDailyProgress", { gym_id: gymId, cycle_id: cycleKey, date }, "d_" + hash(openid + "|" + gymId + "|" + cycleKey + "|" + date));
+    const cycleProgressId = await findProgressId("RockUserCycleProgress", { gym_id: gymId, cycle_id: cycleKey }, "c_" + hash(openid + "|" + gymId + "|" + cycleKey));
+    const fingerprint = JSON.stringify({ gymId, date, items });
+    const result = await db.runTransaction(async tx => {
+      const batchRef = tx.collection("RockCheckinSubmissions").doc(submissionId);
+      const previous = await readDoc(batchRef);
+      if (previous) {
+        if (previous.fingerprint !== fingerprint) throw businessError("REQUEST_CONFLICT", "重试内容发生变化，请先确认上次提交结果");
+        if (previous.status === "revoked") throw businessError("ALREADY_REVOKED", "该批次已撤销，请重新填写");
+        return { submissionId, recordIds: previous.recordIds, createdAtMs: previous.createdAtMs };
+      }
+      const dailyRef = tx.collection("RockUserDailyProgress").doc(dailyId);
+      const cycleRef = tx.collection("RockUserCycleProgress").doc(cycleProgressId);
+      const daily = await readDoc(dailyRef);
+      const cycle = await readDoc(cycleRef);
+      const recordIds = [];
+      const createdAtMs = Date.now();
+      for (const category of Object.keys(items)) for (const grade of Object.keys(items[category])) {
+        const id = "r_" + hash(submissionId + "|" + category + "|" + grade);
+        await tx.collection("RockCheckinRecords").doc(id).set({ data: {
+          uid: openid, openid, _openid: openid, gym_id: gymId, cycle_id: cycleKey,
+          submissionId, category, grade, count: items[category][grade], date,
+          createdAtMs, created_at: db.serverDate(), updated_at: db.serverDate()
+        } });
+        recordIds.push(id);
+      }
+      const base = { uid: openid, openid, _openid: openid, gym_id: gymId, cycle_id: cycleKey, updated_at: db.serverDate() };
+      if (daily) await dailyRef.update({ data: { today: adjust(daily.today, items, 1), updated_at: db.serverDate() } });
+      else await dailyRef.set({ data: { ...base, date, today: adjust({}, items, 1), created_at: db.serverDate() } });
+      if (cycle) await cycleRef.update({ data: { totals: adjust(cycle.totals, items, 1), updated_at: db.serverDate() } });
+      else await cycleRef.set({ data: { ...base, totals: adjust({}, items, 1), targets: { boulder: {}, rope: {}, lead: {} }, cap_locked: false, created_at: db.serverDate() } });
+      await batchRef.set({ data: { openid, requestId, fingerprint, items, dailyId, cycleProgressId, recordIds, createdAtMs, status: "active" } });
+      return { submissionId, recordIds, createdAtMs };
+    });
+    return ok(result, tid);
   } catch (e) {
-    return fail("CHECKIN_FAILED", e && e.message ? e.message : "提交失败", tid);
+    return fail(e.code || "CHECKIN_FAILED", e && e.message ? e.message : "提交失败", tid);
   }
 };
 
+
+function businessError(code, message) { return Object.assign(new Error(message), { code }); }
+async function readDoc(ref) {
+  try { const r = await ref.get(); return r.data || null; }
+  catch (e) {
+    if (/document.*(not.*exist|not.*found)|DOCUMENT_NOT_FOUND/i.test(String(e.errMsg || e.message || e.code))) return null;
+    throw e;
+  }
+}
+function adjust(source, items, direction) {
+  const result = JSON.parse(JSON.stringify(source || {}));
+  for (const category of Object.keys(items)) {
+    if (!result[category]) result[category] = {};
+    for (const grade of Object.keys(items[category])) {
+      const value = Number(result[category][grade] || 0) + direction * items[category][grade];
+      if (value < 0) throw businessError("INCONSISTENT_DATA", "进度数据不一致，请联系管理员");
+      if (value) result[category][grade] = value; else delete result[category][grade];
+    }
+  }
+  return result;
+}

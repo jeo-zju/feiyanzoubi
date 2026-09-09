@@ -1,115 +1,25 @@
-.page {
-  min-height: 100vh;
-  padding: 24rpx;
-  background: #0b0d15;
-  color: #e7e9f3;
-  box-sizing: border-box;
+/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
+
+.page--merge {
+  padding-bottom: 200rpx;
 }
 
-.panel {
-  margin-bottom: 20rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.06);
+.mapping-source {
+  font-weight: 700;
 }
 
-.title {
-  font-size: 30rpx;
-  font-weight: 600;
-}
-
-.hint,
-.gym-city,
-.target-meta,
-.warning-text,
-.summary-label,
-.mapping-target {
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.68);
-}
-
-.gym-name,
-.target-name,
-.mapping-source,
-.summary-value {
-  margin-top: 12rpx;
-  font-size: 28rpx;
-  color: #ffffff;
-}
-
-.empty {
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.58);
-}
-
-.search-input {
-  margin-top: 16rpx;
-  min-height: 76rpx;
-  padding: 0 20rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  font-size: 26rpx;
-  box-sizing: border-box;
-}
-
-.target-item,
-.mapping-item,
-.summary-card {
-  margin-top: 16rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1rpx solid rgba(255, 255, 255, 0.06);
-}
-
-.target-item--active {
-  border-color: rgba(242, 193, 78, 0.5);
-  background: rgba(242, 193, 78, 0.09);
+.pre-line {
+  white-space: pre-line;
 }
 
 .warning-box {
   margin-top: 16rpx;
   padding: 18rpx 20rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 177, 85, 0.08);
-  border: 1rpx solid rgba(255, 177, 85, 0.18);
+  border-radius: 16rpx;
+  background: rgba(242, 193, 78, 0.1);
+  border: 1rpx solid rgba(242, 193, 78, 0.24);
 }
 
-.btn {
-  margin-top: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 80rpx;
-  border-radius: 18rpx;
-  font-size: 28rpx;
-}
-
-.btn-primary {
-  background: #f2c14e;
-  color: #181a20;
-}
-
-.btn-disabled {
-  opacity: 0.5;
-}
-
-.mapping-summary {
-  white-space: pre-line;
-}
-
-.mini-btn {
-  margin-top: 14rpx;
-  display: inline-flex;
-  padding: 10rpx 16rpx;
-  border-radius: 14rpx;
-  font-size: 24rpx;
-  color: #ffd78a;
-  border: 1rpx solid rgba(255, 198, 92, 0.25);
-  background: rgba(255, 198, 92, 0.08);
+.warning-box .hint + .hint {
+  margin-top: 8rpx;
 }

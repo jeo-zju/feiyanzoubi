@@ -1,10 +1,10 @@
+/* calendar-timeline：仅页面特有布局，元素样式全部来自 app.wxss 全局 */
+
 .page--tl {
   padding-bottom: 60rpx;
 }
 
-.mt-sm { margin-top: 14rpx; }
-.mt-lg { margin-top: 40rpx; }
-
+/* 顶部日期 + 发布按钮 */
 .tl-header {
   display: flex;
   align-items: center;
@@ -17,91 +17,30 @@
   gap: 14rpx;
 }
 .tl-header__date {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #E7E9F3;
+  font-size: 40rpx;
+  font-weight: 800;
 }
 .tl-header__week {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: rgba(231, 233, 243, 0.72);
   font-weight: 600;
 }
-.btn-mini {
-  height: 60rpx;
-  padding: 0 18rpx;
-  gap: 8rpx;
-  font-size: 24rpx;
-}
-.ic-plus {
-  font-size: 26rpx;
-  font-weight: 900;
-  line-height: 1;
-}
 
-.crumb {
-  display: inline-flex;
+/* 筛选行：城市标签 + 岩馆下拉 */
+.filter-row {
+  display: flex;
   align-items: center;
-  gap: 12rpx;
-  padding: 14rpx 20rpx;
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.76);
-}
-.crumb__sep {
-  color: rgba(231, 233, 243, 0.3);
-}
-.crumb__item--click {
-  border-bottom: 1rpx dashed rgba(231, 233, 243, 0.4);
-}
-
-.pill-row {
-  white-space: nowrap;
-  margin-top: 20rpx;
-  padding: 0 2rpx;
-}
-.pill {
-  display: inline-flex;
-  align-items: center;
-  height: 58rpx;
-  padding: 0 20rpx;
-  margin-right: 14rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.84);
-  gap: 8rpx;
-}
-.pill--static {
-  background: rgba(143, 123, 255, 0.16);
-  border-color: rgba(143, 123, 255, 0.26);
-  color: #e7e9f3;
-}
-.pill--active {
-  background: linear-gradient(135deg, rgba(143,123,255,0.18), rgba(242,193,78,0.1));
-  border-color: rgba(242, 193, 78, 0.3);
-  color: #E7E9F3;
-}
-.pill__bolt { color: #e6c76a; }
-.pill__ic { font-size: 20rpx; color: rgba(231,233,243,0.5); }
-
-.match-tip {
+  gap: 16rpx;
   margin-top: 16rpx;
-  padding: 14rpx 18rpx;
-  border-radius: 14rpx;
-  background: rgba(230, 199, 106, 0.1);
-  border: 1rpx solid rgba(230, 199, 106, 0.2);
-  color: #E6C76A;
-  font-size: 24rpx;
-  font-weight: 600;
+}
+.filter-row__select {
+  flex: 1;
+  min-width: 0;
 }
 
-.section-title-lg--tight {
-  margin-top: 6rpx;
-  font-size: 30rpx;
-}
 .card-bd--pt0 { padding-top: 0; }
 
+/* 岩友头像横滑 */
 .avatar-row {
   white-space: nowrap;
   padding-top: 10rpx;
@@ -122,18 +61,15 @@
 }
 .avatar-item__name {
   margin-top: 8rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: rgba(231, 233, 243, 0.76);
   max-width: 120rpx;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.empty-line {
-  padding: 24rpx 0;
-  font-size: 22rpx;
-}
 
+/* 时间轴网格 */
 .tl-card-bd {
   padding-left: 12rpx;
   padding-right: 12rpx;
@@ -155,7 +91,7 @@
   line-height: 120rpx;
   text-align: right;
   padding-right: 12rpx;
-  font-size: 20rpx;
+  font-size: 24rpx;
   color: rgba(231, 233, 243, 0.48);
   font-weight: 700;
   box-sizing: border-box;
@@ -190,14 +126,14 @@
   box-shadow: 0 4rpx 14rpx rgba(124, 110, 230, 0.2);
 }
 .tl-bar__time {
-  font-size: 20rpx;
+  font-size: 24rpx;
   font-weight: 800;
   color: #fff;
   line-height: 1.2;
 }
 .tl-bar__gym {
   margin-top: 6rpx;
-  font-size: 18rpx;
+  font-size: 24rpx;
   color: rgba(255,255,255,0.9);
   line-height: 1.2;
   white-space: nowrap;
@@ -214,29 +150,19 @@
 .tl-bar--c6 { background: #f7a35d; }
 .tl-bar--c7 { background: #8fc86f; }
 
-.plan-modal-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.58);
-  display: flex;
-  align-items: flex-end;
-  z-index: 99;
-}
+/* 计划详情弹层（沿用全局 sheet 形态，头部为头像+信息） */
 .plan-modal {
-  width: 100%;
-  background: #12151f;
-  border-top-left-radius: 28rpx;
-  border-top-right-radius: 28rpx;
-  padding: 24rpx 24rpx calc(36rpx + env(safe-area-inset-bottom));
-  box-sizing: border-box;
+  max-height: 80vh;
 }
+.plan-modal-mask { z-index: 110; }
+.member-card-mask { z-index: 120; }
 .plan-modal__hd {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding-bottom: 20rpx;
-  border-bottom: 1rpx solid rgba(255,255,255,0.08);
-  position: relative;
+  padding: 24rpx 28rpx 20rpx;
+  border-bottom: 1rpx solid #2b3044;
+  flex-shrink: 0;
 }
 .plan-modal__avatar {
   width: 84rpx;
@@ -246,26 +172,15 @@
 }
 .plan-modal__info { flex: 1; min-width: 0; }
 .plan-modal__name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #E7E9F3;
+  font-size: 32rpx;
+  font-weight: 800;
 }
 .plan-modal__meta {
   margin-top: 4rpx;
-  font-size: 22rpx;
-}
-.plan-modal__close {
-  width: 56rpx;
-  height: 56rpx;
-  line-height: 52rpx;
-  text-align: center;
-  font-size: 40rpx;
-  color: rgba(231,233,243,0.6);
-  border-radius: 50%;
-  background: rgba(255,255,255,0.06);
+  font-size: 24rpx;
 }
 .plan-modal__bd {
-  padding: 18rpx 0 10rpx;
+  padding: 18rpx 28rpx 10rpx;
 }
 .plan-row {
   display: flex;
@@ -278,32 +193,27 @@
 .plan-row__k {
   width: 120rpx;
   font-size: 24rpx;
-  color: rgba(231,233,243,0.56);
+  color: rgba(231, 233, 243, 0.56);
   flex-shrink: 0;
 }
 .plan-row__v {
   flex: 1;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: #e7e9f3;
 }
-.plan-row--warn .plan-row__v { color: #e6c76a; font-weight: 700; }
+.plan-row--warn .plan-row__v { color: #f2c14e; font-weight: 700; }
 .plan-modal__ft {
   display: flex;
   gap: 14rpx;
-  margin-top: 20rpx;
+  padding: 16rpx 28rpx 4rpx;
+  flex-shrink: 0;
 }
 .plan-modal__btn {
   flex: 1;
-  height: 80rpx;
-  gap: 8rpx;
-  font-size: 26rpx;
 }
 
-.muted { color: rgba(231, 233, 243, 0.6); }
-
-/* issue #35: 报名列表此前无样式（<image> 会按默认尺寸渲染成大图），补齐行布局与圆形头像 */
+/* 报名列表 */
 .plan-section { margin-top: 8rpx; }
-.section-kicker--sm { font-size: 24rpx; }
 .join-list {
   margin-top: 12rpx;
   display: flex;
@@ -315,7 +225,7 @@
   align-items: center;
   gap: 16rpx;
   padding: 12rpx 14rpx;
-  border-radius: 18rpx;
+  border-radius: 16rpx;
   background: rgba(255, 255, 255, 0.04);
 }
 .join-row__img {
@@ -333,120 +243,19 @@
   gap: 4rpx;
 }
 .join-row__name {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  color: #e7e9f3;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .join-row__sub {
-  font-size: 22rpx;
+  font-size: 24rpx;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-/* issue #35: 弹窗内点头像弹出的二级名片 sheet（层级需高于 plan-modal-mask 的 99） */
-.plan-modal__avatar--tap,
-.join-row__img--tap {
-  position: relative;
 }
 .plan-modal__avatar--tap:active,
 .join-row__img--tap:active {
   opacity: 0.82;
-}
-.member-sheet-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.56);
-  z-index: 120;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-.member-sheet {
-  width: 100%;
-  background: #121420;
-  border-top-left-radius: 28rpx;
-  border-top-right-radius: 28rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.member-sheet__hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 28rpx 28rpx 18rpx;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
-}
-.member-sheet__title { font-size: 30rpx; font-weight: 600; color: #e7e9f3; }
-.member-sheet__close {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(231, 233, 243, 0.72);
-  font-size: 26rpx;
-}
-.member-sheet__bd {
-  padding: 24rpx 28rpx 40rpx;
-}
-.member-face {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12rpx;
-  padding: 44rpx 28rpx 40rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(160deg, rgba(143, 123, 255, 0.16), rgba(242, 193, 78, 0.08));
-  border: 1rpx solid rgba(242, 193, 78, 0.16);
-  box-sizing: border-box;
-}
-.member-face__avatar {
-  width: 168rpx;
-  height: 168rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 4rpx solid rgba(255, 255, 255, 0.14);
-  box-sizing: border-box;
-}
-.member-face__name {
-  margin-top: 12rpx;
-  font-size: 38rpx;
-  font-weight: 800;
-  color: #fff;
-  text-align: center;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.member-face__title {
-  font-size: 26rpx;
-  color: #F2C14E;
-  text-align: center;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.member-face__meta {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: rgba(231, 233, 243, 0.5);
-}
-.member-face__tag {
-  margin-top: 12rpx;
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #8F7BFF;
-  background: rgba(143, 123, 255, 0.14);
-  border: 1rpx solid rgba(143, 123, 255, 0.3);
-  padding: 6rpx 22rpx;
-  border-radius: 999rpx;
 }

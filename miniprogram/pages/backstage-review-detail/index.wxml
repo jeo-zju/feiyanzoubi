@@ -13,7 +13,7 @@
           bindinput="onQueryInput"
         />
       </view>
-      <view class="action-row">
+      <view class="row mt-sm">
         <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始联查'}}</view>
         <view class="btn btn-ghost mini ml" bindtap="onCopyQueue">复制队列</view>
       </view>
@@ -63,7 +63,7 @@
           <view class="mode-row">
             <block wx:for="{{modeOptions}}" wx:key="key" wx:for-item="option">
               <view
-                class="tag {{draft.finalSupportedModes.indexOf(option.key) >= 0 ? 'tag-warn' : ''}}"
+                class="tag {{draft.finalSupportedModes.indexOf(option.key) >= 0 ? 'tag--on' : ''}}"
                 data-mode="{{option.key}}"
                 bindtap="onToggleMode"
               >
@@ -72,7 +72,7 @@
             </block>
           </view>
         </view>
-        <view class="action-row">
+        <view class="row mt-sm">
           <view class="tag tag-warn">保存后会直接回写审核记录，`approved` 还会同步更新岩馆模式</view>
           <view class="btn btn-primary save-btn" bindtap="onSave">{{saving ? '保存中' : '保存修正'}}</view>
         </view>
@@ -90,9 +90,7 @@
           <text>ownerOpenid: {{gym.ownerOpenid || '-'}}</text>
         </view>
         <view wx:else class="section-tip">当前未关联岩馆。</view>
-        <view class="action-row">
-          <view class="btn btn-ghost mini" bindtap="onCopyGym">复制岩馆原始数据</view>
-        </view>
+        <view class="btn btn-ghost mini mt-sm" bindtap="onCopyGym">复制岩馆原始数据</view>
       </view>
     </view>
 

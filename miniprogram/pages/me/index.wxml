@@ -9,7 +9,7 @@
               <view class="sk-empty__ic">🧗</view>
               <view class="sk-empty__t">还没有你的攀岩名片</view>
               <view class="sk-empty__d">点击编辑资料，填写信息后自动生成</view>
-              <view class="sk-empty__btn">去创建</view>
+              <view class="btn btn-primary mini sk-empty__btn">去创建</view>
             </view>
           </view>
           <view wx:else class="mycard-skeleton">
@@ -40,24 +40,24 @@
             <view class="sk-ft">飞岩走壁 · 攀岩名片</view>
           </view>
         </view>
-        <view class="mycard-foot-actions mycard-foot-actions--{{canSeeToolbox ? '4' : '3'}}">
-          <button class="action-pill action-pill--share" open-type="share">分享</button>
-          <view class="action-pill" catchtap="goSaveMyCard">保存</view>
-          <view class="action-pill" catchtap="goProfileEdit">编辑资料</view>
-          <view wx:if="{{canSeeToolbox}}" class="action-pill action-pill--gear" catchtap="onOpenDrawer">⚙</view>
+        <view class="mycard-foot-actions">
+          <button class="btn btn-ghost mini" open-type="share">分享</button>
+          <view class="btn btn-ghost mini" catchtap="goSaveMyCard">保存</view>
+          <view class="btn btn-ghost mini" catchtap="goProfileEdit">编辑资料</view>
+          <view wx:if="{{canSeeToolbox}}" class="icon-btn" catchtap="onOpenDrawer">⚙</view>
         </view>
       </view>
     </view>
   </view>
 
-  <view class="glance-grid mt-card">
+  <view class="glance-grid mt-sm">
     <view class="card glance-card glance-card--btn" bindtap="goFriendList">
       <view class="card-bd glance-bd">
         <view class="glance-top">
           <view class="glance-title">岩友</view>
           <view class="glance-mark glance-mark--friends">👥</view>
         </view>
-        <view class="glance-cta mt-md">去列表 ›</view>
+        <view class="glance-cta mt-sm">去列表 ›</view>
       </view>
     </view>
     <view class="card glance-card glance-card--btn" bindtap="goCircleList">
@@ -66,18 +66,24 @@
           <view class="glance-title">岩友圈</view>
           <view class="glance-mark glance-mark--circles">🪢</view>
         </view>
-        <view class="glance-cta mt-md">去列表 ›</view>
+        <view class="glance-cta mt-sm">去列表 ›</view>
       </view>
     </view>
   </view>
 
+  <view class="card mt-sm"><view class="card-bd">
+    <view class="list-row" bindtap="goNotifications"><text>约爬通知</text><text>›</text></view>
+    <view class="list-row" bindtap="goRecords"><text>攀爬记录</text><text>›</text></view>
+    <view class="list-row" bindtap="goSafety"><text>屏蔽与安全</text><text>›</text></view>
+    <view class="list-row" bindtap="goOwner"><text>我管理的岩馆</text><text>›</text></view>
+  </view></view>
   <view class="page-footpad"></view>
 
   <view class="drawer-mask {{drawerOpen?'drawer-mask--on':''}}" bindtap="onCloseDrawer"></view>
   <view class="drawer-panel {{drawerOpen?'drawer-panel--on':''}}" catchtap="noop">
     <view class="drawer-hd">
       <view class="drawer-hd__t">更多</view>
-      <view class="drawer-hd__c" bindtap="onCloseDrawer">关闭</view>
+      <view class="btn-text" bindtap="onCloseDrawer">关闭</view>
     </view>
     <scroll-view scroll-y class="drawer-bd">
       <view class="drawer-grp">

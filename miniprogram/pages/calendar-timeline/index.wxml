@@ -4,29 +4,28 @@
       <text class="tl-header__date">{{dateLabel}}</text>
       <text class="tl-header__week">{{weekLabel}}</text>
     </view>
-    <view class="btn btn-mini btn-primary" bindtap="onTapPublish">
-      <text class="ic-plus">+</text>
+    <view class="btn btn-primary mini" bindtap="onTapPublish">
+      <text>+</text>
       <text>发布日历</text>
     </view>
   </view>
 
-  <view class="crumb card-soft panel">
-    <text class="crumb__item">{{city || "全部城市"}}</text>
-    <text class="crumb__sep">·</text>
-    <text class="crumb__item crumb__item--click" bindtap="onTapGymFilter">{{gymLabel}}</text>
-    <text class="crumb__sep">·</text>
-    <text class="crumb__item crumb__item--click" bindtap="onToggleVisibility">{{visibilityLabel}}</text>
+  <view class="filter-row">
+    <text class="tag tag--off">{{city || "全部城市"}}</text>
+    <picker class="filter-row__select" mode="selector" range="{{gymFilterOptions}}" bindchange="onGymFilterChange">
+      <view class="field-select">
+        <text class="field-select__value">{{gymLabel}}</text>
+        <text class="field-select__arrow">▾</text>
+      </view>
+    </picker>
   </view>
-
-  <scroll-view scroll-x class="pill-row" enhanced show-scrollbar="{{false}}">
-    <view class="pill pill--static">{{publicityPillLabel}}</view>
-  </scroll-view>
+  <seg-tabs class="mt-sm" tabs="{{visibilityTabs}}" value="{{visibility}}" bind:change="onVisibilityChange" />
 
   <view class="card mt-sm">
     <view class="card-hd">
       <view>
         <view class="section-kicker">岩友</view>
-        <view class="section-title-lg section-title-lg--tight">{{userCount}} 位岩友</view>
+        <view class="section-title-lg">{{userCount}} 位岩友</view>
       </view>
     </view>
     <view class="card-bd card-bd--pt0">
@@ -37,7 +36,7 @@
             <text class="avatar-item__name">{{item.displayName || item.nickName || '岩友'}}</text>
           </view>
         </block>
-        <view wx:if="{{!userList.length}}" class="empty-line muted">暂无岩友在这天发布计划，先做第一个吧 🧗</view>
+        <view wx:if="{{!userList.length}}" class="empty-state">暂无岩友在这天发布计划，先做第一个吧 🧗</view>
       </scroll-view>
     </view>
   </view>
@@ -65,8 +64,8 @@
 
   <view class="mt-lg"></view>
 
-  <view wx:if="{{selectedPlan}}" class="plan-modal-mask" catchtouchmove="noop" bindtap="onClosePlan">
-    <view class="plan-modal" catchtap="noop">
+  <view wx:if="{{selectedPlan}}" class="sheet-mask plan-modal-mask" catchtouchmove="noop" bindtap="onClosePlan">
+    <view class="sheet plan-modal" catchtap="noop">
       <view class="plan-modal__hd">
         <!-- issue #35: 弹窗里不直接展示名片，点头像才弹名片 sheet -->
         <image class="plan-modal__avatar plan-modal__avatar--tap" src="{{selectedPlan.avatarUrl || defaultAvatar}}" mode="aspectFill" catchtap="onTapPlanAvatar"></image>
@@ -74,9 +73,9 @@
           <view class="plan-modal__name">{{selectedPlan.displayName || selectedPlan.nickName || '岩友'}}</view>
           <view class="plan-modal__meta muted">{{selectedPlan.rangeText}} · {{selectedPlan.date}} · 点头像看名片</view>
         </view>
-        <view class="plan-modal__close" bindtap="onClosePlan">×</view>
+        <view class="icon-btn icon-btn--sm" bindtap="onClosePlan">✕</view>
       </view>
-      <view class="plan-modal__bd">
+      <scroll-view class="sheet__bd plan-modal__bd" scroll-y>
         <view class="plan-row">
           <text class="plan-row__k">岩馆</text>
           <text class="plan-row__v">{{selectedPlan.gymName || selectedPlan.outdoorName || '-'}}</text>
@@ -89,9 +88,9 @@
           <text class="plan-row__k">求搭子</text>
           <text class="plan-row__v">希望 {{selectedPlan.skillText || '一起爬'}}</text>
         </view>
-        <view class="divider divider--soft mt-sm"></view>
+        <view class="divider mt-sm"></view>
         <view class="plan-section">
-          <view class="section-kicker section-kicker--sm">已报名 {{joinCount || selectedPlan.joinedCount || 1}} 人</view>
+          <view class="section-kicker">已报名 {{joinCount || selectedPlan.joinedCount || 1}} 人</view>
           <view class="join-list">
             <block wx:if="{{joinOwner}}">
               <view class="join-row">
@@ -100,7 +99,7 @@
                   <text class="join-row__name">{{joinOwner.displayName || joinOwner.nickName || '发起者'}}</text>
                   <text class="join-row__sub muted">{{joinOwner.title || (joinOwner.rockId ? '岩友号 ' + joinOwner.rockId : '发起者')}}</text>
                 </view>
-                <text class="pill pill--xs pill--tag">发起者</text>
+                <text class="tag tag-warn">发起者</text>
               </view>
             </block>
             <block wx:for="{{joinList}}" wx:key="joinId">
@@ -110,14 +109,14 @@
                   <text class="join-row__name">{{item.displayName || item.nickName || '岩友'}}</text>
                   <text class="join-row__sub muted">{{item.title || (item.rockId ? '岩友号 ' + item.rockId : '报名啦')}}</text>
                 </view>
-                <view wx:if="{{selectedPlan.isMe}}" class="btn btn-xs btn-ghost-danger" data-uid="{{item.openid}}" catchtap="onTapRemoveJoiner">移除</view>
+                <view wx:if="{{selectedPlan.isMe}}" class="btn btn-danger mini" data-uid="{{item.openid}}" catchtap="onTapRemoveJoiner">移除</view>
               </view>
             </block>
-            <view wx:if="{{joinLoading}}" class="empty-line muted">加载中…</view>
-            <view wx:elif="{{!joinOwner && !joinList.length}}" class="empty-line muted">暂无报名信息</view>
+            <view wx:if="{{joinLoading}}" class="empty-state">加载中…</view>
+            <view wx:elif="{{!joinOwner && !joinList.length}}" class="empty-state">暂无报名信息</view>
           </view>
         </view>
-      </view>
+      </scroll-view>
       <view class="plan-modal__ft">
         <view wx:if="{{!selectedPlan.isMe && !selectedPlan.isFriend}}" class="btn btn-ghost plan-modal__btn" bindtap="onTapAddFriend">加为岩友</view>
         <view wx:if="{{!selectedPlan.isMe}}" class="btn plan-modal__btn {{selectedPlanJoined || selectedPlan.meJoined ? 'btn-ghost' : 'btn-primary'}}" bindtap="onTapJoin">{{selectedPlanJoined || selectedPlan.meJoined ? '取消报名' : '我要去'}}</view>
@@ -127,13 +126,13 @@
   </view>
 
   <!-- issue #35: 二级名片 sheet——弹窗内点头像才展示，不直接铺在弹窗里 -->
-  <view wx:if="{{memberCardVisible && memberCard}}" class="member-sheet-mask" catchtouchmove="noop" bindtap="closeMemberCard">
-    <view class="member-sheet" catchtap="noop">
-      <view class="member-sheet__hd">
-        <text class="member-sheet__title">岩友名片</text>
-        <view class="member-sheet__close" bindtap="closeMemberCard">✕</view>
+  <view wx:if="{{memberCardVisible && memberCard}}" class="sheet-mask member-card-mask" catchtouchmove="noop" bindtap="closeMemberCard">
+    <view class="sheet sheet--sm" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">岩友名片</text>
+        <view class="sheet__close" bindtap="closeMemberCard">✕</view>
       </view>
-      <view class="member-sheet__bd">
+      <view class="sheet__bd">
         <view class="member-face">
           <image class="member-face__avatar" src="{{memberCard.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
           <view class="member-face__name">{{memberCard.displayName || memberCard.nickName || '岩友'}}</view>

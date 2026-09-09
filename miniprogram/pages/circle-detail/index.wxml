@@ -1,8 +1,8 @@
 <view class="page page--circle-detail" wx:if="{{circle}}">
-  <view class="topbar">
-    <view class="topbar__back" bindtap="goBack">‹</view>
-    <view class="topbar__title">岩友圈</view>
-    <view class="topbar__gear" bindtap="openSettingSheet">⚙</view>
+  <view class="nav-bar">
+    <view class="icon-btn" bindtap="goBack">‹</view>
+    <view class="nav-title">岩友圈</view>
+    <view class="icon-btn" bindtap="openSettingSheet">⚙</view>
   </view>
 
   <view class="hero">
@@ -26,52 +26,52 @@
       </view>
     </view>
     <view wx:if="{{gyms.length}}" class="hero__gyms">
-      <view wx:for="{{gyms}}" wx:key="_id" class="hero__gym-chip">📍 {{item.name}}</view>
+      <view wx:for="{{gyms}}" wx:key="_id" class="tag tag-warn">📍 {{item.name}}</view>
     </view>
   </view>
 
-  <view class="card mt-sm">
+  <view class="card">
     <view class="card-hd">
-      <text class="card-hd__t">成员 · {{members.length}}</text>
-      <text wx:if="{{pendingCount>0}}" class="card-hd__badge">{{pendingCount}} 待审批</text>
+      <text>成员 · {{members.length}}</text>
+      <text wx:if="{{pendingCount>0}}" class="tag tag-warn">{{pendingCount}} 待审批</text>
     </view>
     <view class="card-bd list list--tight">
       <view wx:if="{{members.length===0 && pendings.length===0}}" class="empty-state">暂无成员</view>
       <block wx:else>
-        <view class="list-row row member-row" wx:for="{{members}}" wx:key="openid" data-oid="{{item.openid}}" bindtap="onTapMember">
+        <view class="list-row member-row" wx:for="{{members}}" wx:key="openid" data-oid="{{item.openid}}" bindtap="onTapMember">
           <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
           <view class="row-info">
             <view class="row-title">{{item.displayName || item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
             <view class="muted row-sub">{{item.rockId || '-'}}{{item.title ? ' · ' + item.title : ''}}</view>
           </view>
-          <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-xs btn-ghost-danger" data-oid="{{item.openid}}" catchtap="onRemoveMember">移除</view>
-          <view wx:elif="{{item.openid===myOpenid}}" class="btn btn-xs btn-ghost" data-oid="{{item.openid}}" catchtap="onConfirmLeave">退出</view>
+          <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-danger mini" data-oid="{{item.openid}}" catchtap="onRemoveMember">移除</view>
+          <view wx:elif="{{item.openid===myOpenid}}" class="btn btn-ghost mini" data-oid="{{item.openid}}" catchtap="onConfirmLeave">退出</view>
         </view>
         <view wx:if="{{pendings.length>0}}" class="pending-divider">待审批申请</view>
-        <view class="list-row row pending-row" wx:for="{{pendings}}" wx:key="openid">
+        <view class="list-row pending-row" wx:for="{{pendings}}" wx:key="openid">
           <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
           <view class="row-info">
             <view class="row-title">{{item.displayName || item.nickName || '岩友'}}</view>
             <view class="muted row-sub">{{item.rockId || '-'}}{{item.title ? ' · ' + item.title : ''}}</view>
           </view>
           <view wx:if="{{isAdmin}}" class="sheet-item__actions">
-            <view class="ic-btn ic-btn--ok" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
-            <view class="ic-btn ic-btn--no" data-oid="{{item.openid}}" bindtap="onReject">✕</view>
+            <view class="icon-btn icon-btn--sm" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
+            <view class="icon-btn icon-btn--sm icon-btn--danger" data-oid="{{item.openid}}" bindtap="onReject">✕</view>
           </view>
-          <view wx:else class="btn btn-xs btn-ghost">待审批</view>
+          <view wx:else class="btn btn-ghost mini">待审批</view>
         </view>
       </block>
     </view>
   </view>
 
-  <view class="foot">
-    <view wx:if="{{myStatus!=='accepted' && myStatus!=='admin'}}" class="btn-apply" bindtap="onTapApply">
+  <view class="action-bar">
+    <button wx:if="{{myStatus!=='accepted' && myStatus!=='admin'}}" class="btn btn-primary" bindtap="onTapApply">
       <text wx:if="{{myStatus==='pending'}}">申请中</text>
       <text wx:else>申请加入</text>
-    </view>
-    <view wx:else class="tag-in">
-      <text wx:if="{{isAdmin}}">· 管理员 ·</text>
-      <text wx:else>· 已在圈内 ·</text>
+    </button>
+    <view wx:else class="foot-status">
+      <text class="tag tag-warn" wx:if="{{isAdmin}}">· 管理员 ·</text>
+      <text class="tag tag-warn" wx:else>· 已在圈内 ·</text>
     </view>
   </view>
 
@@ -84,7 +84,7 @@
       <scroll-view class="sheet__bd" scroll-y>
         <view wx:if="{{gyms.length===0}}" class="sheet-empty">暂未关联岩馆</view>
         <block wx:else>
-          <view class="sheet-item sheet-item--row" wx:for="{{gyms}}" wx:key="_id">
+          <view class="sheet-item" wx:for="{{gyms}}" wx:key="_id">
             <view class="sheet-item__ic">🏟️</view>
             <view class="sheet-item__info">
               <text class="sheet-item__name">{{item.name}}</text>
@@ -129,8 +129,8 @@
     </view>
   </view>
 
-  <view wx:if="{{linkGymSheetVisible}}" class="sheet-mask sheet-mask--gym" bindtap="closeLinkGymSheet" catchtouchmove="noop">
-    <view class="sheet sheet--gym" catchtap="noop">
+  <view wx:if="{{linkGymSheetVisible}}" class="sheet-mask" bindtap="closeLinkGymSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
         <text class="sheet__title">关联岩馆</text>
         <view class="sheet__close" bindtap="saveLinkGyms">✓</view>
@@ -152,12 +152,12 @@
   </view>
 
   <view wx:if="{{memberCardVisible && memberCard}}" class="sheet-mask" bindtap="closeMemberCard" catchtouchmove="noop">
-    <view class="sheet sheet--member" catchtap="noop">
+    <view class="sheet sheet--sm" catchtap="noop">
       <view class="sheet__hd">
         <text class="sheet__title">岩友名片</text>
         <view class="sheet__close" bindtap="closeMemberCard">✕</view>
       </view>
-      <view class="sheet__bd member-card-bd">
+      <view class="sheet__bd">
         <view class="member-face">
           <image class="member-face__avatar" src="{{memberCard.avatarUrl || defaultAvatar}}" mode="aspectFill" />
           <view class="member-face__name">{{memberCard.displayName || memberCard.nickName || '岩友'}}</view>

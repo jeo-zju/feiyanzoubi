@@ -1,76 +1,30 @@
+/* circle-edit：仅页面特有布局，元素样式全部来自 app.wxss 全局 */
+
 .page--circle-edit {
-  min-height: 100vh;
-  background: #0B0D15;
-  color: #E7E9F3;
-  padding: 24rpx;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 28rpx;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 80rpx;
-  flex-shrink: 0;
+/* scroll-view 作为弹层主体时，高度约束交给 scroll-view 自身滚动 */
+.page--circle-edit .sheet__bd {
+  overflow: hidden;
+  min-height: 0;
 }
-.topbar__back {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40rpx;
-  color: #E7E9F3;
-  line-height: 1;
-}
-.topbar__back:active { background: rgba(143, 123, 255, 0.16); }
-.topbar__title {
-  flex: 1;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #E7E9F3;
-}
-.topbar__save {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: rgba(242, 193, 78, 0.16);
-  border: 1rpx solid rgba(242, 193, 78, 0.42);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  color: #F2C14E;
-  font-weight: 600;
-  line-height: 1;
-}
-.topbar__save:active { background: rgba(242, 193, 78, 0.28); }
 
-.form-block {
-  flex-shrink: 0;
-}
-.form-kicker {
+.form-block { flex-shrink: 0; }
+
+/* 可点击的字段标题（右侧带计数） */
+.form-block .field-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 22rpx;
-  font-weight: 600;
-  color: rgba(231, 233, 243, 0.44);
-  margin-bottom: 14rpx;
-  padding: 0 4rpx;
-  letter-spacing: 1rpx;
 }
 .form-kicker__n {
-  color: rgba(143, 123, 255, 0.9);
-  font-size: 22rpx;
+  color: #c5baff;
 }
 
+/* 圈标颜色选择 */
 .color-row {
   display: flex;
   gap: 20rpx;
@@ -83,7 +37,7 @@
   position: relative;
   box-shadow: 0 0 0 4rpx rgba(255, 255, 255, 0.04);
 }
-.color-dot--on { box-shadow: 0 0 0 4rpx rgba(242, 193, 78, 0.56); }
+.color-dot--on { box-shadow: 0 0 0 4rpx rgba(143, 123, 255, 0.66); }
 .color-dot__check {
   position: absolute;
   inset: 0;
@@ -96,158 +50,10 @@
   text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.35);
 }
 
-.field {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  height: 88rpx;
-  padding: 0 24rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1rpx solid rgba(255, 255, 255, 0.06);
-  border-radius: 18rpx;
-  margin-bottom: 12rpx;
-}
-.field__input {
-  flex: 1;
-  min-width: 0;
-  height: 88rpx;
-  line-height: 88rpx;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #E7E9F3;
-}
-.field__ic { font-size: 26rpx; }
-.field__text {
-  flex: 1;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #E7E9F3;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.field__arrow {
-  font-size: 20rpx;
-  color: rgba(231, 233, 243, 0.52);
-}
-
+/* 已选岩馆标签 */
 .gym-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
   padding: 4rpx 4rpx 0;
 }
-.gym-tag {
-  height: 58rpx;
-  padding: 0 22rpx;
-  border-radius: 29rpx;
-  background: rgba(143, 123, 255, 0.14);
-  border: 1rpx solid rgba(143, 123, 255, 0.28);
-  display: inline-flex;
-  align-items: center;
-}
-.gym-tag__name {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: rgba(231, 233, 243, 0.88);
-}
-.gym-empty {
-  height: 78rpx;
-  border-radius: 18rpx;
-  border: 1rpx dashed rgba(255, 255, 255, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26rpx;
-  color: rgba(143, 123, 255, 0.9);
-  font-weight: 600;
-  margin-top: 4rpx;
-}
-.gym-empty:active { background: rgba(143, 123, 255, 0.08); }
-
-.foot-pad { flex: 1; }
-
-/* sheet 复用样式（复制自首页） */
-.sheet-mask {
-  position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.56);
-  z-index: 900;
-  display: flex; align-items: flex-end; justify-content: center;
-}
-.sheet {
-  width: 100%;
-  max-height: 68vh;
-  background: #121420;
-  border-top-left-radius: 28rpx;
-  border-top-right-radius: 28rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
-  display: flex; flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.sheet__hd {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 28rpx 28rpx 18rpx;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
-}
-.sheet__title { font-size: 30rpx; font-weight: 700; color: #e7e9f3; }
-.sheet__close {
-  width: 56rpx; height: 56rpx; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(231, 233, 243, 0.72); font-size: 26rpx;
-}
-.sheet__search {
-  padding: 20rpx 28rpx 4rpx;
-  flex-shrink: 0;
-}
-.sheet__search .search-input {
-  min-height: 76rpx;
-  padding: 0 24rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  font-size: 26rpx;
-  box-sizing: border-box;
-}
-.sheet-more {
-  padding: 24rpx 28rpx 8rpx;
-  text-align: center;
-  font-size: 24rpx;
-  font-weight: 500;
-  color: rgba(231, 233, 243, 0.46);
-}
-.sheet-more:active {
-  color: rgba(231, 233, 243, 0.72);
-}
-.sheet__bd {
-  flex: 1; overflow-y: auto;
-  padding: 12rpx 0 20rpx;
-  box-sizing: border-box;
-}
-.sheet-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 26rpx 28rpx; min-height: 84rpx;
-  box-sizing: border-box;
-}
-.sheet-item:active { background: rgba(143, 123, 255, 0.08); }
-.sheet-item__label {
-  flex: 1; font-size: 28rpx; font-weight: 600; color: #e7e9f3;
-  line-height: 1.3;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.sheet-item__check { color: #f2c14e; font-size: 28rpx; font-weight: 700; margin-left: 16rpx; flex-shrink: 0; }
-.sheet-divider { height: 1rpx; background: rgba(255, 255, 255, 0.06); margin: 8rpx 28rpx; }
-.sheet-empty {
-  padding: 60rpx 28rpx; text-align: center; font-size: 26rpx;
-  color: rgba(231, 233, 243, 0.46); font-weight: 500;
-}
-.check-box {
-  width: 40rpx; height: 40rpx; border-radius: 12rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.14);
-  display: flex; align-items: center; justify-content: center;
-}
-.check-box--on { background: rgba(242, 193, 78, 0.3); border-color: rgba(242, 193, 78, 0.95); }
-.check-box__t { color: #F2C14E; font-size: 26rpx; font-weight: 700; }

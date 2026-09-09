@@ -7,7 +7,7 @@
       <view class="field-block mt">
         <view class="field-label">集合</view>
         <picker mode="selector" range="{{collections}}" value="{{collectionIndex}}" bindchange="onCollectionChange">
-          <view class="picker-field">{{collections[collectionIndex]}}</view>
+          <view class="field-select"><text class="field-select__value">{{collections[collectionIndex]}}</text><text class="field-select__arrow">▾</text></view>
         </picker>
       </view>
 
@@ -22,7 +22,7 @@
         />
       </view>
 
-      <view class="action-row">
+      <view class="row mt-sm">
         <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始查询'}}</view>
         <view class="btn btn-ghost mini ml" bindtap="onCopyResult">复制结果</view>
       </view>

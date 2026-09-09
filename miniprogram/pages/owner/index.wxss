@@ -1,10 +1,1 @@
-.mt {
-  margin-top: 18rpx;
-}
-
-.add {
-  width: 84rpx;
-  height: 64rpx;
-  border-radius: 16rpx;
-}
-
+/* 本页样式全部由全局 app.wxss 提供 */

@@ -3,6 +3,8 @@ const gymApi = require("../../services/api/gym");
 const { ensureAppLogin } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 const cache = require("../../utils/cache");
+const { suggestedTime } = require("../../utils/plan");
+const { callCloud } = require("../../services/cloud");
 
 const MAX_DAYS = 14;
 const WEEK_SHORT = ["日", "一", "二", "三", "四", "五", "六"];
@@ -22,7 +24,7 @@ function addDays(baseDate, days) {
   return d;
 }
 function todayYMD(baseDate) {
-  const d = baseDate || new Date(Date.now() + 8 * 3600 * 1000);
+  const d = baseDate || new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 function parseYMD(ymd) {
@@ -34,6 +36,7 @@ function hmLabel(v) { return `${pad2(Math.floor(v / 60))}:${pad2(v % 60)}`; }
 
 Page({
   data: {
+    planId: "", version: 0, title: "", capacity: 4, joinMode: "direct", atmosphereTags: [], atmosphereOptions: ["欢迎新手","休闲爬","认真训练"], meetingPoint: "", contact: "", submitting: false, moreOpen: false, formLoading: true, formError: false,
     city: "",
     selectedGymId: "",
     selectedGymName: "",
@@ -65,7 +68,7 @@ Page({
     note: "",
     needPartner: true,
     skillTags: [
-      { key: "boulder", label: "抱石", on: false, warn: true },
+      { key: "boulder", label: "抱石", on: true, warn: true },
       { key: "lead", label: "先锋", on: false },
       { key: "toprope", label: "顶绳", on: false },
       { key: "auto", label: "自动锁", on: false },
@@ -79,7 +82,7 @@ Page({
     const gymId = safeText(options && options.gymId) || "";
     const date = safeText(options && options.date) || todayYMD();
 
-    const baseDate = new Date(Date.now() + 8 * 3600 * 1000);
+    const baseDate = new Date();
     const cells = [];
     for (let i = 0; i < MAX_DAYS; i++) {
       const d = addDays(baseDate, i);
@@ -117,8 +120,33 @@ Page({
       selectedDate: date,
       dateRangeLabel: `${startLabel} - ${endLabel}`
     });
+    const suggestion = suggestedTime(date);
+    this.setData({ selectedDate: suggestion.date, startTime:suggestion.startTime, endTime:suggestion.endTime, timeQuickKey:"custom", dateCells:cells.map(c=>({...c,selected:c.date===suggestion.date})) });
+    // 「再约一次」/首页带类型发布：预填岩馆、攀爬类型、氛围、人数、报名方式。
+    // 日期时间必须重新选择（上方 suggestedTime 已处理），联系方式与集合点不复制。
+    if (!options.planId) {
+      const typeKeys = String(options.skillTags || options.climbType || "").split(",").map(s=>s.trim()).filter(Boolean);
+      const atmoKeys = String(options.atmosphere || "").split(",").map(s=>s.trim()).filter(Boolean);
+      const capacityNum = Math.floor(Number(options.capacity) || 0);
+      const patch = {};
+      if (typeKeys.length) patch.skillTags = this.data.skillTags.map(t=>({...t,on:typeKeys.includes(t.key)}));
+      if (atmoKeys.length) patch.atmosphereTags = this.data.atmosphereOptions.filter(o=>atmoKeys.includes(o));
+      if (capacityNum >= 2 && capacityNum <= 20) patch.capacity = capacityNum;
+      if (options.joinMode === "approval") patch.joinMode = "approval";
+      if (Object.keys(patch).length) this.setData(patch);
+    }
+    if (options && options.planId) {
+      this.setData({planId:String(options.planId)});
+      try {
+        const d=await callCloud("calendar_plan_publish",{action:"detail",planId:String(options.planId)},{silent:true});
+        if(!d.isOwner) throw new Error("仅发起人可编辑");
+        const p=d.plan;
+        this.setData({version:p.version,title:p.title,capacity:p.capacity||Math.max(4,p.confirmedCount),joinMode:p.joinMode,atmosphereTags:p.atmosphereTags||[],meetingPoint:d.meetingPoint,contact:d.contact,selectedGymId:p.gymId,selectedGymName:(p.gymSnapshot||{}).name||"",city:(p.gymSnapshot||{}).city||"",selectedDate:p.date,startTime:p.startTime,endTime:p.endTime,note:p.note,visibility:p.visibility,skillTags:this.data.skillTags.map(t=>({...t,on:(p.skillTags||[]).includes(t.key)})),dateCells:cells.map(c=>({...c,selected:c.date===p.date}))});
+      } catch(e) {this.setData({formError:true});wx.showModal({title:"无法编辑",content:e.message||"请返回详情重试",showCancel:false});}
+    }
+    this.setData({formLoading:false});
     this.recomputeDuration();
-    if (!gymId) {
+    if (!this.data.selectedGymId) {
       // #26①: 进入时未带岩馆 → 复用「今日打卡」拦截模式（home onTapCheckin：未选直接提示），
       // 提示先选岩馆并自动打开选择/搜索，发布前必须完成岩馆绑定
       wx.showToast({ title: "请先选择岩馆", icon: "none" });
@@ -352,7 +380,7 @@ Page({
 
   visibilityHintFor(v) {
     if (v === "friends") return "对岩友发布——只有你的岩友能看到你的发布";
-    if (v === "circle") return "对岩友圈发布——会自动发布到对应岩馆关联的岩友圈(已加入的)";
+    if (v === "circle") return "对岩友圈发布——仅已加入的关联岩友圈成员可见";
     return "";
   },
 
@@ -370,6 +398,7 @@ Page({
   },
 
   async onPublish() {
+    if(this.data.submitting || this.data.formLoading || this.data.formError) return;
     if (!this.data.selectedGymId) {
       wx.showToast({ title: "请先选择岩馆", icon: "none" });
       return;
@@ -389,11 +418,14 @@ Page({
       return;
     }
     const skillTags = this.data.skillTags.filter((x) => x.on).map((x) => x.key);
+    if(!skillTags.some(x=>x!=="protector")){wx.showToast({title:"请选择攀爬类型",icon:"none"});return;}
     // issue #27: 云函数 calendar_plan_publish 读 event.payload.date 等嵌套字段，
     // action 读 event 顶层 → 这里包一层 payload（原来平铺导致云端 payload={} 报缺 date）
     const payload = {
-      action: "create",
+      action: this.data.planId ? "update" : "create",
+      planId: this.data.planId,
       payload: {
+        version:this.data.version,title:this.data.title,capacity:Number(this.data.capacity),joinMode:this.data.joinMode,atmosphereTags:this.data.atmosphereTags,meetingPoint:this.data.meetingPoint,contact:this.data.contact,
         mode: "gym",
         date: this.data.selectedDate,
         startTime: this.data.startTime,
@@ -402,28 +434,37 @@ Page({
         note: this.data.note || "",
         needPartner: !!this.data.needPartner,
         skillTags,
+        capacity: Number(this.data.capacity || 4),
+        joinMode: this.data.joinMode || "direct",
+        title: this.data.title || "",
+        atmosphereTags: this.data.atmosphereTags || [],
+        meetingPoint: this.data.meetingPoint || "",
+        contact: this.data.contact || "",
         gymId: this.data.selectedGymId
       }
     };
-    wx.showLoading({ title: "发布中…", mask: true });
+    const signature=JSON.stringify(payload);
+    if(this._publishSignature!==signature){this._publishSignature=signature;this._publishId=Date.now()+"_"+Math.random().toString(36).slice(2);}
+    payload.requestId=this._publishId;
+    this.setData({submitting:true});
     try {
       const res = await calendarApi.publish(payload);
       wx.hideLoading();
       try {
         cache.invalidate(cache.CACHE_KEYS.CALENDAR_SUMMARY);
         cache.invalidate(cache.CACHE_KEYS.STATS_30DAY);
+        getApp().globalData.plansDirty=true;
       } catch (_) {}
-      wx.showToast({ title: "发布成功 🧗", icon: "success" });
+      wx.showToast({ title: this.data.planId ? "修改已保存" : "发布成功", icon: "success" });
       setTimeout(() => {
-        const q = [`date=${this.data.selectedDate}`];
-        if (this.data.city) q.push(`city=${encodeURIComponent(this.data.city)}`);
-        if (this.data.selectedGymId) q.push(`gymId=${this.data.selectedGymId}`);
-        if (this.data.visibility) q.push(`visibility=${this.data.visibility}`);
-        wx.redirectTo({ url: `/pages/calendar-timeline/index?${q.join("&")}` });
+        wx.redirectTo({url:"/pages/plan-detail/index?planId="+encodeURIComponent(res.planId)});
       }, 450);
     } catch (e) {
-      wx.hideLoading();
-      wx.showModal({ title: "发布失败", content: (e && e.message) || "请稍后重试", showCancel: false });
-    }
-  }
+      wx.showModal({ title: "暂未保存", content: (e && e.message) || "请稍后重试", showCancel: false });
+    } finally {this.setData({submitting:false});}
+  },
+  onField(e){const key=e.currentTarget.dataset.key;if(["title","capacity","meetingPoint","contact"].includes(key))this.setData({[key]:e.detail.value});},
+  onApproval(e){this.setData({joinMode:e.detail.value?"approval":"direct"});},
+  onAtmosphere(e){const value=e.currentTarget.dataset.value;let tags=this.data.atmosphereTags||[];tags=tags.includes(value)?tags.filter(x=>x!==value):tags.concat(value).slice(0,3);this.setData({atmosphereTags:tags});},
+  toggleMore(){this.setData({moreOpen:!this.data.moreOpen});}
 });

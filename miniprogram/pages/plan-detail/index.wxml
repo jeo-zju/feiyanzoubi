@@ -1,0 +1,69 @@
+<view class="page social-page">
+  <view wx:if="{{loading}}" class="empty-state">正在加载约爬…</view>
+  <view wx:elif="{{error}}" class="empty-state">
+    <view class="empty-state__desc">{{error}}</view>
+    <button class="btn btn-ghost" bindtap="load">重试</button>
+  </view>
+  <block wx:elif="{{plan}}">
+    <view class="social-label">{{plan.date}} · {{plan.startTime}}–{{plan.endTime}}</view>
+    <view class="social-title">{{plan.title}}</view>
+    <view class="social-sub">{{plan.gymSnapshot.name}} · {{plan.typeText}}</view>
+    <view wx:if="{{stateText}}" class="social-notice">{{stateText}}</view>
+
+    <view class="social-panel">
+      <view class="social-row">
+        <image class="social-avatar" src="{{detail.ownerInfo.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
+        <view class="social-person">
+          <view class="social-name">{{detail.ownerInfo.displayName}}</view>
+          <view class="social-small">发起人 · 能力信息由本人填写</view>
+        </view>
+        <button wx:if="{{!detail.isOwner}}" class="btn-text" bindtap="more">更多</button>
+      </view>
+      <view class="social-copy">{{plan.note || '一起爬，互相交流，认识新的岩友。'}}</view>
+      <view wx:if="{{plan.atmosphereText}}" class="social-sub">{{plan.atmosphereText}}</view>
+      <view class="social-sub">{{plan.countText}} · {{plan.joinMode==='approval'?'发起人确认后加入':'有名额即可加入'}}</view>
+      <view class="social-small">报名截止：活动开始时（旧计划以实际截止时间为准）</view>
+    </view>
+
+    <view class="social-panel">
+      <view class="social-label">一起爬的岩友 · {{detail.joinedCount}} 人</view>
+      <view class="social-row"><text>{{detail.ownerInfo.displayName}}</text><text class="tag tag-warn">发起人</text></view>
+      <view wx:for="{{detail.joiners}}" wx:key="joinId" class="social-row">
+        <image class="social-avatar" src="{{item.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
+        <view class="social-person social-name">{{item.displayName}}</view>
+        <button wx:if="{{detail.isOwner && !ended && plan.status==='active'}}" class="btn-text btn-text--danger" data-id="{{item.openid}}" bindtap="remove">移除</button>
+        <button wx:elif="{{ended}}" class="btn-text" data-id="{{item.openid}}" bindtap="addFriend">加岩友</button>
+      </view>
+      <button wx:if="{{ended && !detail.isOwner}}" class="btn-text" data-id="{{detail.ownerInfo.openid}}" bindtap="addFriend">加发起人为岩友</button>
+    </view>
+
+    <view wx:if="{{detail.isOwner && detail.pending.length}}" class="social-panel">
+      <view class="social-label">等待你确认</view>
+      <view wx:for="{{detail.pending}}" wx:key="joinId" class="social-row">
+        <text class="social-person">{{item.displayName}}</text>
+        <button class="btn-text" data-id="{{item.openid}}" bindtap="approve" disabled="{{busy}}">接受</button>
+        <button class="btn-text btn-text--danger" data-id="{{item.openid}}" bindtap="reject" disabled="{{busy}}">暂不接受</button>
+      </view>
+    </view>
+
+    <view class="social-panel">
+      <view class="social-label">在哪里碰面</view>
+      <view class="social-copy">{{detail.meetingPoint || ((detail.joined && !detail.isBlocked)?'发起人尚未填写集合位置，请留意更新。':'报名确认后可查看集合位置和联络方式。')}}</view>
+      <view wx:if="{{detail.contact}}" class="social-sub">{{detail.contact}}</view>
+      <button wx:if="{{detail.contact}}" class="btn-text" bindtap="copyContact">复制联络方式</button>
+      <view class="social-small">报名结果和变更请在「通知」中查看。微信订阅推送尚未启用。</view>
+    </view>
+
+    <view class="social-panel social-actions">
+      <button open-type="share" class="btn-text">分享约爬</button>
+      <button wx:if="{{detail.isOwner && !ended && plan.status==='active'}}" class="btn-text" bindtap="edit">编辑约爬</button>
+      <button wx:if="{{detail.isOwner && !ended && plan.status==='active'}}" class="btn-text btn-text--danger" bindtap="cancel">取消约爬</button>
+    </view>
+
+    <view class="social-bottom">
+      <button wx:if="{{ended || plan.status==='cancelled'}}" class="btn btn-primary" bindtap="again">再约一次</button>
+      <button wx:elif="{{detail.isOwner}}" class="btn btn-primary" open-type="share">邀请新岩友加入</button>
+      <button wx:else class="btn btn-primary" bindtap="mainAction" disabled="{{buttonDisabled || busy}}" loading="{{busy}}">{{buttonLabel}}</button>
+    </view>
+  </block>
+</view>

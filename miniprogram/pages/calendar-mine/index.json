@@ -1,5 +1,7 @@
 {
-  "navigationBarTitleText": "我的日历",
+  "navigationBarTitleText": "我的约爬",
   "enablePullDownRefresh": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "seg-tabs": "../../components/segmentedTabs/index"
+  }
 }

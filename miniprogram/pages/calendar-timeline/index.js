@@ -66,7 +66,7 @@ Page({
 
   onLoad(options) {
     const date = safeText(options && options.date) || (() => {
-      const d = new Date(Date.now() + 8 * 3600 * 1000);
+      const d = new Date();
       return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
     })();
     const city = decodeURIComponent(safeText(options && options.city));
@@ -83,6 +83,7 @@ Page({
     this.setData({
       date,
       dateLabel,
+      circleId: safeText(options && options.circleId),
       weekLabel,
       city,
       gymId,
@@ -129,7 +130,8 @@ Page({
       const params = {
         date: this.data.date,
         city: this.data.city,
-        visibility: this.data.visibility
+        visibility: this.data.visibility,
+        circleId: this.data.circleId || ""
       };
       if (this.data.gymId) params.filterGymId = this.data.gymId;
       const res = await calendarApi.queryTimeline(params);
@@ -247,26 +249,19 @@ Page({
     }
   },
 
-  onTapGymFilter() {
-    wx.showActionSheet({
-      itemList: ["全部岩馆", "重新选择岩馆"],
-      success: (r) => {
-        if (r.tapIndex === 0) {
-          this.setData({ gymId: "", gymLabel: "全部岩馆" }, () => this.loadTimeline());
-        } else {
-          wx.navigateTo({ url: "/pages/home/index" });
-        }
-      }
-    });
+  onGymFilterChange(e) {
+    const idx = Number(e.detail.value);
+    if (idx === 0) {
+      this.setData({ gymId: "", gymLabel: "全部岩馆" }, () => this.loadTimeline());
+    } else if (idx === 1) {
+      wx.navigateTo({ url: "/pages/home/index" });
+    }
   },
 
-  onToggleVisibility() {
-    const next = this.data.visibility === "public" ? "friends" : "public";
-    this.setData({
-      visibility: next,
-      visibilityLabel: next === "friends" ? "我的岩友" : "公开日历",
-      publicityPillLabel: next === "friends" ? "我的岩友 ✓" : "公开日历 ✓"
-    }, () => this.loadTimeline());
+  onVisibilityChange(e) {
+    const next = e.detail.value === "friends" ? "friends" : "public";
+    if (next === this.data.visibility) return;
+    this.setData({ visibility: next }, () => this.loadTimeline());
   },
 
   // #35: 点头像/点时间块都要打开弹窗并加载报名者；统一入口避免两处逻辑不一致
@@ -382,7 +377,7 @@ Page({
     if (!found && uid) {
       found = Object.values(map).find((p) => p.uid === uid);
     }
-    this.openPlanModal(found);
+    if(found && (found.rawPlanId || found.id)) wx.navigateTo({url:"/pages/plan-detail/index?planId="+encodeURIComponent(found.rawPlanId || found.id)});
   },
 
   async onTapAddFriend() {

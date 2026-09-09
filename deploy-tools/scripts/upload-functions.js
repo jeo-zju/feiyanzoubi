@@ -20,7 +20,7 @@ async function main() {
     ? args
     : fs
         .readdirSync(funcsRoot)
-        .filter((n) => fs.statSync(path.join(funcsRoot, n)).isDirectory())
+        .filter((n) => n !== 'test_seed_data' && !n.startsWith('_') && fs.statSync(path.join(funcsRoot, n)).isDirectory())
 
   if (!targets.length) {
     console.error('cloudfunctions 目录下没有可上传的函数')

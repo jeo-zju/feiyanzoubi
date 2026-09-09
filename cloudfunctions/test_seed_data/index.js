@@ -506,6 +506,11 @@ exports.main = async (event, context) => {
   const tid = traceId();
   const action = String((event && event.action) || "").trim().toLowerCase();
   try {
+    if (process.env.ALLOW_TEST_SEED !== "true") return fail("DISABLED", "测试数据工具未启用", tid);
+    const openid = cloud.getWXContext().OPENID;
+    if (!openid) return fail("FORBIDDEN", "仅管理员可调用", tid);
+    const user = await db.collection("RockUsers").where({ openid, role: "admin" }).limit(1).get();
+    if (!user.data || !user.data.length) return fail("FORBIDDEN", "仅管理员可调用", tid);
     if (action === "status") return statusAction(tid);
     if (action === "cleanup") return cleanupAction((event && event.confirm) === true, tid);
     if (action === "seed") return seedAction(tid);

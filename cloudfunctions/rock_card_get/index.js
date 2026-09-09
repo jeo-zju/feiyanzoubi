@@ -54,10 +54,19 @@ exports.main = async (event) => {
     if (!cardId) return fail("BAD_REQUEST", "缺少 cardId", tid);
 
     const res = await db.collection("RockCards").doc(cardId).get();
-    const card = res && res.data ? res.data : null;
+    let card = res && res.data ? res.data : null;
     if (!card) return fail("NOT_FOUND", "名片不存在", tid);
 
-    if (!canRead(openid, card)) return fail("FORBIDDEN", "无权限", tid);
+    const privateView = canRead(openid, card);
+    if (!privateView) {
+      if (card.status !== "active" || !card.isPrimary) return fail("FORBIDDEN", "这张名片未公开分享", tid);
+      const publicFront = {};
+      const source = card.front || {};
+      ["displayName", "title", "mbti", "avatarMode", "avatarFileId", "avatarUrl", "oneLiner", "oneLinerStyle"].forEach(k => {
+        if (typeof source[k] === "string") publicFront[k] = source[k];
+      });
+      card = { _id: card._id, front: publicFront, publicView: true };
+    }
 
     // issue #35: 名片头像 cloud:// 在云函数端换成临时 https URL
     // （custom 模式取 front.avatarFileId，wechat 模式取 front.avatarUrl）

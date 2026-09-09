@@ -29,7 +29,12 @@
     "pages/user-admin/index",
     "pages/circle-list/index",
     "pages/circle-edit/index",
-    "pages/circle-detail/index"
+    "pages/circle-detail/index",
+    "pages/calendar-overview/index",
+    "pages/plan-detail/index",
+    "pages/notifications/index",
+    "pages/safety/index",
+    "pages/activity-records/index"
   ],
   "window": {
     "backgroundColor": "#0B0D15",
@@ -49,13 +54,13 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "首页",
+        "text": "找搭子",
         "iconPath": "images/icons/home.png",
         "selectedIconPath": "images/icons/home-active.png"
       },
       {
         "pagePath": "pages/calendar-mine/index",
-        "text": "我的日历",
+        "text": "我的约爬",
         "iconPath": "images/icons/calendar.png",
         "selectedIconPath": "images/icons/calendar-active.png"
       },

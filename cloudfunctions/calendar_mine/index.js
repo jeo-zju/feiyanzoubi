@@ -207,7 +207,7 @@ exports.main = async (event) => {
         const joinCol = db.collection("RockCalendarJoins");
         const joinIdentityWhere = _.or([{ _openid: openid }, { openid }, { uid: openid }]);
         const jRes = await joinCol
-          .where(joinIdentityWhere)
+          .where(_.and([joinIdentityWhere,{status:_.in(["joined","confirmed"])}]))
           .orderBy("createdAt", "desc")
           .skip(tab === "joined" ? skip : 0)
           .limit(tab === "joined" ? pageSize + 1 : 100)
@@ -233,7 +233,12 @@ exports.main = async (event) => {
       }
     }
 
-    return ok({ upcoming, past, joined, summary, page, pageSize, hasNext }, tid);
+    const project = p => {
+      const out = {};
+      for(const key of ["_id","date","startTime","endTime","gymId","gymSnapshot","mode","outdoorName","status","note","skillTags","joinedCount"]) if(p[key] !== undefined) out[key]=p[key];
+      return out;
+    };
+    return ok({ upcoming:upcoming.map(project), past:past.map(project), joined:joined.map(project), summary, page, pageSize, hasNext }, tid);
   } catch (e) {
     return fail("MINE_FAILED", e && e.message ? e.message : "查询失败", tid);
   }

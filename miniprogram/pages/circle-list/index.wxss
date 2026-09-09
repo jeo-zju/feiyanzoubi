@@ -1,11 +1,7 @@
+/* 岩友圈列表页：卡片/按钮/标签/图标按钮均使用全局体系，本文件只保留列表布局 */
 .page--circle-list {
-  min-height: 100vh;
-  background: #0B0D15;
-  color: #E7E9F3;
   display: flex;
   flex-direction: column;
-  padding: 24rpx;
-  box-sizing: border-box;
   gap: 24rpx;
 }
 
@@ -13,31 +9,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 80rpx;
+  gap: 16rpx;
+  min-height: 88rpx;
   flex-shrink: 0;
-}
-.topbar__title {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: #E7E9F3;
-  flex: 1;
-}
-.topbar__plus {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  background: rgba(143, 123, 255, 0.16);
-  border: 1rpx solid rgba(143, 123, 255, 0.35);
-  color: #8F7BFF;
-  font-size: 36rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.topbar__plus:active {
-  background: rgba(143, 123, 255, 0.3);
 }
 
 .list-stage {
@@ -48,80 +22,46 @@
   gap: 16rpx;
 }
 
-.empty-stage {
-  padding: 120rpx 0;
-  text-align: center;
-  color: rgba(231, 233, 243, 0.35);
-  font-size: 26rpx;
-}
-
 .circle-row {
   display: flex;
   align-items: center;
   gap: 20rpx;
   padding: 24rpx;
-  border-radius: 20rpx;
-  background: #121420;
-  border: 1rpx solid rgba(255, 255, 255, 0.06);
 }
-.circle-row:active {
-  background: #181b2b;
-}
+
 .circle-row__color {
   width: 72rpx;
   height: 72rpx;
   border-radius: 16rpx;
   flex-shrink: 0;
 }
+
 .circle-row__main {
   flex: 1;
   min-width: 0;
 }
+
 .circle-row__title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #E7E9F3;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #fff;
 }
+
 .circle-row__meta {
-  font-size: 22rpx;
-  color: rgba(231, 233, 243, 0.45);
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.55);
   margin-top: 6rpx;
 }
+
 .circle-row__desc {
-  font-size: 22rpx;
-  color: rgba(231, 233, 243, 0.35);
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.45);
   margin-top: 6rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .circle-row__side {
   flex-shrink: 0;
-}
-.circle-row__tag {
-  font-size: 22rpx;
-  padding: 8rpx 20rpx;
-  border-radius: 999rpx;
-}
-.circle-row__tag--in {
-  color: #7BE3A4;
-  background: rgba(123, 227, 164, 0.12);
-  border: 1rpx solid rgba(123, 227, 164, 0.3);
-}
-.circle-row__tag--pending {
-  color: #F2C14E;
-  background: rgba(242, 193, 78, 0.12);
-  border: 1rpx solid rgba(242, 193, 78, 0.3);
-}
-.circle-row__btn {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #8F7BFF;
-  padding: 12rpx 28rpx;
-  border-radius: 999rpx;
-  background: rgba(143, 123, 255, 0.14);
-  border: 1rpx solid rgba(143, 123, 255, 0.35);
-}
-.circle-row__btn:active {
-  background: rgba(143, 123, 255, 0.3);
 }

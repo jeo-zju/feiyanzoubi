@@ -30,7 +30,7 @@ async function main() {
 
   // 2. 创建集合
   const r = await fetch(
-    `https://api.weixin.qq.com/tcb/addcollection?access_token=${tok.access_token}`,
+    `https://api.weixin.qq.com/tcb/databasecollectionadd?access_token=${tok.access_token}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,6 +40,8 @@ async function main() {
   const data = await r.json()
   if (data.errcode === 0) {
     console.log(`集合 ${name} 创建成功 (env=${config.ENV_ID})`)
+  } else if (data.errcode === -501000 && /ResourceExist|resource exist/i.test(data.errmsg || '')) {
+    console.log(`集合 ${name} 已存在 (env=${config.ENV_ID})`)
   } else {
     console.error('创建失败:', JSON.stringify(data))
     process.exit(1)

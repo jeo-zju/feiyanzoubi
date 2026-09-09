@@ -4,7 +4,9 @@ const { CACHE_KEYS, get: cacheGet, set: cacheSet, invalidate: cacheInvalidate, c
 App({
   globalData: {
     _cache: { map: new Map(), lastOpenid: "" },
-    _winSizeCached: null
+    _winSizeCached: null,
+    // 约爬数据写成功后置脏：首页 onShow 据此决定是否整表刷新，避免返回首页重复加载
+    plansDirty: false
   },
   globalConstants: {
     STORAGE_KEYS: CACHE_KEYS,

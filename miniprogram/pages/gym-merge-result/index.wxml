@@ -1,55 +1,67 @@
-<view class="page">
-  <view class="panel success-panel">
-    <view class="title">合并完成</view>
-    <view class="success-text">已将「{{payload.sourceGymName}}」合并到「{{payload.targetGymName}}」。</view>
+<view class="page page--result">
+  <view class="card card-hero card-pad">
+    <view class="section-title">合并完成</view>
+    <view class="section-desc">已将「{{payload.sourceGymName}}」合并到「{{payload.targetGymName}}」。</view>
   </view>
 
-  <view class="panel">
-    <view class="title">迁移摘要</view>
-    <view class="summary-text">{{movedSummaryText}}</view>
-  </view>
-
-  <view class="panel">
-    <view class="title">周期映射</view>
-    <view class="summary-text pre-line">{{mappingSummaryText}}</view>
-  </view>
-
-  <view class="panel" wx:if="{{mergeHistory.length}}">
-    <view class="title">目标馆合并历史</view>
-    <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="history-item">
-      <view class="detail-value">{{item.sourceGymName}}</view>
-      <view class="detail-label">{{item.mergedAtText}} 合并到当前馆</view>
-      <view class="detail-label">映射周期 {{item.cycleMappingCount}} 个，合并周期 {{item.mappedCycleCount}} 个</view>
+  <view class="card mt">
+    <view class="card-hd">迁移摘要</view>
+    <view class="card-bd">
+      <view class="hint pre-line">{{movedSummaryText}}</view>
     </view>
   </view>
 
-  <view class="panel" wx:if="{{targetGym}}">
-    <view class="title">目标馆核对</view>
-    <view class="detail-row">
-      <view class="detail-label">名称</view>
-      <view class="detail-value">{{targetGym.name}}</view>
-    </view>
-    <view class="detail-row">
-      <view class="detail-label">城市</view>
-      <view class="detail-value">{{targetGym.city || '未设置'}}</view>
-    </view>
-    <view class="detail-row">
-      <view class="detail-label">地址</view>
-      <view class="detail-value">{{targetGym.address || '未设置'}}</view>
-    </view>
-    <view class="detail-row">
-      <view class="detail-label">支持模式</view>
-      <view class="detail-value">{{modesText}}</view>
-    </view>
-    <view class="detail-row">
-      <view class="detail-label">当前周期</view>
-      <view class="detail-value">{{currentCycleText}}</view>
+  <view class="card mt">
+    <view class="card-hd">周期映射</view>
+    <view class="card-bd">
+      <view class="hint pre-line">{{mappingSummaryText}}</view>
     </view>
   </view>
 
-  <view class="panel actions">
-    <view class="btn btn-primary" bindtap="onOpenTargetGym">进入目标岩馆</view>
-    <view class="btn btn-secondary" bindtap="onMergeAgain">继续合并到该馆</view>
-    <view class="btn btn-ghost" bindtap="onBackOwner">返回我的岩馆</view>
+  <view class="card mt" wx:if="{{mergeHistory.length}}">
+    <view class="card-hd">目标馆合并历史</view>
+    <view class="card-bd">
+      <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="history-item">
+        <view class="history-name">{{item.sourceGymName}}</view>
+        <view class="hint">{{item.mergedAtText}} 合并到当前馆</view>
+        <view class="hint">映射周期 {{item.cycleMappingCount}} 个，合并周期 {{item.mappedCycleCount}} 个</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card mt" wx:if="{{targetGym}}">
+    <view class="card-hd">目标馆核对</view>
+    <view class="card-bd">
+      <view class="list-row">
+        <view class="hint">名称</view>
+        <view class="detail-value">{{targetGym.name}}</view>
+      </view>
+      <view class="list-row">
+        <view class="hint">城市</view>
+        <view class="detail-value">{{targetGym.city || '未设置'}}</view>
+      </view>
+      <view class="list-row">
+        <view class="hint">地址</view>
+        <view class="detail-value">{{targetGym.address || '未设置'}}</view>
+      </view>
+      <view class="list-row">
+        <view class="hint">支持模式</view>
+        <view class="detail-value">{{modesText}}</view>
+      </view>
+      <view class="list-row">
+        <view class="hint">当前周期</view>
+        <view class="detail-value">{{currentCycleText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="action-bar">
+    <view class="action-bar__row">
+      <view class="btn btn-primary" bindtap="onOpenTargetGym">进入目标岩馆</view>
+    </view>
+    <view class="action-bar__row mt-sm">
+      <view class="btn btn-ghost" bindtap="onMergeAgain">继续合并到该馆</view>
+      <view class="btn btn-ghost" bindtap="onBackOwner">返回我的岩馆</view>
+    </view>
   </view>
 </view>

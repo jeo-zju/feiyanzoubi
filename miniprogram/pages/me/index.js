@@ -75,7 +75,7 @@ Page({
     defaultAvatar: DEFAULT_AVATAR,
     canSeeToolbox: false,
     drawerOpen: false,
-    version: "2.0.23",
+    version: "2.0.24",
 
     credit: { remaining: 0, limit: 10 },
     creditPercent: 0,
@@ -197,6 +197,9 @@ Page({
 
   async ensureLogin() { try { await ensureAppLogin(); } catch (e) {} },
 
+  goSafety(){wx.navigateTo({url:"/pages/safety/index"});},
+  goRecords(){wx.navigateTo({url:"/pages/activity-records/index"});},
+  goNotifications(){wx.navigateTo({url:"/pages/notifications/index"});},
   goProfileEdit() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/profile-edit/index" }); } catch (_) {} },
   goOwner() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/owner/index" }); } catch (_) {} },
   goBackstage() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/backstage/index" }); } catch (_) {} },

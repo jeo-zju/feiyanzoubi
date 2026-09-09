@@ -1,0 +1,61 @@
+<view class="page page--mine">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="row">
+        <view class="section-title-lg">嗨，{{userName}}</view>
+        <view class="hint">近30天概览</view>
+      </view>
+
+      <view class="stat-grid mt">
+        <view class="panel stat-card">
+          <view class="stat-number">{{summary.thisMonthPlans || 0}}</view>
+          <view class="stat-label">本月计划</view>
+        </view>
+        <view class="panel stat-card">
+          <view class="stat-number">{{stats.recent.length || 0}}</view>
+          <view class="stat-label">打卡次数</view>
+        </view>
+        <view class="panel stat-card">
+          <view class="stat-number">{{summary.thisMonthCheckinRate || 0}}%</view>
+          <view class="stat-label">完成率</view>
+        </view>
+        <view class="panel stat-card">
+          <view class="stat-number">{{summary.totalPartners || 0}}</view>
+          <view class="stat-label">搭子</view>
+        </view>
+      </view>
+
+      <view class="hint t-center mt" wx:if="{{summary.topGymName}}">最常去 · {{summary.topGymName}}</view>
+    </view>
+  </view>
+
+  <view class="card mt-lg">
+    <view class="card-hd row">
+      <view>活动记录</view>
+      <view class="hint" wx:if="{{activityTotal}}">共 {{activityTotal}} 条 · 第 {{activityPage}}/{{activityPageCount}} 页</view>
+    </view>
+    <view class="card-bd list">
+      <view wx:for="{{activityList}}" wx:key="key" class="list-row rec">
+        <view class="rec-left">
+          <view class="rec-title">
+            <text class="tag {{item.badgeType==='checkin' ? 'tag-warn' : (item.badgeType==='plan-done' || item.badgeType==='plan-cancel') ? 'tag--off' : ''}} {{item.badgeType==='plan-cancel' ? 'tag--cancel' : ''}}">{{item.badgeText}}</text>
+            <text class="rec-gym">{{item.gymName}}</text>
+          </view>
+          <view class="hint rec-sub">{{item.date}} · {{item.subText}}</view>
+        </view>
+        <view class="hint rec-right">{{item.rightText}}</view>
+      </view>
+      <view wx:if="{{!activityList.length && !stats.loading}}" class="empty-state">
+        <view class="empty-state__title">暂无活动</view>
+        <view class="empty-state__desc">去发布一个吧～</view>
+      </view>
+      <paginator
+        wx:if="{{activityPageCount > 1}}"
+        page="{{activityPage}}"
+        hasNext="{{activityPage < activityPageCount}}"
+        bind:prev="onActivityPrev"
+        bind:next="onActivityNext"
+      />
+    </view>
+  </view>
+</view>

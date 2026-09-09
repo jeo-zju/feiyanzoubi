@@ -1,0 +1,30 @@
+<view class="page social-page">
+  <view class="social-title">屏蔽与安全</view>
+  <view class="social-sub">报名不是公开联系方式的授权。举报入口位于约爬详情的「更多」。</view>
+
+  <view class="social-panel">
+    <view class="social-label">已屏蔽的岩友</view>
+    <view wx:for="{{blocks}}" wx:key="_id" class="social-row">
+      <text class="social-person">{{item.name}}</text>
+      <button class="btn-text" data-id="{{item.targetOpenid}}" bindtap="unblock">解除屏蔽</button>
+    </view>
+    <view wx:if="{{!blocks.length && !loading}}" class="social-small">暂未屏蔽任何岩友</view>
+  </view>
+
+  <view wx:if="{{isAdmin}}" class="social-panel">
+    <view class="social-label">待处理举报 · 管理员</view>
+    <view wx:for="{{reports}}" wx:key="_id" class="panel mt-sm">
+      <view>{{item.snapshot.title}} · {{item.snapshot.gymName}}</view>
+      <view class="social-copy">举报原因：{{item.reason}}</view>
+      <view class="social-small">内容快照：{{item.snapshot.note}}</view>
+      <button class="btn-text" data-id="{{item._id}}" bindtap="resolve">处理举报</button>
+    </view>
+    <view wx:if="{{!reports.length}}" class="social-small">暂无待处理举报</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty-state">加载中…</view>
+  <view wx:if="{{error}}" class="empty-state">
+    <view class="empty-state__desc">{{error}}</view>
+    <button class="btn btn-ghost" bindtap="load">重试</button>
+  </view>
+</view>

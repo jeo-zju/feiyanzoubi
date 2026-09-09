@@ -15,7 +15,7 @@
         />
       </view>
 
-      <view class="action-row">
+      <view class="row mt-sm">
         <view class="btn btn-primary flex" bindtap="onSearch">{{loading ? '查询中' : '开始联查'}}</view>
         <view class="btn btn-ghost mini ml" bindtap="onCopyRaw">复制原始数据</view>
       </view>
@@ -87,7 +87,7 @@
           <view class="field-label">role</view>
           <input class="input" placeholder="留空表示普通用户" placeholder-class="ph" value="{{draft.role}}" data-key="role" bindinput="onDraftInput" />
         </view>
-        <view class="action-row">
+        <view class="row mt-sm">
           <view class="tag {{draft.role !== user.role || draft.nickName !== user.nickName || draft.projectName !== user.projectName ? 'tag-warn' : ''}}">
             {{draft.role !== user.role || draft.nickName !== user.nickName || draft.projectName !== user.projectName ? '有未保存修改' : '已同步'}}
           </view>

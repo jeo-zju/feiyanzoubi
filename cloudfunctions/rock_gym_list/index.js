@@ -191,18 +191,22 @@ exports.main = async (event) => {
     }
 
     const col = db.collection("RockGyms");
-    let res;
-    try {
-      res = await col.where({}).orderBy("updatedAt", "desc").limit(200).get();
-    } catch (e) {
-      res = await col.where({}).limit(200).get();
+    const filters = [{ status: _.nin(["deleted", "merged"]) }];
+    const literal = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (city) {
+      const rx = db.RegExp({ regexp: literal(normalizeCityText(city)), options: "i" });
+      filters.push(_.or([{ city: rx }, { cityName: rx }, { locationCity: rx }]));
     }
-
-    let list = ((res && res.data) || []).filter((doc) => isGymVisible(doc) && matchesGym(doc, { city, keyword, mode }));
-    if (sortBy === "hardness" && ratedOnly) {
-      list = list.filter((doc) => Math.max(0, Number(doc && doc.hardnessCount) || 0) > 0);
+    if (keyword) {
+      const rx = db.RegExp({ regexp: literal(keyword), options: "i" });
+      filters.push(_.or(["name", "gymName", "title", "address", "addr", "location"].map(key => ({ [key]: rx }))));
     }
-    list = sortGyms(list, sortBy);
+    if (mode) filters.push({ supportedModes: mode });
+    if (sortBy === "hardness" && ratedOnly) filters.push({ hardnessCount: _.gt(0) });
+    const sortField = sortBy === "hardness" ? "hardnessAvg" : "updatedAt";
+    const res = await col.where(_.and(filters)).orderBy(sortField, "desc").orderBy("_id", "asc").skip(skip).limit(pageSize + 1).get();
+    const hasNext = res.data.length > pageSize;
+    const list = res.data.slice(0, pageSize);
     const gymIds = list.map((g) => g && g._id).filter(Boolean);
     const byGym = {};
     if (gymIds.length) {
@@ -228,10 +232,9 @@ exports.main = async (event) => {
         const c = Number(r.count || 0);
         if (Number.isFinite(c) && c > 0) byGym[gid].routeCount += c;
       });
-      if (sortBy !== "hardness") list = sortGymsByRecentVisit(list, byGym);
+
     }
-    const hasNext = list.length > skip + pageSize;
-    const gyms = list.slice(skip, skip + pageSize).map(normalizeGym);
+    const gyms = list.map(normalizeGym);
     gyms.forEach((g) => {
       const m = byGym[g._id];
       g.userVisitCount = m ? m.dateSet.size : 0;
@@ -243,4 +246,3 @@ exports.main = async (event) => {
     return fail("GYM_LIST_FAILED", e && e.message ? e.message : "查询失败", tid);
   }
 };
-

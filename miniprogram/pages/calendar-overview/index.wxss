@@ -1,0 +1,197 @@
+/* calendar-overview：仅页面特有布局，元素样式全部来自 app.wxss 全局 */
+
+.page--home {
+  padding-top: 0rpx;
+  padding-bottom: 200rpx;
+}
+
+/* ================= 首页日历卡片 ================= */
+.card--calendar {
+  position: relative;
+  overflow: hidden;
+  margin-top: 14rpx;
+}
+
+/* 筛选行：左城市 + 右岩馆 */
+.cal-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+.cal-filter__item {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 30 天日期格 */
+.week-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8rpx;
+}
+.week-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: rgba(231, 233, 243, 0.54);
+  text-align: center;
+  padding: 6rpx 0;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10rpx;
+}
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 86rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+.cal-cell:active {
+  background: rgba(143, 123, 255, 0.08);
+}
+.cal-cell--today {
+  border: 2rpx solid rgba(242, 193, 78, 0.74);
+  background: rgba(242, 193, 78, 0.06);
+}
+.cal-cell__md {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: rgba(231, 233, 243, 0.94);
+  line-height: 1.1;
+}
+.cal-cell__sm {
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.54);
+  margin-top: 3rpx;
+  font-weight: 500;
+}
+/* 热度 4 档 */
+.cal-cell.heat--1 {
+  background: rgba(143, 123, 255, 0.12);
+  border-color: rgba(143, 123, 255, 0.22);
+}
+.cal-cell.heat--1 .cal-cell__md { color: rgba(231, 233, 243, 0.96); }
+.cal-cell.heat--2 {
+  background: rgba(124, 110, 230, 0.22);
+  border-color: rgba(124, 110, 230, 0.36);
+}
+.cal-cell.heat--2 .cal-cell__md { color: #fff; }
+.cal-cell.heat--3 {
+  background: rgba(108, 92, 216, 0.32);
+  border-color: rgba(143, 123, 255, 0.48);
+}
+.cal-cell.heat--3 .cal-cell__md { color: #fff; }
+.cal-cell.heat--3 .cal-cell__sm { color: rgba(255,255,255,0.82); }
+
+/* 底部 legend + 引导 */
+.cal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.cal-legend__t {
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.48);
+}
+.cal-legend__dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+}
+.cal-legend__dot.heat--0 { background: rgba(231, 233, 243, 0.16); }
+.cal-legend__dot.heat--1 { background: rgba(143, 123, 255, 0.32); }
+.cal-legend__dot.heat--2 { background: rgba(124, 110, 230, 0.62); }
+.cal-legend__dot.heat--3 { background: #6a5cd8; }
+.cal-tip {
+  font-size: 24rpx;
+  text-align: right;
+}
+
+/* ================= 弹层局部 ================= */
+/* scroll-view 触底事件依赖自身滚动，bd 不能用 overflow-y:auto */
+.page--home .sheet__bd {
+  overflow: hidden;
+  min-height: 0;
+}
+.sheet-circle-dot {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  margin-right: 14rpx;
+  flex-shrink: 0;
+}
+.sheet-empty__plus {
+  margin-top: 20rpx;
+}
+
+/* ================= 岩友圈列表 ================= */
+.circle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+.circle-card {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+  min-height: 132rpx;
+  box-sizing: border-box;
+}
+.circle-card:active { background: rgba(143, 123, 255, 0.08); }
+.circle-card__color {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4rpx rgba(255, 255, 255, 0.04);
+}
+.circle-card__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6rpx;
+}
+.circle-card__title {
+  font-size: 28rpx;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.circle-card__desc {
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.52);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.circle-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  font-size: 24rpx;
+  color: rgba(231, 233, 243, 0.42);
+}
+.circle-card__meta-item { flex-shrink: 0; }
+.circle-more {
+  display: flex;
+  width: 100%;
+  padding: 16rpx 0;
+}

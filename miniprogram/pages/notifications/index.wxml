@@ -1,0 +1,17 @@
+<view class="page social-page">
+  <view class="social-row">
+    <view class="social-title">约爬通知</view>
+    <button class="btn-text" bindtap="markRead">全部已读</button>
+  </view>
+  <view class="social-sub">报名结果、取消及活动变更会保存在这里。</view>
+  <view wx:for="{{list}}" wx:key="_id" class="social-panel" data-id="{{item.planId}}" bindtap="open">
+    <view class="social-row"><text class="social-name">{{item.title}}</text><text wx:if="{{item.unread}}" class="tag tag-warn">未读</text></view>
+    <view class="social-small">{{item.gymName}} · 查看约爬 ›</view>
+  </view>
+  <view wx:if="{{loading}}" class="empty-state">加载中…</view>
+  <view wx:elif="{{error}}" class="empty-state">
+    <view class="empty-state__desc">{{error}}</view>
+    <button class="btn btn-ghost" bindtap="retry">重试</button>
+  </view>
+  <view wx:elif="{{!list.length}}" class="empty-state">暂时没有新通知</view>
+</view>

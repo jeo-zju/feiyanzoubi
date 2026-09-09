@@ -2,11 +2,12 @@
   <view class="card card-hero">
     <view class="card-bd">
       <view class="section-title-lg">审核队列</view>
-      <view class="search-row">
-        <input class="input flex" placeholder="搜索馆名/城市/地址" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
-        <view class="btn btn-warn search-btn" bindtap="onSearch">搜索</view>
+      <view class="searchbar mt-sm">
+        <text class="searchbar__ic">🔍</text>
+        <input class="searchbar__input" placeholder="搜索馆名/城市/地址" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
+        <view class="btn btn-warn mini" bindtap="onSearch">搜索</view>
       </view>
-      <seg-tabs tabs="{{stateTabs}}" value="{{state}}" bind:change="onStateChange" />
+      <seg-tabs class="mt-sm" tabs="{{stateTabs}}" value="{{state}}" bind:change="onStateChange" />
     </view>
   </view>
 
@@ -44,7 +45,7 @@
             <view wx:if="{{!item.isCycleSubmission}}" class="reason-list mt-sm">
               <block wx:for="{{modeOptions}}" wx:key="key" wx:for-item="option">
                 <view
-                  class="tag {{item.draftModes.indexOf(option.key) >= 0 ? 'tag-warn' : ''}}"
+                  class="tag {{item.draftModes.indexOf(option.key) >= 0 ? 'tag--on' : ''}}"
                   data-id="{{item._id}}"
                   data-mode="{{option.key}}"
                   bindtap="onToggleMode"
@@ -63,7 +64,7 @@
               data-id="{{item._id}}"
               bindinput="onNoteInput"
             ></textarea>
-            <view class="action-row mt">
+            <view class="row mt">
               <view class="btn btn-primary flex" data-id="{{item._id}}" bindtap="onApprove">{{item.isCycleSubmission ? '通过补录' : '确认模式'}}</view>
               <view class="btn btn-warn mini ml" data-id="{{item._id}}" bindtap="onReject">驳回记录</view>
             </view>
@@ -77,7 +78,11 @@
     </view>
 
     <view wx:else class="card mt">
-      <view class="card-bd empty">当前没有符合条件的审核记录。</view>
+      <view class="card-bd">
+        <view class="empty-state">
+          <view class="empty-state__desc">当前没有符合条件的审核记录。</view>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{hasNext}}" class="card mt">

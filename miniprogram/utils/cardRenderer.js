@@ -11,7 +11,7 @@ function fitCanvasText(ctx, text, maxW) {
   if (!t || !(maxW > 0)) return "";
   if (ctx.measureText(t).width <= maxW) return t;
   let lo = 0;
-  const hi = t.length;
+  let hi = t.length;
   while (lo < hi) {
     const mid = Math.floor((lo + hi + 1) / 2);
     if (ctx.measureText(t.slice(0, mid) + "…").width <= maxW) lo = mid;

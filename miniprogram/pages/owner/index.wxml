@@ -20,11 +20,14 @@
   <view class="card mt">
     <view class="card-hd row">
       <view>岩馆列表</view>
-      <view class="add btn btn-ghost" bindtap="onAdd">+</view>
+      <view class="icon-btn" bindtap="onAdd">+</view>
     </view>
     <view class="card-bd">
       <gym-card wx:for="{{gyms}}" wx:key="_id" gym="{{item}}" bind:tap="onTapGym" />
-      <view wx:if="{{!gyms.length && !loading}}" class="empty-state">暂无岩馆</view>
+      <view wx:if="{{!gyms.length && !loading}}" class="empty-state">
+        <view class="empty-state__title">暂无岩馆</view>
+        <view class="empty-state__desc">点击右上角 + 添加你的第一家岩馆</view>
+      </view>
       <paginator
         wx:if="{{gyms.length}}"
         page="{{page}}"

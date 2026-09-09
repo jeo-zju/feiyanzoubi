@@ -16,12 +16,12 @@
         <input class="input mb" placeholder="岩馆名（比如：飞岩岩馆）" placeholder-class="ph" value="{{form.name}}" bindinput="onName" />
         <input class="input mb" placeholder="城市（比如：上海）" placeholder-class="ph" value="{{form.city}}" bindinput="onCity" />
         <input class="input mb" placeholder="地址（比如：XX 路 XX 号）" placeholder-class="ph" value="{{form.address}}" bindinput="onAddress" />
-        <view class="muted field-tip">前台可打卡模式</view>
+        <view class="field-label">前台可打卡模式</view>
         <view class="row mb">
           <view
             wx:for="{{modeOptions}}"
             wx:key="key"
-            class="tag {{form.supportedModes.indexOf(item.key) >= 0 ? 'tag-warn' : ''}}"
+            class="tag {{form.supportedModes.indexOf(item.key) >= 0 ? 'tag--on' : 'tag--off'}}"
             data-mode="{{item.key}}"
             bindtap="onToggleMode"
           >
@@ -29,7 +29,7 @@
           </view>
         </view>
         <view wx:if="{{mergeHistory.length}}" class="merge-history">
-          <view class="hist-title">合并历史</view>
+          <view class="section-title">合并历史</view>
           <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="merge-item">
             <view class="merge-name">{{item.sourceGymName}}</view>
             <view class="muted hist-sub">{{item.mergedAtText}} 合并到当前馆</view>
@@ -38,28 +38,28 @@
         </view>
         <view class="btn btn-primary" bindtap="saveGym">{{gymId?'保存岩馆':'创建岩馆'}}</view>
         <view wx:if="{{gymId}}" class="danger-zone">
-          <view class="divider mt2"></view>
-          <view class="hist-title">危险操作</view>
-          <view class="muted field-tip">合并会把当前岩馆的历史数据迁移到目标岩馆，当前仅支持无周期重叠的安全合并。</view>
-          <view class="mini-btn merge-btn" bindtap="onMergeGym">合并到其他岩馆</view>
-          <view class="muted field-tip">删除后该岩馆会从前台和“我的岩馆”列表隐藏，并停止新的打卡。</view>
-          <view class="mini-btn danger-btn" bindtap="onDeleteGym">删除岩馆</view>
+          <view class="divider mt-sm"></view>
+          <view class="section-title mt-sm">危险操作</view>
+          <view class="hint mt-sm">合并会把当前岩馆的历史数据迁移到目标岩馆，当前仅支持无周期重叠的安全合并。</view>
+          <view class="btn btn-warn mini mt-sm" bindtap="onMergeGym">合并到其他岩馆</view>
+          <view class="hint mt-sm">删除后该岩馆会从前台和“我的岩馆”列表隐藏，并停止新的打卡。</view>
+          <view class="btn btn-danger mini mt-sm" bindtap="onDeleteGym">删除岩馆</view>
         </view>
-        <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+        <view class="btn btn-ghost mt-sm" bindtap="backOwner">返回我的岩馆</view>
       </view>
     </view>
 
     <view wx:if="{{tab==='cycle'}}" class="card mt">
       <view class="card-hd">当前周期</view>
       <view class="card-bd">
-        <view wx:if="{{!canManageDirectly}}" class="muted field-tip mb">
+        <view wx:if="{{!canManageDirectly}}" class="hint mb">
           当前馆未录入周期时，你提交的周期和线路数量会直接生效；如果该馆已有周期，你的修改会进入管理员审核。
         </view>
-        <view class="muted field-tip">周期名</view>
+        <view class="field-label">周期名</view>
         <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
-        <view class="muted field-tip">开始日期</view>
+        <view class="field-label">开始日期</view>
         <picker mode="date" value="{{cycleForm.startDate}}" bindchange="onCycleStart">
-          <view class="input mb date-picker">{{cycleForm.startDate}}</view>
+          <view class="field-select mb">{{cycleForm.startDate}}<text class="field-select__arrow">▾</text></view>
         </picker>
         <view class="row mb">
           <view class="btn btn-ghost mini" bindtap="onCycleStartToday">今天</view>
@@ -67,20 +67,20 @@
         </view>
         <view class="row mb">
           <input class="input flex" placeholder="抱石等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
-          <view class="btn btn-warn tpl-btn" bindtap="onPickBoulderTemplate">套用</view>
+          <view class="btn btn-warn mini ml" bindtap="onPickBoulderTemplate">套用</view>
         </view>
         <view class="row mb">
           <input class="input flex" placeholder="难度等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
-          <view class="btn btn-warn tpl-btn" bindtap="onPickDifficultyTemplate">套用</view>
+          <view class="btn btn-warn mini ml" bindtap="onPickDifficultyTemplate">套用</view>
         </view>
         <view class="row mb">
           <input class="input flex" placeholder="先锋等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.leadGrades}}" bindinput="onLeadGrades" />
-          <view class="btn btn-warn tpl-btn" bindtap="onPickLeadTemplate">套用</view>
+          <view class="btn btn-warn mini ml" bindtap="onPickLeadTemplate">套用</view>
         </view>
         <view class="btn btn-primary" bindtap="saveCycle">保存当前周期</view>
 
-        <view class="divider mt2"></view>
-        <view class="hist-title">历史周期</view>
+        <view class="divider mt-sm"></view>
+        <view class="section-title mt-sm">历史周期</view>
         <view class="hist-list">
           <view wx:for="{{cycles}}" wx:key="_id" class="hist-item" data-id="{{item._id}}" bindtap="onSelectCycle">
             <view class="hist-main">
@@ -88,30 +88,30 @@
               <view class="muted hist-sub">{{item.startDate||item.start_date}} ~ {{item.endDate||item.end_date||'至今'}}</view>
             </view>
             <view class="hist-right">
-              <view class="tag {{item.status==='archived'?'':'tag-warn'}}">{{item.status==='archived'?'已关闭':'进行中'}}</view>
-              <view class="mini-btn" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</view>
+              <view class="tag {{item.status==='archived'?'tag--off':'tag-warn'}}">{{item.status==='archived'?'已关闭':'进行中'}}</view>
+              <view class="btn btn-danger mini" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</view>
             </view>
           </view>
         </view>
 
-        <view class="divider mt2"></view>
-        <view class="hist-title">关闭当前周期</view>
-        <view class="muted field-tip">结束日期</view>
+        <view class="divider mt-sm"></view>
+        <view class="section-title mt-sm">关闭当前周期</view>
+        <view class="field-label">结束日期</view>
         <view class="row mb">
-          <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate">
-            <view class="input flex date-picker">{{closeEndDate}}</view>
+          <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate" class="flex">
+            <view class="field-select"><text class="field-select__value">{{closeEndDate}}</text><text class="field-select__arrow">▾</text></view>
           </picker>
-          <view class="btn btn-warn tpl-btn" bindtap="onCloseCycle">关闭周期</view>
+          <view class="btn btn-warn mini ml" bindtap="onCloseCycle">关闭周期</view>
         </view>
 
-        <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+        <view class="btn btn-ghost mt-sm" bindtap="backOwner">返回我的岩馆</view>
       </view>
     </view>
 
     <view wx:if="{{tab==='routes'}}" class="card mt">
       <view class="card-hd">线路录入</view>
       <view class="card-bd">
-        <view wx:if="{{!canManageDirectly}}" class="muted field-tip mb">
+        <view wx:if="{{!canManageDirectly}}" class="hint mb">
           当前馆未录入周期时，你提交的线路数量会直接生效；如果该馆已有周期，你的修改会进入管理员审核。
         </view>
         <seg-tabs tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
@@ -121,12 +121,12 @@
             <input class="input route-input" type="number" value="{{item.count}}" data-grade="{{item.grade}}" bindinput="onRouteCount" />
           </view>
         </view>
-        <view class="row mt2">
+        <view class="row mt-sm">
           <input class="input flex" placeholder="自定义等级（如 V0-V1）" placeholder-class="ph" value="{{customGrade}}" bindinput="onCustomGrade" />
-          <view class="btn btn-warn add-btn" bindtap="addGrade">添加等级</view>
+          <view class="btn btn-warn mini ml" bindtap="addGrade">添加等级</view>
         </view>
-        <view class="btn btn-primary mt2" bindtap="saveRoutes">更新线路</view>
-        <view class="btn btn-ghost mt2" bindtap="backOwner">返回我的岩馆</view>
+        <view class="btn btn-primary mt-sm" bindtap="saveRoutes">更新线路</view>
+        <view class="btn btn-ghost mt-sm" bindtap="backOwner">返回我的岩馆</view>
       </view>
     </view>
   </scroll-view>

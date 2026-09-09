@@ -12,7 +12,7 @@
         <view class="field-block">
           <view class="field-label">城市</view>
           <picker mode="selector" range="{{cityOptions}}" value="{{cityIndex}}" bindchange="onCityChange">
-            <view class="picker-field">{{cityOptions[cityIndex] || '请选择城市'}}</view>
+            <view class="field-select"><text class="field-select__value">{{cityOptions[cityIndex] || '请选择城市'}}</text><text class="field-select__arrow">▾</text></view>
           </picker>
         </view>
         <view class="field-block mt">
@@ -41,7 +41,7 @@
             <input class="input" type="number" value="{{pageSizeText}}" bindinput="onPageSizeInput" />
           </view>
         </view>
-        <view class="action-row mt">
+        <view class="row mt">
           <view class="btn btn-primary flex" bindtap="onRunSyncPreview">{{syncLoading ? '预览中' : '开始预览'}}</view>
           <view class="btn btn-warn mini ml" bindtap="onRunSyncWrite">写入</view>
           <view class="btn btn-ghost mini ml" bindtap="onCopySyncResult">复制</view>

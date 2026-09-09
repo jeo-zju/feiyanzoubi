@@ -57,6 +57,9 @@ async function callCloud(name, data, options) {
     ].filter(Boolean).join("\n");
     const subHint = (() => {
       const m = String(message).toLowerCase();
+      if (err && err.code === "BAD_MODE") {
+        return "当前云端云函数版本较旧。请上传最新的 cloudfunctions/calendar_query（同时上传其 discover.js），再重新编译小程序。";
+      }
       if (/collection|数据库|db|权限|not\s*found|不存在|notexist/i.test(m)) {
         return "可能原因：\n1) 集合未创建，请先在云开发控制台初始化数据集合\n2) 新云函数尚未部署（需要部署 cloudfunctions 下对应云函数并安装依赖）\n3) 数据库权限未设置为「所有用户可读，仅创建者可读写」";
       }

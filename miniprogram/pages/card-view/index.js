@@ -152,8 +152,8 @@ Page({
     const avatarPath = (await getImagePath(avatarSrc)) || (await getImagePath(this.data.defaultAvatar));
 
     const app = getApp();
-    const me = (app && app.globalData && app.globalData.me) || {};
-    const user = (app && app.globalData && app.globalData.user) || {};
+    const me = this.data.isMine ? ((app && app.globalData && app.globalData.me) || {}) : {};
+    const user = this.data.isMine ? ((app && app.globalData && app.globalData.user) || {}) : {};
     const gyms = front.gyms || [];
     const gymsLabel = (Array.isArray(gyms) && gyms[0] && (gyms[0].city || gyms[0].name)) || me.city || "浪迹天涯";
 

@@ -117,6 +117,11 @@ exports.main = async (event) => {
     const col = db.collection("RockFriendships");
     const now = Date.now();
 
+    if (action === "request" || action === "accept") {
+      const target = safeText(event.toOpenid || event.fromOpenid);
+      const blocks = await db.collection("RockUserBlocks").where(_.or([{openid,targetOpenid:target},{openid:target,targetOpenid:openid}])).limit(1).get();
+      if(blocks.data.length) return fail("BLOCKED","当前无法添加这位岩友",tid);
+    }
     if (action === "request") {
       const toOpenid = safeText(event && event.toOpenid);
       if (!toOpenid) return fail("BAD_REQUEST", "缺少 toOpenid", tid);

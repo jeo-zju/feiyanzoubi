@@ -2,7 +2,11 @@
 
 ## 版本
 
-**当前版本：2.0.23**
+**当前版本：2.0.24**
+
+> 本轮产品调整记录见 [PRODUCT_ADJUSTMENT_PLAN.md](PRODUCT_ADJUSTMENT_PLAN.md)。当前首页定位为「找搭子」，公开约爬详情、报名确认、通知及屏蔽安全页面已加入；部署和真机验收仍待完成。
+
+> 若首页提示“云端约爬功能尚未更新”，说明云端仍是旧版 `calendar_query`。请在微信开发者工具中右键上传并部署 `cloudfunctions/calendar_query`（包含同目录的 `discover.js`），再重新编译；或按 `deploy-tools/README.md` 配置上传密钥后执行 `npm run functions -- calendar_query`。
 
 > 版本规则：末位小版本号由自动化流程每次修改递增 1；大版本号人工维护。
 
@@ -24,8 +28,8 @@
 | 01 登录 & 资料 | profile-edit, me TabBar | chooseAvatar + nickname 输入 → 云存储上传头像 → user_manage.update |
 | 02 首页日历 | home（TabBar） | 14 天热度格 + 城市/岩馆/圈三级筛选 + 公开/岩友/圈三段 pill |
 | 03 时间轴 | calendar-timeline | 点击某日期查看当天所有约爬 plan 按开始时间排序 |
-| 04 发布约爬 | publish | create/update/cancel（发布者自己取消自己的）|
-| 05 我的日历汇总 | calendar-mine（TabBar） | 最近 30 天折线（lineChartMini 4次重试）+ 我发布/我报名两段 |
+| 04 发布约爬 | calendar-publish | 岩馆/时间/攀爬类型/氛围/名额；直接加入或发起人确认 |
+| 05 我的约爬 | calendar-mine（TabBar） | 即将参加/我发起/已结束；攀爬记录从辅助入口进入 |
 | 06 打卡 | checkin | 上下文初始化 → 抱石/难度表格 +/− → 三表写入一致性 |
 | 07 统计 | stats | 30 天柱图 + topGym + 最近记录分页（pageState.js）|
 | 08 岩馆 | home 卡片 / gym-detail / gym-list | 搜馆 / 详情线路表 / 软硬度 |

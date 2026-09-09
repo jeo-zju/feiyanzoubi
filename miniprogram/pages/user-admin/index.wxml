@@ -3,11 +3,12 @@
     <view class="card-bd">
       <view class="section-title-lg">用户权限</view>
       <view class="section-desc">支持拉取全部用户、按关键词和角色筛选，并直接修改 role。</view>
-      <view class="search-row">
-        <input class="input flex" placeholder="搜索昵称 / 项目名 / openid / uid" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
-        <view class="btn btn-warn search-btn" bindtap="onSearch">搜索</view>
+      <view class="searchbar mt-sm">
+        <text class="searchbar__ic">🔍</text>
+        <input class="searchbar__input" placeholder="搜索昵称 / 项目名 / openid / uid" placeholder-class="ph" value="{{keyword}}" bindinput="onKeywordInput" />
+        <view class="btn btn-warn mini" bindtap="onSearch">搜索</view>
       </view>
-      <seg-tabs tabs="{{roleTabs}}" value="{{role}}" bind:change="onRoleChange" />
+      <seg-tabs class="mt-sm" tabs="{{roleTabs}}" value="{{role}}" bind:change="onRoleChange" />
       <view class="summary-row">
         <view class="tag">命中 {{filteredTotal}}</view>
         <view class="tag">总用户 {{total}}</view>
@@ -35,7 +36,7 @@
             <view class="preset-row">
               <block wx:for="{{presetRoles}}" wx:key="key" wx:for-item="option">
                 <view
-                  class="tag {{item.roleDraft === option.key ? 'tag-warn' : ''}}"
+                  class="tag {{item.roleDraft === option.key ? 'tag--on' : ''}}"
                   data-id="{{item._id}}"
                   data-role="{{option.key}}"
                   bindtap="onPickRole"
@@ -58,7 +59,7 @@
             />
           </view>
 
-          <view class="action-row mt">
+          <view class="row mt">
             <view class="tag {{item.roleDraft !== item.role ? 'tag-warn' : ''}}">{{item.roleDraft !== item.role ? '未保存' : '已保存'}}</view>
             <view class="btn btn-primary save-btn" data-id="{{item._id}}" bindtap="onSaveRole">
               {{savingId === item._id ? '保存中' : '保存角色'}}
@@ -69,7 +70,11 @@
     </view>
 
     <view wx:else class="card mt">
-      <view class="card-bd empty">当前没有符合条件的用户。</view>
+      <view class="card-bd">
+        <view class="empty-state">
+          <view class="empty-state__desc">当前没有符合条件的用户。</view>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{hasNext}}" class="card mt">

@@ -1,0 +1,52 @@
+/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
+
+.page--mine {
+  min-height: 100vh;
+  max-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  padding-bottom: 36rpx;
+  box-sizing: border-box;
+}
+
+.t-center {
+  text-align: center;
+}
+
+/* 活动记录行 */
+.rec {
+  gap: 16rpx;
+}
+
+.rec-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.rec-title {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.rec-gym {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rec-sub {
+  margin-top: 6rpx;
+}
+
+.rec-right {
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* 已取消标签：在全局 .tag--off 基础上追加删除线 */
+.tag--cancel {
+  text-decoration: line-through;
+}

@@ -202,6 +202,8 @@ exports.main = async (event) => {
     const openid = wxctx.OPENID || "";
     const mode = safeText(event && event.mode) || "calendar";
 
+    if (mode === "discover") return ok(await require("./discover").discover({db,cloud,event,openid}),tid);
+
     const friendIds = openid ? await getFriendOpenids(openid) : [];
     const myCircleIds = openid ? await getMyCircleIds(openid) : [];
     const col = db.collection("RockCalendarPlans");
@@ -227,6 +229,8 @@ exports.main = async (event) => {
         buildVisibilityWhere(visibility, openid, friendIds, myCircleIds)
       ];
       if (gymId) baseWhere.push({ gymId });
+      if (city) baseWhere.push({ "gymSnapshot.city": _.in([city, city.replace(/市$/, ""), city.replace(/市$/, "") + "市"]) });
+      if (safeText(event.circleId)) baseWhere.push({ circleIds: safeText(event.circleId) });
       const where = _.and(baseWhere);
 
       const raw = await col.where(where).limit(1000).get();
@@ -259,6 +263,8 @@ exports.main = async (event) => {
 
       const baseWhere = [{ status: "active" }, { date }, buildVisibilityWhere(visibility, openid, friendIds, myCircleIds)];
       if (gymId) baseWhere.push({ gymId });
+      if (city) baseWhere.push({ "gymSnapshot.city": _.in([city, city.replace(/市$/, ""), city.replace(/市$/, "") + "市"]) });
+      if (safeText(event.circleId)) baseWhere.push({ circleIds: safeText(event.circleId) });
       if (filterGymId) baseWhere.push({ gymId: filterGymId });
       if (onlyFriends) {
         const allowed = new Set(friendIds || []);
@@ -272,7 +278,7 @@ exports.main = async (event) => {
       const where = _.and(baseWhere);
 
       const raw = await col.where(where).limit(200).orderBy("startTime", "asc").get();
-      let plans = (raw && raw.data) || [];
+      let plans = ((raw && raw.data) || []).map(require("./discover").legacyPlan);
 
       // issue #35: 批量 hydration 发起者资料（头像/岩友号/称呼），RockUsers 实时数据优先、
       // 计划快照兜底；结果挂到 plan.ownerInfo 供前端弹窗/名片直接使用
@@ -284,7 +290,7 @@ exports.main = async (event) => {
       let meJoinedSet = new Set();
       if (planIds.length) {
         try {
-          const jRaw = await db.collection("RockCalendarJoins").where({ planId: _.in(planIds), status: "joined" }).limit(1000).get();
+          const jRaw = await db.collection("RockCalendarJoins").where({ planId: _.in(planIds), status: _.in(["joined", "confirmed"]) }).limit(1000).get();
           const jList = (jRaw && jRaw.data) || [];
           jList.forEach((j) => {
             const pid = String(j.planId || "");

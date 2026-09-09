@@ -1,22 +1,19 @@
 <view class="page">
-  <view class="card card-hero">
-    <view wx:if="{{isMine}}" class="hero-menu" bindtap="onOpenMenu">⋯</view>
+  <view class="card card-hero card--canvas">
+    <view wx:if="{{isMine}}" class="icon-btn hero-menu" bindtap="onOpenMenu">⋯</view>
     <view class="card-bd">
-      <view class="hero-hd">
-        <view class="hero-title">把这张嘴硬存下来</view>
-        <view class="hero-sub muted">保存到相册</view>
-      </view>
+      <view class="section-title-lg">把这张嘴硬存下来</view>
+      <view class="section-desc">保存到相册</view>
 
       <canvas
         canvas-id="cardCanvas"
-        class="canvas"
+        class="canvas mt"
         style="width: {{canvasCssW}}px; height: {{canvasCssH}}px;"
         width="{{canvasW}}"
         height="{{canvasH}}"
       ></canvas>
 
-      <view class="btn btn-primary flex mt2" bindtap="onSave">保存到相册</view>
+      <view class="btn btn-primary btn--block mt" bindtap="onSave">保存到相册</view>
     </view>
   </view>
 </view>
-

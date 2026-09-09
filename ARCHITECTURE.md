@@ -10,7 +10,7 @@
 ┌──────────────────────────────────────────────────────────────────────┐
 │  前端（原生微信小程序） miniprogram/                                 │
 │  ├─ app.js / app.json / app.wxss（启动 + TabBar + 全局样式收敛）     │
-│  ├─ pages/  33 个页面                                               │
+│  ├─ pages/  35 个页面                                               │
 │  │    ├─ 3 TabBar: home / calendar-mine / me                        │
 │  │    ├─ 5 打卡/统计: checkin / stats / timeline / publish / mine   │
 │  │    ├─ 8 岩馆/馆长: gym-* / owner 系列                             │

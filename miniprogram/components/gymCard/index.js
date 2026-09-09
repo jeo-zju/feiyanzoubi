@@ -36,6 +36,9 @@ function buildDisplayGym(gym) {
 }
 
 Component({
+  options: {
+    addGlobalClass: true
+  },
   properties: {
     gym: { type: Object, value: {} },
     compact: { type: Boolean, value: false }

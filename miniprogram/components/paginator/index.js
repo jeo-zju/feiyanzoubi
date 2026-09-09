@@ -1,4 +1,7 @@
 Component({
+  options: {
+    addGlobalClass: true
+  },
   properties: {
     page: { type: Number, value: 1 },
     hasNext: { type: Boolean, value: false }

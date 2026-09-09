@@ -1,12 +1,12 @@
 <view class="page page--circle-edit">
-  <view class="topbar">
-    <view class="topbar__back" bindtap="goBack">‹</view>
-    <view class="topbar__title">{{mode==='edit' ? '编辑岩友圈' : '新建岩友圈'}}</view>
-    <view class="topbar__save" bindtap="onSave">✓</view>
+  <view class="nav-bar">
+    <view class="icon-btn" bindtap="goBack">‹</view>
+    <view class="nav-title">{{mode==='edit' ? '编辑岩友圈' : '新建岩友圈'}}</view>
+    <view class="icon-btn" bindtap="onSave">✓</view>
   </view>
 
   <view class="form-block">
-    <view class="form-kicker">色 · 圈标</view>
+    <view class="field-label">圈标颜色</view>
     <view class="color-row">
       <block wx:for="{{circleColors}}" wx:key="*this">
         <view class="color-dot {{selectedColorIndex===index?'color-dot--on':''}}"
@@ -20,36 +20,27 @@
   </view>
 
   <view class="form-block">
-    <view class="form-kicker">名 · 城市</view>
-    <view class="field field--name">
-      <input class="field__input" placeholder="圈名，≤12字" value="{{name}}" maxlength="12" bindinput="onInputName" placeholder-style="color:rgba(231,233,243,0.34)" />
+    <view class="field-label">圈名 / 城市 / 简介</view>
+    <input class="input" placeholder="圈名，≤12字" value="{{name}}" maxlength="12" bindinput="onInputName" placeholder-class="ph" />
+    <view class="field-select mt-sm" bindtap="openCitySheet">
+      <text class="field-select__value">📍 {{city || '选择城市'}}</text>
+      <text class="field-select__arrow">▾</text>
     </view>
-    <view class="field field--city" bindtap="openCitySheet">
-      <text class="field__ic">📍</text>
-      <text class="field__text">{{city || '选择城市'}}</text>
-      <text class="field__arrow">▾</text>
-    </view>
-    <view class="field field--desc">
-      <input class="field__input" placeholder="简介，≤40字（可选）" value="{{description}}" maxlength="40" bindinput="onInputDesc" placeholder-style="color:rgba(231,233,243,0.34)" />
-    </view>
+    <input class="input mt-sm" placeholder="简介，≤40字（可选）" value="{{description}}" maxlength="40" bindinput="onInputDesc" placeholder-class="ph" />
   </view>
 
   <view class="form-block">
-    <view class="form-kicker" bindtap="openGymSheet">
+    <view class="field-label" bindtap="openGymSheet">
       <text>岩馆关联（可多选）</text>
       <text class="form-kicker__n">已选 {{gymIds.length}}</text>
     </view>
     <view class="gym-tags" wx:if="{{gymIds.length>0}}">
       <block wx:for="{{gymIds}}" wx:key="*this">
-        <view class="gym-tag">
-          <text class="gym-tag__name">{{gymMap[item] ? gymMap[item].name : '岩馆'}}</text>
-        </view>
+        <view class="tag tag--on">{{gymMap[item] ? gymMap[item].name : '岩馆'}}</view>
       </block>
     </view>
-    <view wx:else class="gym-empty" bindtap="openGymSheet">+ 选择关联岩馆</view>
+    <button wx:else class="btn btn-ghost" bindtap="openGymSheet">+ 选择关联岩馆</button>
   </view>
-
-  <view class="foot-pad"></view>
 
   <view wx:if="{{citySheetVisible}}" class="sheet-mask" bindtap="closeCitySheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
@@ -69,14 +60,17 @@
     </view>
   </view>
 
-  <view wx:if="{{gymSheetVisible}}" class="sheet-mask sheet-mask--gym" bindtap="closeGymSheet" catchtouchmove="noop">
-    <view class="sheet sheet--gym" catchtap="noop">
+  <view wx:if="{{gymSheetVisible}}" class="sheet-mask" bindtap="closeGymSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
         <text class="sheet__title">选择岩馆</text>
         <view class="sheet__close" bindtap="closeGymSheet">✓</view>
       </view>
       <view class="sheet__search">
-        <input class="search-input" placeholder="搜索岩馆名称 / 地址" value="{{gymKeyword}}" confirm-type="search" bindinput="onGymKeywordInput" bindconfirm="onGymKeywordInput" />
+        <view class="searchbar">
+          <text class="searchbar__ic">🔍</text>
+          <input class="searchbar__input" placeholder="搜索岩馆名称 / 地址" value="{{gymKeyword}}" confirm-type="search" bindinput="onGymKeywordInput" bindconfirm="onGymKeywordInput" placeholder-class="ph" />
+        </view>
       </view>
       <scroll-view class="sheet__bd" scroll-y lower-threshold="80" bindscrolltolower="onGymPickerScrollLower">
         <block wx:if="{{gymOptions.length > 0}}">

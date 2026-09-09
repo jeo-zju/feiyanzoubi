@@ -327,7 +327,7 @@ Page({
     });
     if (!confirmed) return;
     try {
-      await revertLast();
+      await revertLast(this.data.submissionId);
       wx.showToast({ title: "已撤销", icon: "success" });
       this.setData({ revertAvailable: false, revertJustNow: true });
       if (this._revertTimer) {
@@ -357,6 +357,7 @@ Page({
   },
 
   async onSubmit() {
+    if (this._submitting) return false;
     const pickedByMode = this.getAllPicked();
     const totalPicked = sumObjectValues(pickedByMode.difficulty) + sumObjectValues(pickedByMode.boulder);
     if (!totalPicked) {
@@ -371,20 +372,11 @@ Page({
       return false;
     }
     try {
-      const cycleId =
-        (this.data.gym && this.data.gym.currentCycleId) || (this.data.cycle && this.data.cycle._id ? this.data.cycle._id : null);
-      const modes = ["difficulty", "boulder"];
-      for (const mode of modes) {
-        const picked = pickedByMode[mode] || {};
-        if (!Object.keys(picked).length) continue;
-        await create({
-          gymId: this.data.gymId,
-          date: this.data.date,
-          mode,
-          deltas: picked,
-          cycleId
-        });
-      }
+      this._submitting = true;
+      if (!this._requestId) this._requestId = Date.now() + "_" + Math.random().toString(36).slice(2);
+      const result = await create({ gymId: this.data.gymId, date: this.data.date, items: pickedByMode, requestId: this._requestId });
+      this._requestId = "";
+      this.setData({ submissionId: result.submissionId });
       try {
         if (this.data.gymId) wx.setStorageSync("lastGymId", this.data.gymId);
       } catch (e) {}
@@ -404,7 +396,7 @@ Page({
     } catch (e) {
       wx.showToast({ title: "提交失败", icon: "none" });
       return false;
-    }
+    } finally { this._submitting = false; }
   }
 });
 

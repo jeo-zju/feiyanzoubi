@@ -11,38 +11,10 @@
   margin-top: 18rpx;
 }
 
-.mt {
-  margin-top: 20rpx;
-}
-
-.mt-sm {
-  margin-top: 12rpx;
-}
-
-.ml {
-  margin-left: 12rpx;
-}
-
-.flex {
-  flex: 1;
-}
-
 .item-title {
   flex: 1;
   min-width: 0;
   padding-right: 12rpx;
-}
-
-.search-row {
-  display: flex;
-  gap: 14rpx;
-  align-items: stretch;
-  margin: 18rpx 0;
-}
-
-.search-btn {
-  width: 132rpx;
-  height: 76rpx;
 }
 
 .item-address {
@@ -57,7 +29,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 14rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: rgba(231, 233, 243, 0.58);
 }
 
@@ -66,30 +38,4 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
-}
-
-.field-label {
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.72);
-}
-
-.textarea {
-  min-height: 96rpx;
-  width: 100%;
-  padding: 18rpx 20rpx;
-  box-sizing: border-box;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  color: #e7e9f3;
-  line-height: 1.6;
-}
-
-.ph {
-  color: rgba(231, 233, 243, 0.4);
-}
-
-.action-row {
-  display: flex;
-  align-items: center;
 }

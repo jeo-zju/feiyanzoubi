@@ -8,8 +8,8 @@ async function context(params) {
   return callCloud("rock_checkin_context", params || {}, { loading: true, loadingTitle: "加载中" });
 }
 
-async function revertLast() {
-  return callCloud("checkin_create", { action: "revert_last" }, { loading: true, loadingTitle: "撤销中" });
+async function revertLast(submissionId) {
+  return callCloud("checkin_create", { action: "revert_last", submissionId }, { loading: true, loadingTitle: "撤销中" });
 }
 
 module.exports = {

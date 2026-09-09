@@ -48,7 +48,12 @@ function buildCycleText(cycle) {
 function buildInitialMappings(preview) {
   const groups = (((preview || {}).cyclePlan || {}).conflictGroups || []).filter((item) => item && item.sourceCycleId);
   return groups.map((group) => {
-    const options = (group.targetOptions || []).filter((item) => item && item.targetCycleId);
+    const options = (group.targetOptions || [])
+      .filter((item) => item && item.targetCycleId)
+      .map((item) => ({
+        ...item,
+        label: buildCycleText({ targetCycleName: item.targetCycleName, targetRange: item.targetRange })
+      }));
     const preset = options.length === 1 ? options[0] : null;
     return {
       sourceCycleId: safeText(group.sourceCycleId),
@@ -97,6 +102,7 @@ Page({
     targetKeyword: "",
     targetGymId: "",
     targetGym: null,
+    targetSheetVisible: false,
     preview: null,
     cycleMappings: [],
     mappingSummaryText: "尚未选择周期映射",
@@ -182,6 +188,13 @@ Page({
       filteredTargetGyms: buildFilteredTargetGyms(this.data.targetGyms, keyword)
     });
   },
+  onOpenTargetSheet() {
+    this.setData({ targetSheetVisible: true });
+  },
+  onCloseTargetSheet() {
+    this.setData({ targetSheetVisible: false });
+  },
+  noop() {},
   onPickTarget(e) {
     const gymId = e && e.currentTarget && e.currentTarget.dataset ? String(e.currentTarget.dataset.id || "") : "";
     if (!gymId) return;
@@ -189,6 +202,7 @@ Page({
     this.setData({
       targetGymId: gymId,
       targetGym,
+      targetSheetVisible: false,
       preview: null,
       cycleMappings: [],
       mappingSummaryText: "尚未选择周期映射",
@@ -229,17 +243,9 @@ Page({
       this.setData({ loadingPreview: false });
     }
   },
-  chooseActionSheet(itemList) {
-    return new Promise((resolve) => {
-      wx.showActionSheet({
-        itemList,
-        success: (res) => resolve(res && typeof res.tapIndex === "number" ? res.tapIndex : -1),
-        fail: () => resolve(-1)
-      });
-    });
-  },
-  async onPickCycleMapping(e) {
+  onPickCycleMapping(e) {
     const index = e && e.currentTarget && e.currentTarget.dataset ? Number(e.currentTarget.dataset.index) : -1;
+    const picked = e && e.detail && typeof e.detail.value === "number" ? e.detail.value : -1;
     const current = (this.data.cycleMappings || [])[index];
     if (!current) return;
     const options = (current.targetOptions || []).filter((item) => item && item.targetCycleId);
@@ -247,7 +253,6 @@ Page({
       wx.showToast({ title: "没有可选目标周期", icon: "none" });
       return;
     }
-    const picked = await this.chooseActionSheet(options.map((item) => buildCycleText({ targetCycleName: item.targetCycleName, targetRange: item.targetRange })));
     if (picked < 0 || !options[picked]) return;
     const selected = options[picked];
     const next = (this.data.cycleMappings || []).slice();

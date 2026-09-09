@@ -1,3 +1,4 @@
+/* 页面特有布局：视口滚动结构、周期/线路列表、合并历史卡片 */
 .viewport-page {
   height: 100vh;
   display: flex;
@@ -9,30 +10,6 @@
   flex: 1;
   min-height: 0;
   margin-top: 18rpx;
-}
-
-.hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 18rpx;
-  flex-wrap: wrap;
-}
-
-.mt {
-  margin-top: 18rpx;
-}
-
-.mb {
-  margin-bottom: 14rpx;
-}
-
-.mt2 {
-  margin-top: 14rpx;
-}
-
-.flex {
-  flex: 1;
 }
 
 .rows {
@@ -61,27 +38,6 @@
   text-align: center;
 }
 
-.add-btn {
-  width: 170rpx;
-  height: 76rpx;
-}
-
-.tpl-btn {
-  width: 128rpx;
-  height: 76rpx;
-}
-
-.date-picker {
-  display: flex;
-  align-items: center;
-}
-
-.hist-title {
-  margin-top: 14rpx;
-  margin-bottom: 10rpx;
-  font-weight: 800;
-}
-
 .hist-item {
   display: flex;
   align-items: center;
@@ -103,61 +59,14 @@
   font-size: 24rpx;
 }
 
-.field-tip {
-  font-size: 24rpx;
-  margin-bottom: 8rpx;
-}
-
 .hist-right {
   display: flex;
   align-items: center;
   gap: 12rpx;
 }
 
-.mini-btn {
-  padding: 10rpx 14rpx;
-  border-radius: 14rpx;
-  font-size: 24rpx;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
-  color: rgba(231, 233, 243, 0.85);
-}
-
-.ph {
-  color: rgba(231, 233, 243, 0.4);
-}
-
 .danger-zone {
   margin-top: 10rpx;
-}
-
-.danger-btn {
-  display: inline-flex;
-  margin-top: 10rpx;
-  color: #ffb4b4;
-  border-color: rgba(255, 120, 120, 0.25);
-  background: rgba(255, 120, 120, 0.08);
-}
-
-.merge-btn {
-  display: inline-flex;
-  margin-top: 10rpx;
-  margin-right: 12rpx;
-  color: #ffd78a;
-  border-color: rgba(255, 198, 92, 0.25);
-  background: rgba(255, 198, 92, 0.08);
-}
-
-.hero-merge-btn {
-  color: #ffd78a;
-  border-color: rgba(255, 198, 92, 0.28);
-  background: rgba(255, 198, 92, 0.12);
-}
-
-.hero-delete-btn {
-  color: #ffb4b4;
-  border-color: rgba(255, 120, 120, 0.25);
-  background: rgba(255, 120, 120, 0.1);
 }
 
 .merge-history {
@@ -176,4 +85,3 @@
 .merge-name {
   font-weight: 800;
 }
-

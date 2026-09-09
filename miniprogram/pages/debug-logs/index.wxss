@@ -1,78 +1,23 @@
-.mt {
-  margin-top: 18rpx;
-}
-
-.list {
-  padding-bottom: 20rpx;
-}
-
-.summary-row {
-  display: flex;
-  align-items: stretch;
-}
-
-.summary-item {
-  flex: 1;
-  padding: 20rpx 0 10rpx;
-}
-
-.summary-num {
-  font-size: 42rpx;
-  font-weight: 900;
-  color: #f2c14e;
-}
-
-.summary-num--error {
-  color: #ff7a8a;
-}
-
-.summary-num--cloud {
-  color: #8f7bff;
-}
-
-.action-row {
-  display: flex;
-  align-items: center;
-  margin-top: 18rpx;
-}
-
-.flex {
-  flex: 1;
-}
-
-.ml {
-  margin-left: 14rpx;
-}
-
-.ml-sm {
-  margin-left: 10rpx;
-}
+/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
 
 .top-row {
   align-items: flex-start;
 }
 
-.time {
-  font-size: 22rpx;
-  color: rgba(231, 233, 243, 0.6);
-}
-
-.title {
-  margin-top: 16rpx;
-  font-size: 30rpx;
-  font-weight: 800;
+.tag-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .summary {
-  margin-top: 10rpx;
   color: rgba(231, 233, 243, 0.82);
   white-space: pre-wrap;
   word-break: break-all;
 }
 
 .meta {
-  margin-top: 14rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: rgba(231, 233, 243, 0.62);
   display: flex;
   flex-direction: column;
@@ -80,37 +25,20 @@
 }
 
 .detail {
-  margin-top: 14rpx;
-  padding: 18rpx;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
   white-space: pre-wrap;
   word-break: break-all;
-  font-size: 22rpx;
-  line-height: 1.45;
+  font-size: 24rpx;
+  line-height: 1.6;
   color: rgba(231, 233, 243, 0.82);
 }
 
-.tag-error {
-  background: rgba(255, 122, 138, 0.14);
-  border-color: rgba(255, 122, 138, 0.28);
-  color: #ff7a8a;
+/* 错误数字/标签：在全局体系基础上追加危险红 */
+.stat-number--danger {
+  color: #f28b94;
 }
 
-.tag-success {
-  background: rgba(95, 215, 168, 0.14);
-  border-color: rgba(95, 215, 168, 0.28);
-  color: #5fd7a8;
-}
-
-.tag-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(231, 233, 243, 0.78);
-}
-
-.empty {
-  padding-top: 28rpx;
-  color: rgba(231, 233, 243, 0.68);
+.tag--danger {
+  background: rgba(242, 139, 148, 0.1);
+  border-color: rgba(242, 139, 148, 0.28);
+  color: #f28b94;
 }

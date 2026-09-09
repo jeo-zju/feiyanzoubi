@@ -11,47 +11,9 @@
   margin-top: 18rpx;
 }
 
-.mt {
-  margin-top: 20rpx;
-}
-
-.ml {
-  margin-left: 12rpx;
-}
-
-.flex {
-  flex: 1;
-}
-
 .field-block {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
-}
-
-.field-label {
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.72);
-}
-
-.textarea {
-  min-height: 120rpx;
-  width: 100%;
-  padding: 18rpx 20rpx;
-  box-sizing: border-box;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  color: #e7e9f3;
-  line-height: 1.6;
-}
-
-.action-row {
-  margin-top: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
 }
 
 .meta-stack {
@@ -59,7 +21,7 @@
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.5;
   color: rgba(231, 233, 243, 0.62);
   word-break: break-all;
@@ -90,13 +52,9 @@
   border-radius: 16rpx;
   background: rgba(255, 255, 255, 0.04);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.55;
   color: rgba(231, 233, 243, 0.82);
   white-space: pre-wrap;
   word-break: break-all;
-}
-
-.ph {
-  color: rgba(231, 233, 243, 0.4);
 }

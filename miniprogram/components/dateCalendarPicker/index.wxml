@@ -1,13 +1,13 @@
-<view wx:if="{{visible}}" class="dcp-mask" catchtap="onClose">
-  <view class="dcp-panel" catchtap="noop">
-    <view class="dcp-hd">
-      <picker mode="selector" range="{{years}}" value="{{yearIndex}}" bindchange="onPickYear">
-        <view class="dcp-select">{{year}}年</view>
+<view wx:if="{{visible}}" class="sheet-mask" catchtap="onClose">
+  <view class="sheet dcp-sheet" catchtap="noop">
+    <view class="sheet__hd dcp-hd">
+      <picker class="dcp-pick" mode="selector" range="{{years}}" value="{{yearIndex}}" bindchange="onPickYear">
+        <view class="field-select">{{year}}年<text class="field-select__arrow">▾</text></view>
       </picker>
-      <picker mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onPickMonth">
-        <view class="dcp-select">{{month}}月</view>
+      <picker class="dcp-pick" mode="selector" range="{{months}}" value="{{monthIndex}}" bindchange="onPickMonth">
+        <view class="field-select">{{month}}月<text class="field-select__arrow">▾</text></view>
       </picker>
-      <view class="dcp-close" catchtap="onClose">关闭</view>
+      <view class="btn btn-ghost mini dcp-close" catchtap="onClose">关闭</view>
     </view>
 
     <view class="dcp-week">

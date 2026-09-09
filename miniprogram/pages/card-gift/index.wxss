@@ -1,3 +1,5 @@
+/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
+
 .qr {
   width: 320rpx;
   height: 320rpx;
@@ -5,39 +7,4 @@
   border-radius: 16rpx;
   background: rgba(255, 255, 255, 0.06);
   display: block;
-}
-
-.mt2 {
-  margin-top: 24rpx;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-}
-
-.flex {
-  flex: 1;
-}
-
-.ml {
-  margin-left: 16rpx;
-}
-
-.split {
-  display: flex;
-  gap: 18rpx;
-}
-
-.split-left,
-.split-right {
-  flex: 1;
-}
-
-.split-title {
-  font-weight: 900;
-}
-
-.split-tip {
-  margin-top: 8rpx;
 }
