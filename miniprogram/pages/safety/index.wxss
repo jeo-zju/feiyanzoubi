@@ -1,1 +1,93 @@
-/* 屏蔽与安全页：social-* 系列样式已全部移入 app.wxss 全局，本页无特有样式 */
+/* 屏蔽与安全页（compact）：名单 → 帮助折叠 → 管理员举报区 */
+page {
+  background: #151714;
+}
+
+.safety-page {
+  padding: 12rpx 32rpx 48rpx;
+}
+
+.safety-sec--first {
+  margin-top: 16rpx;
+}
+
+/* 解除按钮不与姓名挤在一行被压缩 */
+.safety-block-row {
+  gap: 16rpx;
+}
+
+.safety-block-row .btn-text {
+  flex-shrink: 0;
+  padding: 12rpx 8rpx 12rpx 20rpx;
+}
+
+.safety-empty {
+  padding: 36rpx 4rpx;
+  font-size: 28rpx;
+  color: #969D90;
+}
+
+/* 帮助展开区 */
+.safety-help-row {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.safety-help__bd {
+  padding: 8rpx 4rpx 16rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #969D90;
+}
+
+.safety-help__bd view {
+  margin-top: 8rpx;
+  overflow-wrap: break-word;
+}
+
+/* 管理员举报卡片：内容自然增高，不截断 */
+.safety-report {
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-sizing: border-box;
+}
+
+.safety-report__title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.safety-report__gym {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #B9BDB0;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.safety-report__reason {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  color: #F3F1E7;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.safety-report__note {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.safety-report__ft {
+  margin-top: 20rpx;
+}
+
+.safety-report__ft .btn::after {
+  border: none;
+}

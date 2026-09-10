@@ -1,7 +1,9 @@
 {
-  "navigationBarTitleText": "我的日历",
+  "navigationBarTitleText": "攀爬记录",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "paginator": "../../components/paginator/index"
-  }
+  },
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

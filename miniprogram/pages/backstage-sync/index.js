@@ -33,6 +33,10 @@ function formatWriteAction(action) {
   if (key === "insert") return "新增";
   if (key === "update") return "更新";
   if (key === "skip") return "跳过";
+  if (key === "review") return "待审核";
+  if (key === "would_insert") return "将新增";
+  if (key === "would_update") return "将更新";
+  if (key === "would_review") return "将待审核";
   return "未知";
 }
 
@@ -74,8 +78,11 @@ function buildSyncState(result) {
       inserted: Number(stats.inserted) || 0,
       updated: Number(stats.updated) || 0,
       skipped: Number(stats.skipped) || 0,
-      sourceSaved: Number(stats.sourceSaved) || 0,
       reviewQueued: Number(stats.reviewQueued) || 0,
+      wouldInsert: Number(stats.wouldInsert) || 0,
+      wouldUpdate: Number(stats.wouldUpdate) || 0,
+      wouldReview: Number(stats.wouldReview) || 0,
+      sourceSaved: Number(stats.sourceSaved) || 0,
       skipReasons: stats.skipReasons || {}
     },
     syncRequests: requests,
@@ -104,8 +111,11 @@ Page({
       inserted: 0,
       updated: 0,
       skipped: 0,
-      sourceSaved: 0,
       reviewQueued: 0,
+      wouldInsert: 0,
+      wouldUpdate: 0,
+      wouldReview: 0,
+      sourceSaved: 0,
       skipReasons: {}
     },
     syncRequests: [],
@@ -155,12 +165,12 @@ Page({
       syncRequests: [],
       syncItems: [],
       syncWriteResults: [],
-      syncStats: { requests: 0, fetched: 0, unique: 0, filteredIrrelevant: 0, inserted: 0, updated: 0, skipped: 0, sourceSaved: 0, reviewQueued: 0, skipReasons: {} }
+      syncStats: { requests: 0, fetched: 0, unique: 0, filteredIrrelevant: 0, inserted: 0, updated: 0, skipped: 0, reviewQueued: 0, wouldInsert: 0, wouldUpdate: 0, wouldReview: 0, sourceSaved: 0, skipReasons: {} }
     });
     try {
       const res = await backstageApi.syncGyms({
         provider: "tencent",
-        dryRun: true,
+        action: "preview",
         city,
         keywords,
         pageLimit,
@@ -215,8 +225,7 @@ Page({
     try {
       const res = await backstageApi.syncGyms({
         provider: "tencent",
-        dryRun: false,
-        write: true,
+        action: "apply",
         city,
         keywords,
         pageLimit,

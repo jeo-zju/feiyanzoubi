@@ -24,7 +24,8 @@ Page({
     gymKeyword: "",
     _gymOptionsCache: [],
     _gymPickerState: { page: 0, hasMore: false, loading: false },
-    saving: false
+    saving: false,
+    gymSummaryName: "选择常去的岩馆"
   },
 
   onLoad(options) {
@@ -35,6 +36,8 @@ Page({
     const gymIds = gymIdFromOpt ? [gymIdFromOpt] : [];
     const cityOptions = CITY_PRESETS.map((n) => ({ name: n }));
     cityOptions.push({ name: "自定义…", custom: true });
+    // 页名交原生导航
+    wx.setNavigationBarTitle({ title: mode === "edit" ? "编辑岩友圈" : "新建岩友圈" });
     this.setData({
       mode,
       circleId,
@@ -43,6 +46,24 @@ Page({
       cityOptions,
       selectedColorIndex: Math.floor(Math.random() * CIRCLE_COLORS.length)
     });
+    this.refreshGymSummary();
+  },
+
+  // 正文馆摘要：最多两个馆名，其余以「共 N 家」表达
+  refreshGymSummary() {
+    const ids = this.data.gymIds || [];
+    if (!ids.length) {
+      this.setData({ gymSummaryName: "选择常去的岩馆" });
+      return;
+    }
+    const names = ids.slice(0, 2).map((id) => {
+      const g = (this.data.gymMap || {})[id];
+      return g && g.name ? g.name : "";
+    }).filter(Boolean);
+    const gymSummaryName = names.length
+      ? names.join("、") + (ids.length > 2 ? " 等" : "")
+      : `已选 ${ids.length} 家岩馆`;
+    this.setData({ gymSummaryName });
   },
 
   async onShow() {
@@ -63,13 +84,21 @@ Page({
         0,
         CIRCLE_COLORS.indexOf(safeText(circle.avatarColor))
       );
+      // 详情带回的馆名补进 map，保证未出现在分页列表中的已选馆也能显示
+      const gymMap = Object.assign({}, this.data.gymMap);
+      (Array.isArray(r.gyms) ? r.gyms : []).forEach((g) => {
+        const id = String(g && g._id || "");
+        if (id && g.name) gymMap[id] = { _id: id, name: safeText(g.name) };
+      });
       this.setData({
         name: safeText(circle.name),
         description: safeText(circle.description),
         city: safeText(circle.city),
         gymIds: Array.isArray(circle.gymIds) ? circle.gymIds.slice() : [],
+        gymMap,
         selectedColorIndex: colorIdx < 0 ? 0 : colorIdx
       });
+      this.refreshGymSummary();
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     }
@@ -183,6 +212,7 @@ Page({
               gymKeyword: "",
               _gymPickerState: { page: 0, hasMore: false, loading: false }
             });
+            self.refreshGymSummary();
             self.refreshGymOptions(true);
           }
         }
@@ -200,6 +230,7 @@ Page({
       gymKeyword: "",
       _gymPickerState: { page: 0, hasMore: false, loading: false }
     });
+    this.refreshGymSummary();
     this.refreshGymOptions(true);
   },
 
@@ -234,6 +265,7 @@ Page({
       checked: arr.indexOf(o._id) >= 0
     }));
     this.setData({ gymIds: arr, gymOptions });
+    this.refreshGymSummary();
   },
 
   async onSave() {
@@ -279,7 +311,5 @@ Page({
     } finally {
       this.setData({ saving: false });
     }
-  },
-
-  goBack() { wx.navigateBack(); }
+  }
 });

@@ -1,61 +1,69 @@
-<view class="page page--mine">
-  <view class="card card-hero">
-    <view class="card-bd">
-      <view class="row">
-        <view class="section-title-lg">嗨，{{userName}}</view>
-        <view class="hint">近30天概览</view>
-      </view>
-
-      <view class="stat-grid mt">
-        <view class="panel stat-card">
-          <view class="stat-number">{{summary.thisMonthPlans || 0}}</view>
-          <view class="stat-label">本月计划</view>
-        </view>
-        <view class="panel stat-card">
-          <view class="stat-number">{{stats.recent.length || 0}}</view>
-          <view class="stat-label">打卡次数</view>
-        </view>
-        <view class="panel stat-card">
-          <view class="stat-number">{{summary.thisMonthCheckinRate || 0}}%</view>
-          <view class="stat-label">完成率</view>
-        </view>
-        <view class="panel stat-card">
-          <view class="stat-number">{{summary.totalPartners || 0}}</view>
-          <view class="stat-label">搭子</view>
-        </view>
-      </view>
-
-      <view class="hint t-center mt" wx:if="{{summary.topGymName}}">最常去 · {{summary.topGymName}}</view>
+<view class="page ui-v2 ar-page">
+  <!-- 核心统计：两项，口径写在标签上 -->
+  <view class="ar-stats">
+    <view class="ar-stat">
+      <view class="ar-stat__n">{{routeCount30d}}</view>
+      <view class="ar-stat__l">近30天打卡条数</view>
+    </view>
+    <view class="ar-stat">
+      <view class="ar-stat__n">{{summary.thisMonthPlans || 0}}</view>
+      <view class="ar-stat__l">本月约爬计划</view>
     </view>
   </view>
+  <view class="ar-more" bindtap="openMoreStats">更多统计 ›</view>
 
-  <view class="card mt-lg">
-    <view class="card-hd row">
-      <view>活动记录</view>
-      <view class="hint" wx:if="{{activityTotal}}">共 {{activityTotal}} 条 · 第 {{activityPage}}/{{activityPageCount}} 页</view>
-    </view>
-    <view class="card-bd list">
-      <view wx:for="{{activityList}}" wx:key="key" class="list-row rec">
-        <view class="rec-left">
-          <view class="rec-title">
-            <text class="tag {{item.badgeType==='checkin' ? 'tag-warn' : (item.badgeType==='plan-done' || item.badgeType==='plan-cancel') ? 'tag--off' : ''}} {{item.badgeType==='plan-cancel' ? 'tag--cancel' : ''}}">{{item.badgeText}}</text>
-            <text class="rec-gym">{{item.gymName}}</text>
-          </view>
-          <view class="hint rec-sub">{{item.date}} · {{item.subText}}</view>
+  <!-- 日志列表 -->
+  <view class="card ar-log">
+    <view class="ar-log__hd">活动记录</view>
+    <view wx:for="{{activityList}}" wx:key="key" class="ar-row">
+      <view class="ar-row__left">
+        <view class="ar-row__title">
+          <text class="tag ar-badge ar-badge--{{item.badgeType}}">{{item.badgeText}}</text>
+          <text class="ar-row__gym">{{item.gymName}}</text>
         </view>
-        <view class="hint rec-right">{{item.rightText}}</view>
+        <view class="ar-row__sub">{{item.date}} · {{item.subText}}</view>
       </view>
-      <view wx:if="{{!activityList.length && !stats.loading}}" class="empty-state">
-        <view class="empty-state__title">暂无活动</view>
-        <view class="empty-state__desc">去发布一个吧～</view>
+      <view class="ar-row__right">{{item.rightText}}</view>
+    </view>
+    <view wx:if="{{!activityList.length && !stats.loading}}" class="empty-state">
+      <view class="empty-state__title">暂无活动</view>
+      <view class="empty-state__desc">记录一次今天的攀爬吧</view>
+    </view>
+    <paginator
+      wx:if="{{activityPageCount > 1}}"
+      page="{{activityPage}}"
+      hasNext="{{activityPage < activityPageCount}}"
+      bind:prev="onActivityPrev"
+      bind:next="onActivityNext"
+    />
+  </view>
+
+  <!-- 唯一新建入口 -->
+  <view class="action-bar">
+    <button class="btn btn-primary" bindtap="goCheckin">记录攀爬</button>
+  </view>
+
+  <!-- 其余统计折入更多统计，口径随标签保留 -->
+  <view wx:if="{{moreStatsVisible}}" class="sheet-mask" bindtap="closeMoreStats" catchtouchmove="noop">
+    <view class="sheet sheet--sm" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">更多统计</text>
+        <view class="sheet__close" bindtap="closeMoreStats">✕</view>
       </view>
-      <paginator
-        wx:if="{{activityPageCount > 1}}"
-        page="{{activityPage}}"
-        hasNext="{{activityPage < activityPageCount}}"
-        bind:prev="onActivityPrev"
-        bind:next="onActivityNext"
-      />
+      <view class="sheet__bd">
+        <view class="menu-row">
+          <text class="menu-row__t">本月打卡完成率</text>
+          <text class="menu-row__sub">{{summary.thisMonthCheckinRate || 0}}%</text>
+        </view>
+        <view class="menu-row">
+          <text class="menu-row__t">本月同爬岩友</text>
+          <text class="menu-row__sub">{{summary.totalPartners || 0}} 人</text>
+        </view>
+        <view class="menu-row">
+          <text class="menu-row__t">本月最常去</text>
+          <text class="menu-row__sub">{{summary.topGymName || '暂无'}}</text>
+        </view>
+      </view>
     </view>
   </view>
 </view>

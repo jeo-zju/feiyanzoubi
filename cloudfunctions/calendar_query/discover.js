@@ -7,7 +7,7 @@ function publicPlan(p) {
     gymId:p.gymId || "",gymName:(p.gymSnapshot||{}).name || p.outdoorName || "攀岩馆",
     city:(p.gymSnapshot||{}).city || "",skillTags:p.skillTags || [],atmosphereTags:p.atmosphereTags || [],
     capacity:p.capacity || null,confirmedCount:Number(p.confirmedCount || 1),joinMode:p.joinMode || "direct",
-    // 报名截止时间戳；旧数据缺失时客户端按开场时间兜底，与服务端 join 校验的 joinDeadline||endAt 等价
+    // 报名截止时间戳；旧数据缺失/为 0 时按结束时间兜底，与服务端 join 校验 joinDeadline||endAt 同一口径
     joinDeadline:Number(p.joinDeadline) || endAt,isFull:p.isFull === true,
     ownerId:p.openid || p._openid || p.uid || "",user:p.userSnapshot || {}
   };
@@ -33,11 +33,15 @@ async function discover({db,cloud,event,openid}) {
   if(city) parts.push(_.or([{cityKey:city},{"gymSnapshot.city":_.in([city,city+"市"])}]));
   if(event.gymId) parts.push({gymId:String(event.gymId)});
   if(event.climbType) parts.push({skillTags:String(event.climbType)});
-  // 「可报名」与服务端 join_plan 校验保持同一口径：未截止（joinDeadline>now，旧数据缺字段按开场时间兜底）
+  // 「可报名」与服务端 join_plan 校验保持同一口径：未截止（joinDeadline>now，旧数据缺字段按结束时间兜底）
   // 且未满员。审批活动满员时服务端同样拒绝（PLAN_FULL），所以满员不计入可报名。
   const nowMs=Date.now();
-  const joinableWhere=_.and([{isFull:_.neq(true)},_.or([{joinDeadline:_.gt(nowMs)},{joinDeadline:_.exists(false)}])]);
-  const closedWhere=_.or([{isFull:true},{joinDeadline:_.lte(nowMs)}]);
+  // Keep the query contract aligned with join_plan: null/0/missing deadlines
+  // fall back to endAt (the active/date filter already excludes ended slots).
+  const openDeadline=_.or([{joinDeadline:_.gt(nowMs)},{joinDeadline:_.exists(false)},{joinDeadline:null},{joinDeadline:0}]);
+  const closedDeadline=_.and([{joinDeadline:_.exists(true)},{joinDeadline:_.neq(null)},{joinDeadline:_.neq(0)},{joinDeadline:_.lte(nowMs)}]);
+  const joinableWhere=_.and([{isFull:_.neq(true)},openDeadline]);
+  const closedWhere=_.or([{isFull:true},closedDeadline]);
   if(event.onlyAvailable) parts.push(joinableWhere);
   if(openid) {
     const denied=[];

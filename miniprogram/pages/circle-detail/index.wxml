@@ -1,80 +1,129 @@
-<view class="page page--circle-detail" wx:if="{{circle}}">
-  <view class="nav-bar">
-    <view class="icon-btn" bindtap="goBack">‹</view>
-    <view class="nav-title">岩友圈</view>
-    <view class="icon-btn" bindtap="openSettingSheet">⚙</view>
-  </view>
+<view class="page ui-v2 cd-page {{canApply ? 'cd-page--bar' : ''}}">
+  <block wx:if="{{circle}}">
+    <!-- 设置唯一入口（编辑/关联馆管理/退出/解散都在弹层内） -->
+    <view class="cd-topbar">
+      <view class="icon-btn icon-btn--sm" bindtap="openSettingSheet">⚙</view>
+    </view>
 
-  <view class="hero">
-    <view class="hero__color" style="background:{{circle.color}};"></view>
-    <view class="hero__title">{{circle.name}}</view>
-    <view class="hero__desc">{{circle.description || ' '}}</view>
-    <view class="hero__meta">
-      <view class="hero__meta-item">
-        <text class="hero__meta-num">{{circle.memberCount || 0}}</text>
-        <text class="hero__meta-label">成员</text>
-      </view>
-      <view class="hero__meta-split"></view>
-      <view class="hero__meta-item">
-        <text class="hero__meta-num">{{gyms.length}}</text>
-        <text class="hero__meta-label">岩馆</text>
-      </view>
-      <view class="hero__meta-split"></view>
-      <view class="hero__meta-item">
-        <text class="hero__meta-num">{{circle.city || '-'}}</text>
-        <text class="hero__meta-label">城市</text>
-      </view>
-    </view>
-    <view wx:if="{{gyms.length}}" class="hero__gyms">
-      <view wx:for="{{gyms}}" wx:key="_id" class="tag tag-warn">📍 {{item.name}}</view>
-    </view>
-  </view>
-
-  <view class="card">
-    <view class="card-hd">
-      <text>成员 · {{members.length}}</text>
-      <text wx:if="{{pendingCount>0}}" class="tag tag-warn">{{pendingCount}} 待审批</text>
-    </view>
-    <view class="card-bd list list--tight">
-      <view wx:if="{{members.length===0 && pendings.length===0}}" class="empty-state">暂无成员</view>
-      <block wx:else>
-        <view class="list-row member-row" wx:for="{{members}}" wx:key="openid" data-oid="{{item.openid}}" bindtap="onTapMember">
-          <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-          <view class="row-info">
-            <view class="row-title">{{item.displayName || item.nickName || '岩友'}}{{item.role==='admin' ? ' · 管理员' : ''}}</view>
-            <view class="muted row-sub">{{item.rockId || '-'}}{{item.title ? ' · ' + item.title : ''}}</view>
-          </view>
-          <view wx:if="{{isAdmin && item.role!=='admin'}}" class="btn btn-danger mini" data-oid="{{item.openid}}" catchtap="onRemoveMember">移除</view>
-          <view wx:elif="{{item.openid===myOpenid}}" class="btn btn-ghost mini" data-oid="{{item.openid}}" catchtap="onConfirmLeave">退出</view>
+    <!-- 圈名 / 简短简介：圈标色只作用于小图标 -->
+    <view class="cd-head">
+      <view class="cd-head__main">
+        <view class="cd-head__title-row">
+          <view class="cd-head__dot" style="background:{{circle.color || circle.avatarColor || '#8A8F80'}};"></view>
+          <text class="cd-head__name">{{circle.name}}</text>
         </view>
-        <view wx:if="{{pendings.length>0}}" class="pending-divider">待审批申请</view>
-        <view class="list-row pending-row" wx:for="{{pendings}}" wx:key="openid">
-          <image class="avatar-s" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-          <view class="row-info">
-            <view class="row-title">{{item.displayName || item.nickName || '岩友'}}</view>
-            <view class="muted row-sub">{{item.rockId || '-'}}{{item.title ? ' · ' + item.title : ''}}</view>
+        <view wx:if="{{circle.description}}" class="cd-head__desc">{{circle.description}}</view>
+      </view>
+    </view>
+
+    <!-- 成员摘要行：真实头像 + 人数，点开单层弹层看完整名单 -->
+    <view class="menu-row cd-sum-row" bindtap="openMemberSheet">
+      <text class="menu-row__t">成员</text>
+      <view class="cd-sum-row__r">
+        <view class="cd-avatars">
+          <block wx:for="{{members}}" wx:key="openid">
+            <image wx:if="{{index < 4}}" class="cd-avatars__img" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          </block>
+        </view>
+        <text class="menu-row__sub">{{members.length}} 人</text>
+        <text class="menu-row__arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 关联岩馆摘要行：打开已有馆列表弹层 -->
+    <view class="menu-row cd-sum-row" bindtap="openGymSheet">
+      <text class="menu-row__t">关联岩馆</text>
+      <view class="cd-sum-row__r">
+        <text class="menu-row__sub">{{gyms.length}} 家<text wx:if="{{gyms.length===1 && gyms[0].name}}"> · {{gyms[0].name}}</text></text>
+        <text class="menu-row__arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 管理者待审批：正文可见数量，点开处理，不铺满申请人 -->
+    <view wx:if="{{isAdmin}}" class="menu-row cd-sum-row" bindtap="openPendingSheet">
+      <text class="menu-row__t">待审批申请</text>
+      <view class="cd-sum-row__r">
+        <text class="cd-pending-num {{pendingCount ? 'is-on' : ''}}">{{pendingCount}}</text>
+        <text class="menu-row__arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 非成员：唯一一个申请主动作；成员/管理员不再显示底栏 -->
+    <view wx:if="{{canApply}}" class="action-bar">
+      <button class="btn {{myStatus==='pending' ? 'btn-ghost' : 'btn-primary'}}" disabled="{{myStatus==='pending'}}" bindtap="onTapApply">
+        {{myStatus==='pending' ? '申请中，等待圈主审批' : '申请加入'}}
+      </button>
+    </view>
+  </block>
+
+  <view wx:elif="{{loadError}}" class="empty-state">
+    <view class="empty-state__desc">岩友圈加载失败</view>
+    <button class="btn btn-ghost" bindtap="loadDetail">重试</button>
+  </view>
+  <view wx:else class="list-status">加载中…</view>
+
+  <!-- 成员名单弹层（单层；名片在层内替换，不叠三层遮罩） -->
+  <view wx:if="{{memberSheetVisible}}" class="sheet-mask" bindtap="closeMemberSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">{{memberSheetView==='card' ? '岩友名片' : '成员 · ' + members.length}}</text>
+        <view class="sheet__close" bindtap="closeMemberSheet">✕</view>
+      </view>
+
+      <!-- 名单视图 -->
+      <scroll-view wx:if="{{memberSheetView==='list'}}" scroll-y class="sheet__bd">
+        <view wx:if="{{!members.length}}" class="sheet-empty">暂无成员</view>
+        <view wx:for="{{members}}" wx:key="openid" class="sheet-item" data-oid="{{item.openid}}" bindtap="onTapMember">
+          <image class="sheet-item__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          <view class="sheet-item__info">
+            <text class="sheet-item__name">{{item.displayName || item.nickName || '岩友'}}<text wx:if="{{item.role==='admin'}}" class="cd-role"> · 管理员</text></text>
+            <text wx:if="{{item.title || item.rockId}}" class="sheet-item__sub">{{item.title ? item.title : ''}}{{item.title && item.rockId ? ' · ' : ''}}{{item.rockId || ''}}</text>
           </view>
-          <view wx:if="{{isAdmin}}" class="sheet-item__actions">
+          <button wx:if="{{isAdmin && item.role!=='admin' && item.openid!==myOpenid}}" class="btn-text btn-text--danger" data-oid="{{item.openid}}" catchtap="onRemoveMember">移除</button>
+          <button wx:elif="{{item.openid===myOpenid && !isAdmin}}" class="btn-text btn-text--danger" data-oid="{{item.openid}}" catchtap="onConfirmLeave">退出</button>
+          <text wx:else class="sheet-item__arrow">›</text>
+        </view>
+      </scroll-view>
+
+      <!-- 名片视图（替换名单，提供返回） -->
+      <view wx:else class="sheet__bd cd-face-bd">
+        <view class="member-face">
+          <image class="member-face__avatar" src="{{memberCard.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          <view class="member-face__name">{{memberCard.displayName || memberCard.nickName || '岩友'}}</view>
+          <view wx:if="{{memberCard.title}}" class="member-face__title">{{memberCard.title}}</view>
+          <view class="member-face__meta">岩友号 {{memberCard.rockId || '-'}}</view>
+          <view wx:if="{{memberCard.role==='admin'}}" class="member-face__role">圈主 · 管理员</view>
+        </view>
+        <view class="cd-face-back"><button class="btn btn-ghost btn--block" bindtap="backToMemberList">返回成员名单</button></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 待审批弹层（管理者） -->
+  <view wx:if="{{pendingSheetVisible}}" class="sheet-mask" bindtap="closePendingSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">待审批申请 · {{pendings.length}}</text>
+        <view class="sheet__close" bindtap="closePendingSheet">✕</view>
+      </view>
+      <scroll-view scroll-y class="sheet__bd">
+        <view wx:if="{{!pendings.length}}" class="sheet-empty">暂无待审批申请</view>
+        <view wx:for="{{pendings}}" wx:key="openid" class="sheet-item">
+          <image class="sheet-item__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+          <view class="sheet-item__info">
+            <text class="sheet-item__name">{{item.displayName || item.nickName || '岩友'}}</text>
+            <text wx:if="{{item.title || item.rockId}}" class="sheet-item__sub">{{item.title ? item.title : ''}}{{item.title && item.rockId ? ' · ' : ''}}{{item.rockId || ''}}</text>
+          </view>
+          <view class="sheet-item__actions">
             <view class="icon-btn icon-btn--sm" data-oid="{{item.openid}}" bindtap="onApprove">✓</view>
             <view class="icon-btn icon-btn--sm icon-btn--danger" data-oid="{{item.openid}}" bindtap="onReject">✕</view>
           </view>
-          <view wx:else class="btn btn-ghost mini">待审批</view>
         </view>
-      </block>
+      </scroll-view>
     </view>
   </view>
 
-  <view class="action-bar">
-    <button wx:if="{{myStatus!=='accepted' && myStatus!=='admin'}}" class="btn btn-primary" bindtap="onTapApply">
-      <text wx:if="{{myStatus==='pending'}}">申请中</text>
-      <text wx:else>申请加入</text>
-    </button>
-    <view wx:else class="foot-status">
-      <text class="tag tag-warn" wx:if="{{isAdmin}}">· 管理员 ·</text>
-      <text class="tag tag-warn" wx:else>· 已在圈内 ·</text>
-    </view>
-  </view>
-
+  <!-- 关联岩馆弹层 -->
   <view wx:if="{{gymSheetVisible}}" class="sheet-mask" bindtap="closeGymSheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -85,7 +134,7 @@
         <view wx:if="{{gyms.length===0}}" class="sheet-empty">暂未关联岩馆</view>
         <block wx:else>
           <view class="sheet-item" wx:for="{{gyms}}" wx:key="_id">
-            <view class="sheet-item__ic">🏟️</view>
+            <view class="sheet-item__ic">馆</view>
             <view class="sheet-item__info">
               <text class="sheet-item__name">{{item.name}}</text>
               <text class="sheet-item__sub">{{item.address || item.city || ''}}</text>
@@ -93,11 +142,12 @@
             <view wx:if="{{isAdmin}}" class="sheet-item__btn sheet-item__btn--danger" data-gid="{{item._id}}" bindtap="onUnlinkGym">移除</view>
           </view>
         </block>
-        <view wx:if="{{isAdmin}}" class="sheet-link-add" bindtap="openLinkGymSheet">+ 关联岩馆</view>
+        <view wx:if="{{isAdmin}}" class="sheet-link-add" bindtap="openLinkGymSheet">关联岩馆</view>
       </scroll-view>
     </view>
   </view>
 
+  <!-- 设置弹层：编辑/关联馆管理/退出/解散的唯一位置 -->
   <view wx:if="{{settingSheetVisible}}" class="sheet-mask" bindtap="closeSettingSheet" catchtouchmove="noop">
     <view class="sheet sheet--sm" catchtap="noop">
       <view class="sheet__hd">
@@ -111,7 +161,7 @@
             <text class="sheet-item__arrow">›</text>
           </view>
           <view class="sheet-divider"></view>
-          <view class="sheet-item" bindtap="openGymSheet">
+          <view class="sheet-item" bindtap="openGymSheetFromSetting">
             <text class="sheet-item__label">关联岩馆管理</text>
             <text class="sheet-item__arrow">›</text>
           </view>
@@ -129,13 +179,14 @@
     </view>
   </view>
 
+  <!-- 关联岩馆选择（由馆列表弹层替换进入） -->
   <view wx:if="{{linkGymSheetVisible}}" class="sheet-mask" bindtap="closeLinkGymSheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
         <text class="sheet__title">关联岩馆</text>
         <view class="sheet__close" bindtap="saveLinkGyms">✓</view>
       </view>
-      <scroll-view class="sheet__bd" scroll-y>
+      <scroll-view scroll-y class="sheet__bd">
         <view wx:if="{{linkGymOptions.length===0}}" class="sheet-empty">当前城市暂无岩馆</view>
         <block wx:else>
           <view class="sheet-item" wx:for="{{linkGymOptions}}" wx:key="_id"
@@ -148,24 +199,6 @@
           </view>
         </block>
       </scroll-view>
-    </view>
-  </view>
-
-  <view wx:if="{{memberCardVisible && memberCard}}" class="sheet-mask" bindtap="closeMemberCard" catchtouchmove="noop">
-    <view class="sheet sheet--sm" catchtap="noop">
-      <view class="sheet__hd">
-        <text class="sheet__title">岩友名片</text>
-        <view class="sheet__close" bindtap="closeMemberCard">✕</view>
-      </view>
-      <view class="sheet__bd">
-        <view class="member-face">
-          <image class="member-face__avatar" src="{{memberCard.avatarUrl || defaultAvatar}}" mode="aspectFill" />
-          <view class="member-face__name">{{memberCard.displayName || memberCard.nickName || '岩友'}}</view>
-          <view wx:if="{{memberCard.title}}" class="member-face__title">{{memberCard.title}}</view>
-          <view class="member-face__meta">岩友号 {{memberCard.rockId || '-'}}</view>
-          <view wx:if="{{memberCard.role==='admin'}}" class="member-face__role">圈主 · 管理员</view>
-        </view>
-      </view>
     </view>
   </view>
 </view>

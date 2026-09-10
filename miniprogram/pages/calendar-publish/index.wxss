@@ -1,57 +1,350 @@
-/* 发起约爬页：卡片、按钮、输入和标签均使用全局体系，本文件只保留页面特有布局 */
-.page--pub {
-  padding-bottom: 220rpx;
+/* 发起约爬页（v2 二轮紧凑版）：四组核心信息 + 选填折叠 + 设置弹层。主题见 styles/user-theme.wxss */
+page {
+  background: #151714;
 }
 
-.gym-pick__list {
-  margin-top: 16rpx;
-  max-height: 480rpx;
+/* 非 Tab 页：底部占位按固定操作栏实际高度（96 按钮 + 上下间距 + 安全区） */
+.publish-page {
+  padding: 16rpx 32rpx calc(150rpx + env(safe-area-inset-bottom));
 }
 
-.tag-grid {
+/* ---------- 分组卡片：行间细分隔，无大标题 ---------- */
+.pub-card {
+  margin-top: 24rpx;
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+  border-radius: 24rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.pub-card:first-child {
+  margin-top: 0;
+}
+
+.pub-card__note {
+  padding: 0 0 20rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #969D90;
+}
+
+/* 同时段互斥：就地反馈条 + 冲突时段标红，不清空用户已选 */
+.pub-conflict {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 12rpx;
+  margin: 4rpx 0 8rpx;
+  padding: 12rpx 16rpx;
+  border-radius: 12rpx;
+  background: rgba(241, 161, 154, 0.12);
+  border: 1rpx solid rgba(241, 161, 154, 0.45);
+}
+.pub-conflict__dot {
+  flex: none;
+  width: 30rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #20241F;
+  background: #F1A19A;
+}
+.pub-conflict__text {
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: #F1A19A;
+}
+.pub-tags .tag--conflict {
+  border-color: #F1A19A;
+  color: #F1A19A;
 }
 
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 10rpx;
-}
-
-.cal-cell {
+/* ---------- 表单行：左标签 88–96rpx 热区 ---------- */
+.pub-row {
   display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 96rpx;
+  padding: 16rpx 0;
+  box-sizing: border-box;
+  border-top: 1rpx solid #383E34;
+}
+
+.pub-card .pub-row:first-child {
+  border-top: none;
+}
+
+/* 类型/人数这种标签在上、控件在下的行 */
+.pub-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16rpx;
+}
+
+.pub-row__label {
+  flex: 0 0 112rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #B9BDB0;
+  line-height: 1.4;
+}
+
+.pub-row--stack .pub-row__label {
+  flex: none;
+}
+
+.pub-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.pub-row__value {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #F3F1E7;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pub-row__value--one {
+  max-width: 100%;
+}
+
+.pub-row__value--ph {
+  color: #969D90;
+  font-weight: 400;
+}
+
+.pub-row__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: #969D90;
+}
+
+/* ---------- 日期横滑条：14 天，每格直接显示星期 ---------- */
+.pub-dates {
+  white-space: nowrap;
+  padding: 4rpx 0 8rpx;
+}
+
+.pub-date {
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 104rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  width: 96rpx;
+  height: 108rpx;
+  margin-right: 16rpx;
+  border-radius: 16rpx;
+  background: #20241F;
+  border: 1rpx solid #383E34;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.pub-date:last-child {
+  margin-right: 0;
+}
+
+.pub-date__wk {
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: #969D90;
+}
+
+.pub-date__day {
+  margin-top: 6rpx;
   font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #F3F1E7;
+}
+
+.pub-date--on {
+  background: rgba(210, 239, 114, 0.16);
+  border-color: rgba(210, 239, 114, 0.42);
+}
+
+.pub-date--on .pub-date__wk {
+  color: #D2EF72;
   font-weight: 600;
 }
 
-.cal-cell--selected {
-  background: #8f7bff;
-  border-color: #8f7bff;
+.pub-date--on .pub-date__day {
+  color: #D2EF72;
 }
 
-.cal-cell--selected view {
-  color: #0b0d15;
+/* ---------- 类型标签 ---------- */
+.pub-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
 }
 
-.cal-time-row {
-  margin-top: 20rpx;
+/* ---------- 人数步进器 ---------- */
+.pub-stepper {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
 }
 
-.cal-time {
+.pub-stepper__btn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #2B3029;
+  border: 1rpx solid #383E34;
+  color: #D2EF72;
+  font-size: 36rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.pub-stepper__btn:active {
+  background: rgba(210, 239, 114, 0.14);
+}
+
+.pub-stepper__btn--off {
+  color: #969D90;
+  opacity: 0.4;
+}
+
+.pub-stepper__num {
+  min-width: 72rpx;
+  text-align: center;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+}
+
+/* ---------- 折叠展开区 ---------- */
+.pub-fold {
+  padding: 4rpx 0 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  border-top: 1rpx solid #383E34;
+}
+
+.pub-fold .pub-card__note {
+  padding: 16rpx 0 0;
+}
+
+.pub-textarea {
+  min-height: 140rpx;
+  padding: 20rpx 24rpx;
+}
+
+.pub-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ---------- 设置摘要行 ---------- */
+.pub-settings {
+  margin-top: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 96rpx;
+  padding: 16rpx 4rpx;
+  box-sizing: border-box;
+}
+
+.pub-settings__main {
   flex: 1;
   min-width: 0;
 }
 
-.capacity-input {
-  width: 160rpx;
+.pub-settings__t {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #F3F1E7;
+  line-height: 1.4;
+}
+
+.pub-settings__sub {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pub-settings__cta {
   flex-shrink: 0;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #D2EF72;
+}
+
+/* ---------- 设置弹层 ---------- */
+.set-group {
+  padding: 20rpx 32rpx 8rpx;
+}
+
+.set-group__t {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #969D90;
+  letter-spacing: 2rpx;
+  padding-bottom: 12rpx;
+}
+
+.set-group__note {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+}
+
+.set-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.set-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.set-switch {
+  margin-top: 8rpx;
+  border-top: 1rpx solid #383E34;
+}
+
+.set-sheet__ft {
+  display: flex;
+  gap: 16rpx;
+  padding-top: 20rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+}
+
+.set-sheet__btn {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.set-sheet__btn::after {
+  border: none;
+}
+
+/* ---------- 岩馆弹层列表：弹层最高 72vh，列表内部滚动 ---------- */
+.gym-pick__scroll {
+  min-height: 360rpx;
+  max-height: 52vh;
 }

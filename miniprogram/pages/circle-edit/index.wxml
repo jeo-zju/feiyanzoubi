@@ -1,47 +1,55 @@
-<view class="page page--circle-edit">
-  <view class="nav-bar">
-    <view class="icon-btn" bindtap="goBack">‹</view>
-    <view class="nav-title">{{mode==='edit' ? '编辑岩友圈' : '新建岩友圈'}}</view>
-    <view class="icon-btn" bindtap="onSave">✓</view>
+<view class="page ui-v2 ce-page">
+  <!-- 圈标颜色小行 -->
+  <view class="ce-color-row">
+    <block wx:for="{{circleColors}}" wx:key="*this">
+      <view class="ce-dot {{selectedColorIndex===index?'ce-dot--on':''}}"
+        style="background:{{item}};"
+        data-idx="{{index}}"
+        bindtap="onPickColor">
+        <view wx:if="{{selectedColorIndex===index}}" class="ce-dot__check">✓</view>
+      </view>
+    </block>
   </view>
 
-  <view class="form-block">
-    <view class="field-label">圈标颜色</view>
-    <view class="color-row">
-      <block wx:for="{{circleColors}}" wx:key="*this">
-        <view class="color-dot {{selectedColorIndex===index?'color-dot--on':''}}"
-          style="background:{{item}};"
-          data-idx="{{index}}"
-          bindtap="onPickColor">
-          <view wx:if="{{selectedColorIndex===index}}" class="color-dot__check">✓</view>
-        </view>
-      </block>
+  <!-- 圈名 -->
+  <view class="ce-field">
+    <view class="field-label">圈名</view>
+    <input class="input" placeholder="给圈子起个名字，≤12字" value="{{name}}" maxlength="12" bindinput="onInputName" placeholder-class="ph" />
+  </view>
+
+  <!-- 城市（统一选择弹层触发器） -->
+  <view class="ce-field">
+    <view class="field-label">城市</view>
+    <view class="field-select" bindtap="openCitySheet">
+      <text class="field-select__value {{city ? '' : 'ph'}}">{{city || '选择城市'}}</text>
+      <text class="field-select__arrow">⌄</text>
     </view>
   </view>
 
-  <view class="form-block">
-    <view class="field-label">圈名 / 城市 / 简介</view>
-    <input class="input" placeholder="圈名，≤12字" value="{{name}}" maxlength="12" bindinput="onInputName" placeholder-class="ph" />
-    <view class="field-select mt-sm" bindtap="openCitySheet">
-      <text class="field-select__value">📍 {{city || '选择城市'}}</text>
-      <text class="field-select__arrow">▾</text>
-    </view>
-    <input class="input mt-sm" placeholder="简介，≤40字（可选）" value="{{description}}" maxlength="40" bindinput="onInputDesc" placeholder-class="ph" />
+  <!-- 简介选填 -->
+  <view class="ce-field">
+    <view class="field-label">简介<text class="ce-field__opt">（选填）</text></view>
+    <input class="input" placeholder="一句话介绍这个圈，≤40字" value="{{description}}" maxlength="40" bindinput="onInputDesc" placeholder-class="ph" />
   </view>
 
-  <view class="form-block">
-    <view class="field-label" bindtap="openGymSheet">
-      <text>岩馆关联（可多选）</text>
-      <text class="form-kicker__n">已选 {{gymIds.length}}</text>
+  <!-- 已选岩馆摘要：正文最多两条 + 共N家，点开统一多选弹层 -->
+  <view class="ce-field">
+    <view class="field-label">关联岩馆<text class="ce-field__opt">（选填）</text></view>
+    <view class="gym-sum" bindtap="openGymSheet">
+      <view class="gym-sum__ic">馆</view>
+      <view class="gym-sum__main">
+        <view class="gym-sum__name {{gymIds.length ? '' : 'ph'}}">{{gymSummaryName}}</view>
+        <view wx:if="{{gymIds.length}}" class="gym-sum__sub">共 {{gymIds.length}} 家{{gymIds.length > 2 ? '，弹层内可看全部' : ''}}</view>
+      </view>
+      <text class="gym-sum__arrow">⌄</text>
     </view>
-    <view class="gym-tags" wx:if="{{gymIds.length>0}}">
-      <block wx:for="{{gymIds}}" wx:key="*this">
-        <view class="tag tag--on">{{gymMap[item] ? gymMap[item].name : '岩馆'}}</view>
-      </block>
-    </view>
-    <button wx:else class="btn btn-ghost" bindtap="openGymSheet">+ 选择关联岩馆</button>
   </view>
 
+  <view class="action-bar">
+    <button class="btn btn-primary" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">{{mode==='edit' ? '保存' : '创建岩友圈'}}</button>
+  </view>
+
+  <!-- 城市选择 -->
   <view wx:if="{{citySheetVisible}}" class="sheet-mask" bindtap="closeCitySheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -60,11 +68,12 @@
     </view>
   </view>
 
+  <!-- 岩馆多选：取消（✕）保留已勾选择，保存按钮统一提交 -->
   <view wx:if="{{gymSheetVisible}}" class="sheet-mask" bindtap="closeGymSheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
-        <text class="sheet__title">选择岩馆</text>
-        <view class="sheet__close" bindtap="closeGymSheet">✓</view>
+        <text class="sheet__title">关联岩馆 · 已选 {{gymIds.length}}</text>
+        <view class="sheet__close" bindtap="closeGymSheet">✕</view>
       </view>
       <view class="sheet__search">
         <view class="searchbar">
@@ -86,6 +95,9 @@
         </block>
         <view wx:else class="sheet-empty">{{_gymPickerState.loading ? "加载中…" : (gymKeyword ? "没有找到匹配的岩馆" : "当前城市暂无岩馆")}}</view>
       </scroll-view>
+      <view class="sheet__ft">
+        <button class="btn btn-primary" bindtap="closeGymSheet">完成（已选 {{gymIds.length}}）</button>
+      </view>
     </view>
   </view>
 </view>

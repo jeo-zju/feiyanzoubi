@@ -1,19 +1,32 @@
-<view class="page">
-  <view class="card card-hero card--canvas">
-    <view wx:if="{{isMine}}" class="icon-btn hero-menu" bindtap="onOpenMenu">⋯</view>
-    <view class="card-bd">
-      <view class="section-title-lg">把这张嘴硬存下来</view>
-      <view class="section-desc">保存到相册</view>
+<view class="page ui-v2 cv-page">
+  <block wx:if="{{card}}">
+    <!-- 更多操作唯一入口（删除等） -->
+    <view wx:if="{{isMine}}" class="cv-topbar">
+      <view class="icon-btn icon-btn--sm" bindtap="onOpenMenu">⋯</view>
+    </view>
 
+    <!-- 完整名片预览：宽度受容器约束、等比，不裁卡面；点开看清晰大图 -->
+    <view class="cv-stage" bindtap="onPreviewLarge">
       <canvas
         canvas-id="cardCanvas"
-        class="canvas mt"
+        class="cv-canvas"
         style="width: {{canvasCssW}}px; height: {{canvasCssH}}px;"
         width="{{canvasW}}"
         height="{{canvasH}}"
       ></canvas>
-
-      <view class="btn btn-primary btn--block mt" bindtap="onSave">保存到相册</view>
+      <view class="cv-hint">点击查看清晰大图</view>
     </view>
+
+    <!-- 一组操作：原生分享 + 保存，仅一处 -->
+    <view class="action-bar cv-actions">
+      <button class="btn btn-ghost cv-share" open-type="share">发给好友</button>
+      <button class="btn btn-primary cv-save" bindtap="onSave">保存到相册</button>
+    </view>
+  </block>
+
+  <view wx:elif="{{loadError}}" class="empty-state">
+    <view class="empty-state__desc">名片加载失败</view>
+    <button class="btn btn-ghost" bindtap="load">重试</button>
   </view>
+  <view wx:else class="list-status">加载中…</view>
 </view>

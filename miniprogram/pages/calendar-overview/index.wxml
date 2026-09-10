@@ -1,102 +1,44 @@
-<view class="page page--home">
-  <view class="card card--calendar">
-    <view class="card-hd">
-      <view class="section-title">{{calendarLabel}}</view>
+<view class="page ui-v2 co-page">
+  <view class="card co-card">
+    <!-- 当前日期范围 -->
+    <view class="co-title">{{calendarLabel}}</view>
+
+    <!-- 城市 / 岩馆筛选 -->
+    <view class="co-filters">
+      <view class="field-select co-filter" bindtap="onTapCity">
+        <text class="field-select__value {{city ? '' : 'ph'}}">{{city || '选择城市'}}</text>
+        <text class="field-select__arrow">⌄</text>
+      </view>
+      <view class="field-select co-filter" bindtap="onTapGymFilter">
+        <text class="field-select__value">{{gymFilterLabel}}</text>
+        <text class="field-select__arrow">⌄</text>
+      </view>
     </view>
-    <view class="card-bd">
-      <view class="cal-filter-row">
-        <view class="field-select cal-filter__item" bindtap="onTapCity">
-          <text>📍 {{city || "选择城市"}}</text>
-          <text class="field-select__arrow">▾</text>
+
+    <!-- 圈筛选收纳：仅圈内可见时出现 -->
+    <view wx:if="{{visibility==='circle'}}" class="field-select co-circle-filter" bindtap="onTapCircleFilter">
+      <text class="field-select__value">{{selectedCircleLabel || '选择岩友圈'}}</text>
+      <text class="field-select__arrow">⌄</text>
+    </view>
+    <seg-tabs class="co-tabs" theme="v2" tabs="{{visibilityTabs}}" value="{{visibility}}" bind:change="onVisibilityChange" />
+
+    <!-- 日历主体：等宽七列，今天/选中/有活动状态分开，场次直接标数字 -->
+    <view class="co-weekrow">
+      <text wx:for="{{weekLabels}}" wx:key="*this" class="co-weeklabel">{{item}}</text>
+    </view>
+    <view class="co-grid">
+      <block wx:for="{{dateCells}}" wx:key="date">
+        <view class="co-cell {{item.isToday ? 'is-today' : ''}} {{item.date===selectedDate ? 'is-selected' : ''}} {{item.total>0 ? 'has-plan' : ''}}"
+          data-date="{{item.date}}"
+          bindtap="onTapDate">
+          <view class="co-cell__md">{{item.label}}</view>
+          <view wx:if="{{item.total>0}}" class="co-cell__n">{{item.total}} 场</view>
         </view>
-        <view class="field-select cal-filter__item" bindtap="onTapGymFilter">
-          <text>🏔 {{gymFilterLabel}}</text>
-          <text class="field-select__arrow">▾</text>
-        </view>
-      </view>
-      <view wx:if="{{visibility==='circle'}}" class="field-select mt-sm" bindtap="onTapCircleFilter">
-        <text class="field-select__value">◎ {{selectedCircleLabel || "选择岩友圈"}}</text>
-        <text class="field-select__arrow">▾</text>
-      </view>
-      <seg-tabs class="mt-sm" tabs="{{visibilityTabs}}" value="{{visibility}}" bind:change="onVisibilityChange" />
-      <view class="week-row mt-sm">
-        <text wx:for="{{weekLabels}}" wx:key="*this" class="week-label">{{item}}</text>
-      </view>
-      <view class="cal-grid mt-sm">
-        <block wx:for="{{dateCells}}" wx:key="date">
-          <view class="cal-cell {{item.isToday?'cal-cell--today':''}} {{item.heatCls}}"
-            data-date="{{item.date}}"
-            bindtap="onTapDate">
-            <view class="cal-cell__md">{{item.label}}</view>
-            <view wx:if="{{item.total>0}}" class="cal-cell__sm">{{item.total}}场</view>
-          </view>
-        </block>
-      </view>
-      <view class="cal-foot mt">
-        <view class="cal-legend">
-          <text class="cal-legend__t">活动少</text>
-          <view class="cal-legend__dot heat--0"></view>
-          <view class="cal-legend__dot heat--1"></view>
-          <view class="cal-legend__dot heat--2"></view>
-          <view class="cal-legend__dot heat--3"></view>
-          <text class="cal-legend__t">活动多</text>
-        </view>
-        <view class="cal-tip muted">点日期查看岩友时间轴 ›</view>
-      </view>
+      </block>
     </view>
   </view>
 
-  <view wx:if="{{gymId && (circleList.length>0 || circleHasMore)}}" class="card mt">
-    <view class="card-hd">
-      <view>
-        <view class="section-kicker">岩友圈 · {{gymFilterLabel}}</view>
-        <view class="section-title">共 {{circleTotal}} 个岩友圈</view>
-      </view>
-      <view class="icon-btn icon-btn--sm" bindtap="goCreateCircle">＋</view>
-    </view>
-    <view class="card-bd">
-      <view class="circle-list">
-        <view class="circle-card" wx:for="{{circleList}}" wx:key="_id" data-cid="{{item._id}}" bindtap="onTapCircleCard">
-          <view class="circle-card__color" style="background:{{item.avatarColor}};"></view>
-          <view class="circle-card__main">
-            <view class="circle-card__title">{{item.name}}</view>
-            <view wx:if="{{item.description}}" class="circle-card__desc">{{item.description}}</view>
-            <view class="circle-card__meta">
-              <text class="circle-card__meta-item">{{item.memberCount}} 人</text>
-              <text wx:if="{{item.gymIds.length>0}}" class="circle-card__meta-item">· {{item.gymIds.length}} 馆</text>
-            </view>
-          </view>
-          <view wx:if="{{_circleMembershipMap[item._id] && (_circleMembershipMap[item._id].status==='accepted' || _circleMembershipMap[item._id].status==='pending')}}" class="tag">已在</view>
-          <view wx:else class="btn btn-primary mini" catchtap="onTapCircleApply" data-cid="{{item._id}}">申请</view>
-        </view>
-      </view>
-      <view wx:if="{{circleHasMore}}" class="btn-text circle-more" bindtap="goMoreCircles">› 更多岩友圈</view>
-    </view>
-  </view>
-
-  <view wx:if="{{gymId && circleList.length===0 && !circleHasMore}}" class="card mt">
-    <view class="card-bd">
-      <view class="empty-state">
-        <view class="empty-state__title">该岩馆暂无岩友圈</view>
-        <button class="btn btn-primary btn--block" bindtap="goCreateCircle">＋ 创建岩友圈</button>
-      </view>
-    </view>
-  </view>
-
-  <view class="action-bar">
-    <view class="action-bar__row">
-      <view class="btn btn-ghost" bindtap="onTapCheckin">
-        <text>📌</text>
-        <text>今日打卡</text>
-      </view>
-      <view class="btn btn-primary" bindtap="onTapPublish">
-        <text>＋</text>
-        <text>发起约爬</text>
-      </view>
-      <view class="icon-btn" bindtap="onTapRefresh">↻</view>
-    </view>
-  </view>
-
+  <!-- 城市选择 -->
   <view wx:if="{{cityPickerVisible}}" class="sheet-mask" bindtap="onCloseCityPicker" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -115,6 +57,7 @@
     </view>
   </view>
 
+  <!-- 岩馆选择 -->
   <view wx:if="{{gymPickerVisible}}" class="sheet-mask" bindtap="onCloseGymPicker" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -148,6 +91,7 @@
     </view>
   </view>
 
+  <!-- 岩友圈筛选（只筛选，不在此建圈/管理） -->
   <view wx:if="{{circlePickerVisible}}" class="sheet-mask" bindtap="onCloseCirclePicker" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -165,15 +109,12 @@
             data-id="{{item._id}}"
             data-name="{{item.name}}"
             bindtap="onPickCircle">
-            <view class="sheet-circle-dot" style="background:{{item.avatarColor}};"></view>
+            <view class="co-picker-dot" style="background:{{item.avatarColor}};"></view>
             <text class="sheet-item__label">{{item.name}}</text>
             <text wx:if="{{selectedCircleId === item._id}}" class="sheet-item__check">✓</text>
           </view>
         </block>
-        <view wx:else class="sheet-empty">
-          <text>还没加入任何岩友圈</text>
-          <view class="btn btn-ghost mini sheet-empty__plus" bindtap="goCreateCircle">＋ 创建岩友圈</view>
-        </view>
+        <view wx:else class="sheet-empty">还没加入任何岩友圈，可在「我的 → 岩友圈」创建或加入</view>
       </scroll-view>
     </view>
   </view>

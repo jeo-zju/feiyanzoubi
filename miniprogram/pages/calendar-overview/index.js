@@ -685,6 +685,7 @@ Page({
     if (this.data.gymId) params.push(`gymId=${this.data.gymId}`);
     params.push(`visibility=${this.data.visibility}`);
     if (this.data.selectedCircleId) params.push(`circleId=${this.data.selectedCircleId}`);
+    this.setData({ selectedDate: date });
     wx.navigateTo({ url: `/pages/calendar-timeline/index?${params.join("&")}` });
   },
 

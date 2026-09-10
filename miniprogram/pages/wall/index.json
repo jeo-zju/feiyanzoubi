@@ -1,4 +1,5 @@
 {
-  "navigationBarTitleText": "攀岩墙"
+  "navigationBarTitleText": "名片墙",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }
-

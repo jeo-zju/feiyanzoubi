@@ -17,7 +17,7 @@ function compare(actual, expected) {
   if (expected && expected.__op) {
     const v = expected.args[0];
     switch (expected.__op) {
-      case "in": return Array.isArray(actual) ? actual.some(x => v.includes(x)) : v.includes(actual);
+      case "in": if(v.length>50) throw new Error("Mock rejects unbounded in query"); return Array.isArray(actual) ? actual.some(x => v.includes(x)) : v.includes(actual);
       case "nin": return !compare(actual, operator("in", [v]));
       case "exists": return (actual !== undefined) === v;
       case "eq": return actual === v;
@@ -100,7 +100,7 @@ function load(name, store, openid = "viewer", env = {}) {
 const checks = [];
 function test(name, fn) { checks.push([name,fn]); }
 const future = new Date(Date.now()+86400000).toISOString().slice(0,10);
-const plan = { _id:"plan", openid:"host", _openid:"host", visibility:"circle", circleIds:["circle"], date:future, endTime:"22:00", status:"active" };
+const plan = { _id:"plan", openid:"host", _openid:"host", visibility:"circle", circleIds:["circle"], date:future, startTime:"10:00", endTime:"22:00", status:"active" };
 
 test("private plan: outsiders cannot join or read members", async () => {
   const s = database({RockCalendarPlans:[plan]}); const main = load("calendar_plan_publish",s);
@@ -243,6 +243,263 @@ test("mine_list pages plans via participantIds index and resolves my status", as
   assert.equal(byId.d.myStatus,"host");
   const host=await main({action:"mine_list",tab:"host"});
   assert.deepEqual(host.data.list.map(x=>x._id).sort(),["c","d"]);
+});
+
+// ---- R1: 成员索引统一 + mine_list 旧成员兼容（45+ 条新旧混合，跨页不重不漏） ----
+function r1Seed() {
+  const plans=[], joins=[];
+  const base=id=>({_id:id,openid:"host"+id,_openid:"host"+id,visibility:"public",status:"active",date:future,startTime:"18:00",endTime:"22:00",skillTags:["boulder"],gymSnapshot:{name:"G"+id,city:"杭州"}});
+  for(let i=1;i<=20;i++){const id="m"+String(i).padStart(2,"0");plans.push({...base(id),joinSchemaVersion:2,participantIds:["host"+id,"viewer"],confirmedCount:2});joins.push({_id:"j_"+id,planId:id,openid:"viewer",_openid:"viewer",status:"confirmed",date:future});}
+  for(let i=21;i<=35;i++){const id="m"+String(i).padStart(2,"0");plans.push({...base(id),capacity:6});joins.push({_id:"j_"+id,planId:id,openid:"viewer",_openid:"viewer",status:i%3===0?"pending":(i%3===1?"confirmed":"joined"),date:future});}
+  for(let i=36;i<=40;i++){const id="m"+String(i).padStart(2,"0");plans.push({...base(id),openid:"viewer",_openid:"viewer",capacity:6});}
+  for(let i=41;i<=45;i++){const id="m"+String(i).padStart(2,"0");plans.push({...base(id),capacity:6});}
+  plans.push({...base("m46"),openid:"viewer",_openid:"viewer",date:"2020-01-01",capacity:6});
+  plans.push({...base("m47"),capacity:6});joins.push({_id:"j_m47",planId:"m47",openid:"viewer",_openid:"viewer",status:"removed",date:future});
+  plans.push({...base("m48"),status:"cancelled",joinSchemaVersion:2,participantIds:["hostm48","viewer"],confirmedCount:2});
+  plans.push({...base("m49"),date:"2020-01-01",capacity:6});
+  plans.push({...base("m50"),capacity:6});joins.push({_id:"j_m50",planId:"m50",openid:"viewer",_openid:"viewer",status:"cancelled",date:future});
+  return {RockCalendarPlans:plans,RockCalendarJoins:joins};
+}
+test("R1 mine_list: 45 mixed plans page losslessly across tabs, removed/cancelled never return", async () => {
+  const s=database(r1Seed());const main=load("calendar_plan_publish",s,"viewer");
+  const p1=await main({action:"mine_list",tab:"upcoming"});
+  assert.equal(p1.ok,true,JSON.stringify(p1));
+  assert.equal(p1.data.list.length,20);
+  assert.equal(p1.data.hasMore,true);
+  const p2=await main({action:"mine_list",tab:"upcoming",cursor:p1.data.cursor});
+  assert.equal(p2.data.hasMore,false);
+  const ids=p1.data.list.concat(p2.data.list).map(x=>x._id);
+  assert.equal(ids.length,40);
+  assert.equal(new Set(ids).size,40,"no duplicate or missing across pages");
+  assert.deepEqual(ids,Array.from({length:40},(_,i)=>"m"+String(i+1).padStart(2,"0")));
+  const byId=Object.fromEntries(p1.data.list.concat(p2.data.list).map(x=>[x._id,x]));
+  assert.equal(byId.m01.myStatus,"confirmed","v2 member resolves confirmed");
+  assert.equal(byId.m21.myStatus,"pending","legacy pending join is visible");
+  assert.equal(byId.m22.myStatus,"confirmed","legacy confirmed join is visible");
+  assert.equal(byId.m23.myStatus,"confirmed","legacy joined status maps to confirmed");
+  assert.equal(byId.m36.myStatus,"host","own legacy plan is visible without index");
+  assert.ok(!ids.includes("m47"),"removed member does not reappear in upcoming");
+  assert.ok(!ids.includes("m50"),"cancelled join does not reappear in upcoming");
+  const host=await main({action:"mine_list",tab:"host"});
+  assert.deepEqual(host.data.list.map(x=>x._id),["m36","m37","m38","m39","m40"],"host tab uses own scope only");
+  const past=await main({action:"mine_list",tab:"past"});
+  assert.deepEqual(past.data.list.map(x=>x._id),["m48","m46"],"cancelled membership and own past plan land in past tab");
+});
+test("R1 edit: legacy plan keeps owner in member index; visibility lock counts only non-owners", async () => {
+  const s=database({
+    RockCalendarPlans:[
+      {_id:"legacy1",openid:"owner1",_openid:"owner1",visibility:"public",status:"active",date:future,startTime:"10:00",endTime:"12:00",capacity:6,joinMode:"direct",skillTags:["boulder"],gymId:"gym",gymSnapshot:{name:"G",city:"杭州"}},
+      {_id:"legacy2",openid:"owner2",_openid:"owner2",visibility:"public",status:"active",date:future,startTime:"10:00",endTime:"12:00",capacity:6,joinMode:"direct",skillTags:["boulder"],gymId:"gym",gymSnapshot:{name:"G",city:"杭州"}},
+      {_id:"solo3",openid:"owner3",_openid:"owner3",visibility:"public",status:"active",date:future,startTime:"10:00",endTime:"12:00",capacity:6,joinMode:"direct",skillTags:["boulder"],gymId:"gym",gymSnapshot:{name:"G",city:"杭州"},joinSchemaVersion:2,participantIds:["owner3"],confirmedCount:1}
+    ],
+    RockCalendarJoins:[{_id:"j_legacy2",planId:"legacy2",openid:"viewer",_openid:"viewer",status:"confirmed",date:future}],
+    RockGyms:[{_id:"gym",name:"G",city:"杭州",status:"active"}],
+    RockUsers:[{openid:"owner1",nickName:"H1"},{openid:"owner2",nickName:"H2"},{openid:"owner3",nickName:"H3"}]
+  });
+  const payload={mode:"gym",gymId:"gym",date:future,startTime:"18:00",endTime:"20:00",capacity:6,visibility:"friends",skillTags:["boulder"],title:"t",joinMode:"direct"};
+  const r1=await load("calendar_plan_publish",s,"owner1")({action:"update",planId:"legacy1",payload});
+  assert.equal(r1.ok,true,JSON.stringify(r1));
+  const saved=s.data().RockCalendarPlans.find(p=>p._id==="legacy1");
+  assert.deepEqual(saved.participantIds,["owner1"],"legacy plan edit restores owner in index");
+  assert.equal(saved.joinSchemaVersion,2);
+  const r2=await load("calendar_plan_publish",s,"owner2")({action:"update",planId:"legacy2",payload});
+  assert.equal(r2.ok,false);
+  assert.equal(r2.error.code,"VISIBILITY_LOCKED","non-owner member locks visibility change");
+  const r3=await load("calendar_plan_publish",s,"owner3")({action:"update",planId:"solo3",payload});
+  assert.equal(r3.ok,true,JSON.stringify(r3),"plan with only owner can still change visibility");
+});
+
+// ---- R2: 满员/截止报名合同（direct/approval × 有名额/满员 × 截止前/后） ----
+function joinStore(over={}) {
+  return database({
+    RockCalendarPlans:[{_id:"jp",openid:"host",_openid:"host",visibility:"public",status:"active",
+      date:over.date||future,startTime:over.startTime||"18:00",endTime:over.endTime||"22:00",joinMode:over.joinMode||"direct",
+      capacity:over.capacity!=null?over.capacity:3,confirmedCount:over.confirmedCount!=null?over.confirmedCount:1,
+      joinSchemaVersion:2,participantIds:over.participantIds||["host"],
+      joinDeadline:over.joinDeadline===undefined?Date.now()+86400000:over.joinDeadline,
+      gymSnapshot:{city:"杭州"},skillTags:["boulder"]}],
+    RockUsers:[{openid:"viewer",nickName:"Viewer"},{openid:"alice",nickName:"Alice"},{openid:"bob",nickName:"Bob"},{openid:"carol",nickName:"Carol"}]
+  });
+}
+test("R2 join matrix: direct/approval with slots behave per contract", async () => {
+  const direct=joinStore();
+  const rd=await load("calendar_plan_publish",direct,"viewer")({action:"join_plan",planId:"jp"});
+  assert.equal(rd.ok,true,JSON.stringify(rd));assert.equal(rd.data.status,"confirmed");
+  const dp=direct.data().RockCalendarPlans[0];
+  assert.equal(dp.confirmedCount,2);assert.ok(dp.participantIds.includes("viewer"));
+  const approval=joinStore({joinMode:"approval"});
+  const ra=await load("calendar_plan_publish",approval,"viewer")({action:"join_plan",planId:"jp"});
+  assert.equal(ra.ok,true,JSON.stringify(ra));assert.equal(ra.data.status,"pending");
+  const ap=approval.data().RockCalendarPlans[0];
+  assert.equal(ap.confirmedCount,1,"pending application does not occupy a slot");
+  assert.ok(ap.participantIds.includes("viewer"),"pending applicant stays in member index");
+  assert.equal(ap.isFull,false);
+});
+test("R2 full plans reject both direct and approval joins without mutating count", async () => {
+  for(const joinMode of ["direct","approval"]) {
+    const s=joinStore({joinMode,capacity:2,confirmedCount:2,participantIds:["host","a"]});
+    const r=await load("calendar_plan_publish",s,"viewer")({action:"join_plan",planId:"jp"});
+    assert.equal(r.ok,false);assert.equal(r.error.code,"PLAN_FULL",joinMode+" full must reject");
+    const p=s.data().RockCalendarPlans[0];
+    assert.equal(p.confirmedCount,2,joinMode+" count unchanged after rejected join");
+    assert.ok(!(s.data().RockCalendarJoins||[]).some(j=>j.openid==="viewer"),joinMode+" no join row written");
+  }
+});
+test("R2 deadline closed (explicit and endAt fallback) rejects joins", async () => {
+  const closed=joinStore({joinDeadline:Date.now()-1000});
+  assert.equal((await load("calendar_plan_publish",closed,"viewer")({action:"join_plan",planId:"jp"})).error.code,"JOIN_CLOSED");
+  const yesterday=new Date(Date.now()+8*3600000-86400000).toISOString().slice(0,10);
+  const ended=joinStore({date:yesterday,startTime:"18:00",endTime:"22:00",joinDeadline:null});
+  assert.equal((await load("calendar_plan_publish",ended,"viewer")({action:"join_plan",planId:"jp"})).error.code,"PLAN_ENDED","missing deadline falls back to endAt");
+});
+test("R2 discover treats null and zero deadline as endAt fallback", async () => {
+  const plans=[discoverPlan("null",{joinDeadline:null}),discoverPlan("zero",{joinDeadline:0})];
+  const r=await discoverPage(database({RockCalendarPlans:plans}),{onlyAvailable:true});
+  assert.deepEqual(r.list.map(x=>x._id),["null","zero"]);
+});
+test("R1 legacy duplicate terminal row does not resurrect membership", async () => {
+  const s=database({RockCalendarPlans:[{_id:"dup",openid:"host",_openid:"host",status:"active",visibility:"public",date:future,startTime:"18:00",endTime:"22:00"}],RockCalendarJoins:[
+    {_id:"old",planId:"dup",openid:"viewer",status:"confirmed",date:future,updatedAt:1},
+    {_id:"new",planId:"dup",openid:"viewer",status:"cancelled",date:future,updatedAt:2}
+  ]});
+  const r=await load("calendar_plan_publish",s,"viewer")({action:"mine_list",tab:"upcoming"});
+  assert.equal(r.data.list.length,0);
+});
+test("R1 legacy compatibility scans beyond 200 rows for upcoming and past plans", async () => {
+  const plans=[], joins=[];
+  for(let i=0;i<205;i++) {
+    const id="noise"+String(i).padStart(3,"0");
+    plans.push({_id:id,openid:"other"+i,status:"active",visibility:"public",date:future,startTime:"18:00",endTime:"22:00"});
+    joins.push({_id:"a"+String(i).padStart(3,"0"),planId:id,openid:"viewer",status:"cancelled",date:future,updatedAt:i+1});
+  }
+  plans.push({_id:"zz_upcoming",openid:"hostU",status:"active",visibility:"public",date:future,startTime:"18:00",endTime:"22:00"});
+  joins.push({_id:"zz_upcoming_join",planId:"zz_upcoming",openid:"viewer",status:"confirmed",date:future,updatedAt:9999});
+  plans.push({_id:"zz_past",openid:"hostP",status:"active",visibility:"public",date:"2020-01-01",startTime:"18:00",endTime:"22:00"});
+  joins.push({_id:"zz_past_join",planId:"zz_past",openid:"viewer",status:"confirmed",date:"2020-01-01",updatedAt:10000});
+  const s=database({RockCalendarPlans:plans,RockCalendarJoins:joins});
+  const main=load("calendar_plan_publish",s,"viewer");
+  const upcoming=await main({action:"mine_list",tab:"upcoming"});
+  const upcomingIds=[]; let page=upcoming;
+  while(true) { upcomingIds.push(...page.data.list.map(x=>x._id)); if(!page.data.hasMore)break; page=await main({action:"mine_list",tab:"upcoming",cursor:page.data.cursor}); }
+  assert.ok(upcomingIds.includes("zz_upcoming"),"valid legacy relation after 200 rows remains discoverable");
+  const past=await main({action:"mine_list",tab:"past"});
+  const pastIds=[]; let pastPage=past;
+  while(true) { pastIds.push(...pastPage.data.list.map(x=>x._id)); if(!pastPage.data.hasMore)break; pastPage=await main({action:"mine_list",tab:"past",cursor:pastPage.data.cursor}); }
+  assert.ok(pastIds.includes("zz_past"),"valid old historical relation remains discoverable");
+});
+test("R2 idempotent retries never duplicate or flip status", async () => {
+  const approval=joinStore({joinMode:"approval"});
+  const main=load("calendar_plan_publish",approval,"viewer");
+  const a=await main({action:"join_plan",planId:"jp"});const b=await main({action:"join_plan",planId:"jp"});
+  assert.equal(a.data.status,"pending");assert.equal(b.data.status,"pending");
+  assert.equal(approval.data().RockCalendarJoins.filter(j=>j.openid==="viewer").length,1);
+  const direct=joinStore();
+  const dm=load("calendar_plan_publish",direct,"viewer");
+  await dm({action:"join_plan",planId:"jp"});const retry=await dm({action:"join_plan",planId:"jp"});
+  assert.equal(retry.data.status,"confirmed");
+  assert.equal(direct.data().RockCalendarJoins.filter(j=>j.openid==="viewer").length,1);
+});
+test("R2 pending applications survive fullness; approval beyond capacity is rejected", async () => {
+  const s=joinStore({joinMode:"approval",capacity:2,confirmedCount:1,participantIds:["host"]});
+  const joinAs=uid=>load("calendar_plan_publish",s,uid)({action:"join_plan",planId:"jp"});
+  const a1=await joinAs("alice");assert.equal(a1.data.status,"pending");
+  const b1=await joinAs("bob");assert.equal(b1.data.status,"pending");
+  const host=load("calendar_plan_publish",s,"host");
+  const approveBob=await host({action:"approve_joiner",planId:"jp",targetOpenid:"bob"});
+  assert.equal(approveBob.ok,true,JSON.stringify(approveBob));
+  assert.equal(s.data().RockCalendarPlans[0].confirmedCount,2);
+  assert.equal((await joinAs("carol")).error.code,"PLAN_FULL","new application rejected when full");
+  const aRetry=await joinAs("alice");
+  assert.equal(aRetry.ok,true);assert.equal(aRetry.data.status,"pending","existing pending application is preserved");
+  const approveAlice=await host({action:"approve_joiner",planId:"jp",targetOpenid:"alice"});
+  assert.equal(approveAlice.ok,false);assert.equal(approveAlice.error.code,"PLAN_FULL","approve beyond capacity is rejected");
+  assert.equal(s.data().RockCalendarPlans[0].confirmedCount,2);
+});
+test("R2 unjoining a confirmed member frees the slot for new joins", async () => {
+  const s=joinStore({capacity:2,confirmedCount:2,participantIds:["host","a"]});
+  if(!s.data().RockCalendarJoins) s.data().RockCalendarJoins=[];
+  s.data().RockCalendarJoins.push({_id:"j_a",planId:"jp",openid:"a",_openid:"a",status:"confirmed",date:future});
+  assert.equal((await load("calendar_plan_publish",s,"viewer")({action:"join_plan",planId:"jp"})).error.code,"PLAN_FULL");
+  const unjoin=await load("calendar_plan_publish",s,"a")({action:"unjoin_plan",planId:"jp"});
+  assert.equal(unjoin.ok,true,JSON.stringify(unjoin));
+  assert.equal(s.data().RockCalendarPlans[0].confirmedCount,1);
+  const again=await load("calendar_plan_publish",s,"viewer")({action:"join_plan",planId:"jp"});
+  assert.equal(again.ok,true,JSON.stringify(again));assert.equal(again.data.status,"confirmed");
+});
+
+// ---- R3: discover 段边界与旧版三段游标 ----
+test("R3 discover: exactly 20 joinable ends paging; legacy 3-part cursor still pages", async () => {
+  const twenty=Array.from({length:20},(_,i)=>discoverPlan("t"+String(i+1).padStart(2,"0"),{startTime:"10:00"}));
+  const s1=database({RockCalendarPlans:twenty});
+  const only=await discoverPage(s1,{});
+  assert.equal(only.list.length,20);
+  assert.equal(only.hasMore,true,"server probes the closed segment once joinable is exhausted");
+  const tail=await discoverPage(s1,{cursor:only.cursor});
+  assert.equal(tail.list.length,0,"closed segment is empty");
+  assert.equal(tail.hasMore,false);
+  assert.equal(tail.cursor,"");
+  const plans=Array.from({length:22},(_,i)=>discoverPlan("k"+String(i+1).padStart(2,"0"),{startTime:"10:00"}));
+  plans.push(discoverPlan("kz",{isFull:true}));
+  const s2=database({RockCalendarPlans:plans});
+  const p1=await discoverPage(s2,{});
+  assert.equal(p1.list.length,20);
+  const last=p1.list[19];
+  const legacyCursor=JSON.stringify([last.date,last.startTime,last._id]);
+  const p2=await discoverPage(s2,{cursor:legacyCursor});
+  const ids=p1.list.concat(p2.list).map(x=>x._id);
+  assert.equal(new Set(ids).size,23,"legacy cursor pages without duplication");
+  assert.deepEqual(p2.list.map(x=>x._id),["k21","k22","kz"],"legacy cursor resumes in joinable segment then closes");
+});
+
+// ---- R5: 发布预填清洗 + 提交前校验（固定时钟纯函数） ----
+const planUtil=require(path.join(root,"miniprogram","utils","plan.js"));
+test("R5 suggestedTime: fixed clock for afternoon, late night, month and year rollover", () => {
+  const mk=(m,d,h,min)=>new Date(2025,m-1,d,h,min);
+  assert.deepEqual(planUtil.suggestedTime(undefined,mk(3,10,14,0)),{date:"2025-03-10",startTime:"15:00",endTime:"17:00"});
+  assert.deepEqual(planUtil.suggestedTime(undefined,mk(3,10,20,30)),{date:"2025-03-10",startTime:"21:00",endTime:"23:00"});
+  assert.deepEqual(planUtil.suggestedTime(undefined,mk(3,10,22,30)),{date:"2025-03-11",startTime:"19:00",endTime:"21:00"});
+  assert.deepEqual(planUtil.suggestedTime(undefined,mk(1,31,22,30)),{date:"2025-02-01",startTime:"19:00",endTime:"21:00"},"cross-month");
+  assert.deepEqual(planUtil.suggestedTime(undefined,mk(12,31,22,30)),{date:"2026-01-01",startTime:"19:00",endTime:"21:00"},"cross-year");
+});
+test("R5 validateSlot: date range, duration and not-started boundaries", () => {
+  const now=new Date(2025,2,10,12,0);
+  const slot=(over={})=>planUtil.validateSlot({date:"2025-03-12",startTime:"19:00",endTime:"21:00",...over},now);
+  assert.equal(slot().ok,true);
+  assert.equal(slot({date:"2020-01-01"}).code,"DATE_PAST","illegal/past prefill date is rejected not silently used");
+  assert.equal(slot({date:"2025-13-40"}).code,"DATE_INVALID");
+  assert.equal(slot({date:"2025-03-24"}).code,"DATE_TOO_FAR","day 14 is outside the window");
+  assert.equal(slot({date:"2025-03-23"}).ok,true,"day 13 is the last valid day");
+  assert.equal(slot({startTime:"19:00",endTime:"19:25"}).code,"DURATION_SHORT");
+  assert.equal(slot({startTime:"19:00",endTime:"19:30"}).ok,true,"30 minutes is the minimum");
+  assert.equal(slot({startTime:"10:00",endTime:"22:00"}).ok,true,"12 hours is the maximum");
+  assert.equal(slot({startTime:"09:00",endTime:"22:00"}).code,"DURATION_LONG");
+  assert.equal(slot({startTime:"20:00",endTime:"19:00"}).code,"TIME_ORDER","cross-midnight is not supported");
+  assert.equal(slot({startTime:"25:00",endTime:"26:00"}).code,"TIME_INVALID");
+  assert.equal(slot({date:"2025-03-10",startTime:"10:00",endTime:"12:00"}).code,"NOT_STARTED","elapsed slot today is caught before submit");
+});
+test("R5 capacity and prefill sanitizing use whitelists", () => {
+  [1,0,13,20,2.5,NaN].forEach(v=>assert.equal(planUtil.sanitizeCapacity(v),null,String(v)+" must be rejected"));
+  [2,12,"4"].forEach(v=>assert.equal(planUtil.sanitizeCapacity(v),Number(v)));
+  const now=new Date(2025,2,10,14,0);
+  const clean=planUtil.sanitizePrefill({date:"2020-01-01",skillTags:"boulder,xxx,lead",atmosphere:"休闲爬,瞎爬",capacity:20,joinMode:"approval"},now);
+  assert.equal(clean.dateAdjusted,true);
+  assert.equal(clean.date,"2025-03-10");assert.deepEqual(clean.skillTags,["boulder","lead"],"unknown types are dropped, valid ones kept");
+  assert.deepEqual(clean.atmosphereTags,["休闲爬"]);
+  assert.equal(clean.capacity,null,"capacity 20 prefill is dropped instead of capping silently");
+  assert.equal(clean.joinMode,"approval");
+  const empty=planUtil.sanitizePrefill({date:"2025-03-10",capacity:5},now);
+  assert.equal(empty.skillTags,null,"no type in prefill must not wipe page default type");
+  assert.equal(empty.capacity,5);assert.equal(empty.dateAdjusted,false);
+});
+test("R5 decorate and mergeListById enforce full/closed contract and paging dedup", () => {
+  const full=planUtil.decorate({capacity:2,confirmedCount:2,joinDeadline:Date.now()+86400000,endAt:Date.now()+86400000});
+  assert.equal(full.full,true);assert.equal(full.joinable,false);
+  const closed=planUtil.decorate({capacity:4,confirmedCount:1,joinDeadline:1,endAt:Date.now()+86400000});
+  assert.equal(closed.joinClosed,true);assert.equal(closed.joinable,false);
+  const openLegacy=planUtil.decorate({capacity:4,confirmedCount:1,endAt:Date.now()+86400000});
+  assert.equal(openLegacy.joinable,true,"missing deadline falls back to endAt");
+  const merged=planUtil.mergeListById([{_id:1},{_id:2}],[{_id:2},{_id:3}]);
+  assert.deepEqual(merged.map(x=>x._id),[1,2,3],"cross-page duplicates collapse by _id");
 });
 
 (async()=>{let failures=0;for(const [name,fn] of checks){try{await fn();console.log("PASS "+name);}catch(e){failures++;console.error("FAIL "+name+"\n"+e.stack);}}console.log(`${checks.length-failures}/${checks.length} passed`);process.exitCode=failures?1:0;})();

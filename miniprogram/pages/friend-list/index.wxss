@@ -1,52 +1,114 @@
-/* 岩友列表页：搜索条/按钮/标签/卡片均使用全局体系，本文件只保留列表行布局 */
-.page--fl {
-  padding-bottom: 80rpx;
+/* 岩友页（compact）：搜索 → 分段 → 人物行；人物行规格对齐 person-row */
+page {
+  background: #151714;
 }
 
-.friend-row {
+.friend-page {
+  padding: 12rpx 32rpx 48rpx;
+}
+
+/* 搜索条：清除图标热区 */
+.friend-search {
+  position: relative;
+}
+
+.friend-search .searchbar__input {
+  min-height: 88rpx;
+  line-height: 88rpx;
+}
+
+.friend-search__clear {
+  flex-shrink: 0;
+  width: 64rpx;
+  height: 64rpx;
+  margin-right: -8rpx;
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  padding: 20rpx 24rpx;
-  margin-top: 16rpx;
+  justify-content: center;
+  font-size: 22rpx;
+  color: #B9BDB0;
 }
 
-.friend-row__avatar {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2rpx solid rgba(143, 123, 255, 0.24);
-  flex-shrink: 0;
+.friend-search__clear:active {
+  color: #F3F1E7;
 }
 
-.friend-row__main {
-  flex: 1;
-  min-width: 0;
+.friend-tabs {
+  margin-top: 20rpx;
 }
 
-.friend-row__name {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #e7e9f3;
-}
-
-.friend-row__meta {
-  margin-top: 4rpx;
-  font-size: 24rpx;
-}
-
-.friend-row__tags {
+/* 人物行：细分隔，不套卡片；长昵称自然换行，操作区不足时另起一行 */
+.friend-list {
   margin-top: 8rpx;
+}
+
+.friend-card {
   display: flex;
-  gap: 8rpx;
+  align-items: center;
+  gap: 18rpx;
+  padding: 24rpx 0;
+  border-top: 1rpx solid #383E34;
   flex-wrap: wrap;
 }
 
-.friend-row__op {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8rpx;
+.friend-card:active {
+  opacity: 0.85;
+}
+
+.friend-card__avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #2B3029;
   flex-shrink: 0;
+}
+
+.friend-card__main {
+  flex: 1 1 220rpx;
+  min-width: 0;
+}
+
+.friend-card__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+
+.friend-card__sub {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-card__op {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.friend-card__op--btns .btn {
+  flex-shrink: 0;
+}
+
+.friend-card__op--btns .btn::after {
+  border: none;
+}
+
+.friend-card__state {
+  font-size: 24rpx;
+  color: #969D90;
+  white-space: nowrap;
+}
+
+.friend-empty {
+  padding-top: 96rpx;
 }

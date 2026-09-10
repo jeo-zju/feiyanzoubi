@@ -1,5 +1,9 @@
 {
   "navigationBarTitleText": "我的",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#151714",
+  "backgroundTextStyle": "light",
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index"
   }

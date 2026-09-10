@@ -8,7 +8,7 @@ Page({
     city: "",
     gymId: "",
     gymName: "",
-    title: "岩友圈",
+    mode: "mine",
     list: [],
     membershipMap: {},
     total: 0,
@@ -31,11 +31,13 @@ Page({
       const label = gymName || (gymId ? "该岩馆" : "");
       if (label) title = `岩友圈 · ${label}`;
     }
+    // 页名交原生导航，正文不再重复大标题
+    wx.setNavigationBarTitle({ title });
     this.setData({
+      mode: this._mode,
       city,
       gymId,
-      gymName: gymName || (gymId ? "该岩馆" : ""),
-      title
+      gymName: gymName || (gymId ? "该岩馆" : "")
     });
   },
 
@@ -85,20 +87,7 @@ Page({
     return map[String(circleId)] || null;
   },
 
-  async onTapApply(e) {
-    const circleId = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id);
-    if (!circleId) return;
-    try {
-      const r = await circleApi.apply({ circleId });
-      const st = String(r && r.status || "");
-      if (st === "pending" || st === "already_pending") wx.showToast({ title: "已申请", icon: "none" });
-      else if (st === "already_member" || st === "already_admin") wx.showToast({ title: "已在圈内", icon: "none" });
-      else wx.showToast({ title: "已申请", icon: "success" });
-      await this.loadList();
-    } catch (e) {
-      wx.showToast({ title: e && e.message || "申请失败", icon: "none" });
-    }
-  },
+  // 申请动作统一在 circle-detail 完成，列表只展示关系状态
 
   onTapCard(e) {
     const circleId = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id);

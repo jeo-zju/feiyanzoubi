@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "合并岩馆"
+  "navigationBarTitleText": "合并岩馆",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

@@ -1,130 +1,141 @@
-<view class="page">
-  <view class="card">
-    <view class="card-bd">
-      <view class="head-row">
-        <view class="avatar-wrap">
-          <image class="compact-avatar" mode="aspectFill" src="{{form.avatarUrl || defaultAvatar}}"></image>
-          <button class="btn btn-ghost mini" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">更换</button>
-        </view>
-        <view class="head-right">
-          <view class="inline-col">
-            <view class="inline-label">昵称</view>
-            <input class="input" type="nickname" placeholder="请输入昵称" placeholder-class="ph" value="{{form.nickName}}" bindinput="onNickNameInput" />
-          </view>
-          <view class="inline-col">
-            <view class="inline-label">城市</view>
-            <picker mode="selector" range="{{cities}}" value="{{cityIdx}}" bindchange="onCityChange">
-              <view class="field-select">{{cities[cityIdx] || '选择常居城市'}}<text class="field-select__arrow">▾</text></view>
-            </picker>
-          </view>
-        </view>
-      </view>
+<view class="page ui-v2 profile-page">
+  <!-- 头像（小编辑标记）＋昵称 -->
+  <view class="pf-head">
+    <button class="pf-avatar" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image class="pf-avatar__img" mode="aspectFill" src="{{form.avatarUrl || defaultAvatar}}"></image>
+      <view class="pf-avatar__badge">✎</view>
+    </button>
+    <view class="pf-head__main">
+      <view class="field-label">昵称</view>
+      <input class="input" type="nickname" placeholder="请输入昵称" placeholder-class="ph" value="{{form.nickName}}" bindinput="onNickNameInput" />
+    </view>
+  </view>
 
-      <view class="inline-row mt">
-        <view class="inline-col">
-          <view class="inline-label">名片名</view>
-          <input class="input" placeholder="同昵称可留空" placeholder-class="ph" value="{{displayName}}" bindinput="onDisplayNameInput" />
+  <!-- 城市 / 常爬水平 -->
+  <view class="card pf-card">
+    <view class="pf-field">
+      <view class="field-label">常居城市</view>
+      <picker mode="selector" range="{{cities}}" value="{{cityIdx}}" bindchange="onCityChange">
+        <view class="field-select">
+          <text class="field-select__value {{city ? '' : 'ph'}}">{{city || '选择常居城市'}}</text>
+          <text class="field-select__arrow">⌄</text>
         </view>
-        <view class="inline-col">
-          <view class="inline-label">头衔</view>
+      </picker>
+    </view>
+    <view class="pf-field">
+      <view class="field-label">常爬水平</view>
+      <view class="pf-levels">
+        <picker class="pf-levels__item" mode="selector" range="{{boulderLevels}}" value="{{boulderIdx}}" bindchange="onBoulderChange">
+          <view class="field-select">
+            <text class="pf-levels__k">抱石</text>
+            <text class="field-select__value {{climbSkills.boulder ? '' : 'ph'}}">{{climbSkills.boulder || '未选择'}}</text>
+            <text class="field-select__arrow">⌄</text>
+          </view>
+        </picker>
+        <picker class="pf-levels__item" mode="selector" range="{{ropeLevels}}" value="{{topropeIdx}}" bindchange="onTopropeChange">
+          <view class="field-select">
+            <text class="pf-levels__k">顶绳</text>
+            <text class="field-select__value {{climbSkills.toprope ? '' : 'ph'}}">{{climbSkills.toprope || '未选择'}}</text>
+            <text class="field-select__arrow">⌄</text>
+          </view>
+        </picker>
+        <picker class="pf-levels__item" mode="selector" range="{{ropeLevels}}" value="{{leadIdx}}" bindchange="onLeadChange">
+          <view class="field-select">
+            <text class="pf-levels__k">先锋</text>
+            <text class="field-select__value {{climbSkills.lead ? '' : 'ph'}}">{{climbSkills.lead || '未选择'}}</text>
+            <text class="field-select__arrow">⌄</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选填资料（折叠行，有值时头部显示摘要） -->
+  <view class="card pf-card">
+    <view class="pf-collapse" bindtap="toggleOptional">
+      <text class="pf-collapse__t">选填资料</text>
+      <text class="pf-collapse__summary">{{optionalSummary}}</text>
+      <text class="pf-collapse__arrow">{{optionalOpen ? '⌄' : '›'}}</text>
+    </view>
+    <view wx:if="{{optionalOpen}}" class="pf-collapse__bd">
+      <view class="pf-field">
+        <view class="field-label">名片名</view>
+        <input class="input" placeholder="与昵称不同时使用，留空则同昵称" placeholder-class="ph" value="{{displayName}}" bindinput="onDisplayNameInput" />
+      </view>
+      <view class="pf-grid">
+        <view class="pf-field">
+          <view class="field-label">头衔</view>
           <picker mode="selector" range="{{titleOptions}}" value="{{titleIdx}}" bindchange="onTitleChange">
-            <view class="field-select">{{titleOptions[titleIdx] || '选择头衔'}}<text class="field-select__arrow">▾</text></view>
+            <view class="field-select">
+              <text class="field-select__value {{title ? '' : 'ph'}}">{{title || '未选择'}}</text>
+              <text class="field-select__arrow">⌄</text>
+            </view>
           </picker>
         </view>
-        <view class="inline-col">
-          <view class="inline-label">MBTI</view>
+        <view class="pf-field">
+          <view class="field-label">MBTI</view>
           <picker mode="selector" range="{{mbtiOptions}}" value="{{mbtiIdx}}" bindchange="onMbtiChange">
-            <view class="field-select"><text class="field-select__value">{{mbtiOptions[mbtiIdx] || '未选择'}}</text><text class="field-select__arrow">▾</text></view>
+            <view class="field-select">
+              <text class="field-select__value {{mbti ? '' : 'ph'}}">{{mbti || '未选择'}}</text>
+              <text class="field-select__arrow">⌄</text>
+            </view>
           </picker>
         </view>
       </view>
-    </view>
-  </view>
-
-  <view class="card mt">
-    <view class="card-bd">
-      <view class="inline-row">
-        <view class="inline-col">
-          <view class="inline-label">抱石</view>
-          <picker mode="selector" range="{{boulderLevels}}" value="{{boulderIdx}}" bindchange="onBoulderChange">
-            <view class="field-select">{{boulderLevels[boulderIdx] || '未选择'}}<text class="field-select__arrow">▾</text></view>
-          </picker>
-        </view>
-        <view class="inline-col">
-          <view class="inline-label">顶绳</view>
-          <picker mode="selector" range="{{ropeLevels}}" value="{{topropeIdx}}" bindchange="onTopropeChange">
-            <view class="field-select"><text class="field-select__value">{{ropeLevels[topropeIdx] || '未选择'}}</text><text class="field-select__arrow">▾</text></view>
-          </picker>
-        </view>
-        <view class="inline-col">
-          <view class="inline-label">先锋</view>
-          <picker mode="selector" range="{{ropeLevels}}" value="{{leadIdx}}" bindchange="onLeadChange">
-            <view class="field-select"><text class="field-select__value">{{ropeLevels[leadIdx] || '未选择'}}</text><text class="field-select__arrow">▾</text></view>
-          </picker>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <view class="card mt">
-    <view class="card-bd">
-      <view class="inline-row">
-        <view class="inline-col">
-          <view class="inline-label">身高（cm）</view>
+      <view class="pf-grid">
+        <view class="pf-field">
+          <view class="field-label">身高（cm）</view>
           <input class="input" type="digit" placeholder="如 178" placeholder-class="ph" value="{{heightCm}}" bindinput="onHeightInput" maxlength="3" />
         </view>
-        <view class="inline-col">
-          <view class="inline-label">臂展（cm）</view>
+        <view class="pf-field">
+          <view class="field-label">臂展（cm）</view>
           <input class="input" type="digit" placeholder="如 180" placeholder-class="ph" value="{{armspanCm}}" bindinput="onArmspanInput" maxlength="3" />
         </view>
       </view>
-    </view>
-  </view>
-
-  <view class="card mt">
-    <view class="card-bd">
-      <view class="inline-row">
-        <view class="inline-col">
-          <view class="inline-label">名片一句话</view>
-          <view class="slogan-row">
-            <input class="input slogan-input" placeholder="写一句攀岩黑话（可留空）" placeholder-class="ph" value="{{slogan}}" bindinput="onSloganInput" maxlength="20" />
-            <view class="icon-btn" bindtap="onRandomSlogan">🎲</view>
-          </view>
+      <view class="pf-field">
+        <view class="field-label">名片一句话</view>
+        <view class="pf-slogan">
+          <input class="input pf-slogan__input" placeholder="写一句攀岩黑话（可留空）" placeholder-class="ph" value="{{slogan}}" bindinput="onSloganInput" maxlength="20" />
+          <button class="btn btn-ghost mini pf-slogan__btn" bindtap="onRandomSlogan">换一句</button>
         </view>
       </view>
     </view>
   </view>
 
-  <view class="card mt">
-    <view class="card-bd">
-      <view class="inline-row">
-        <view class="inline-col">
-          <view class="inline-label">💬 微信号 <text class="muted">（开启后展示在名片上）</text></view>
-          <view class="contact-row">
-            <input class="input" placeholder="选填，如 wx_rock123" placeholder-class="ph" value="{{wechatId}}" bindinput="onWechatInput" maxlength="30" />
-            <view class="contact-switch">
-              <text class="contact-switch__label">{{showWechat ? '展示' : '隐藏'}}</text>
-              <switch checked="{{showWechat}}" bindchange="onToggleShowWechat" color="#8f7bff" />
-            </view>
+  <!-- 联络与可见范围（折叠行） -->
+  <view class="card pf-card">
+    <view class="pf-collapse" bindtap="toggleContact">
+      <text class="pf-collapse__t">联络与可见范围</text>
+      <text class="pf-collapse__summary">{{contactSummary}}</text>
+      <text class="pf-collapse__arrow">{{contactOpen ? '⌄' : '›'}}</text>
+    </view>
+    <view wx:if="{{contactOpen}}" class="pf-collapse__bd">
+      <view class="pf-field">
+        <view class="field-label">微信号</view>
+        <view class="pf-contact">
+          <input class="input pf-contact__input" placeholder="选填，如 wx_rock123" placeholder-class="ph" value="{{wechatId}}" bindinput="onWechatInput" maxlength="30" />
+          <view class="pf-contact__switch">
+            <text class="pf-contact__state">{{showWechat ? '名片展示' : '隐藏'}}</text>
+            <switch color="#D2EF72" checked="{{showWechat}}" bindchange="onToggleShowWechat" />
           </view>
         </view>
+        <view class="form-field__note">仅在你开启展示后，微信号才会出现在名片上。</view>
       </view>
-      <view class="divider mt mb"></view>
-      <view class="inline-row">
-        <view class="inline-col">
-          <view class="inline-label">🍠 小红书号 <text class="muted">（开启后展示在名片上）</text></view>
-          <view class="contact-row">
-            <input class="input" placeholder="选填，如 xhs_123456" placeholder-class="ph" value="{{xhsId}}" bindinput="onXhsInput" maxlength="30" />
-            <view class="contact-switch">
-              <text class="contact-switch__label">{{showXhs ? '展示' : '隐藏'}}</text>
-              <switch class="switch-sm" checked="{{showXhs}}" bindchange="onToggleShowXhs" color="#8f7bff" />
-            </view>
+      <view class="pf-field">
+        <view class="field-label">小红书号</view>
+        <view class="pf-contact">
+          <input class="input pf-contact__input" placeholder="选填，如 xhs_123456" placeholder-class="ph" value="{{xhsId}}" bindinput="onXhsInput" maxlength="30" />
+          <view class="pf-contact__switch">
+            <text class="pf-contact__state">{{showXhs ? '名片展示' : '隐藏'}}</text>
+            <switch color="#D2EF72" checked="{{showXhs}}" bindchange="onToggleShowXhs" />
           </view>
         </view>
+        <view class="form-field__note">仅在你开启展示后，小红书号才会出现在名片上。</view>
       </view>
     </view>
   </view>
 
-  <button class="btn btn-primary save-btn mt" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">保存资料</button>
-  <view style="height: 40rpx;"></view>
+  <view class="action-bar">
+    <button class="btn btn-primary" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">保存资料</button>
+  </view>
 </view>

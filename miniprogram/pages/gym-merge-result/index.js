@@ -1,4 +1,3 @@
-const { get } = require("../../services/api/gym");
 const { ensureAdminPageAccess } = require("../../utils/session");
 const { safeText } = require("../../utils/format");
 
@@ -12,83 +11,48 @@ function safeJsonParse(value) {
   }
 }
 
-function buildMovedSummary(movedCounts) {
+// 只列真实返回的迁移项；缺失字段不补 0
+const MOVED_FIELDS = [
+  { key: "cycles", label: "周期" },
+  { key: "mappedCycles", label: "映射周期" },
+  { key: "checkins", label: "打卡" },
+  { key: "dailyProgress", label: "日进度" },
+  { key: "cycleProgress", label: "周期进度" },
+  { key: "hardnessRatings", label: "评分" },
+  { key: "wallCards", label: "上墙" },
+  { key: "comments", label: "评论" }
+];
+
+function buildMovedRows(movedCounts) {
   const info = movedCounts || {};
-  return [
-    `周期 ${Number(info.cycles || 0)} 个`,
-    `映射周期 ${Number(info.mappedCycles || 0)} 个`,
-    `打卡 ${Number(info.checkins || 0)} 条`,
-    `日进度 ${Number(info.dailyProgress || 0)} 条`,
-    `周期进度 ${Number(info.cycleProgress || 0)} 条`,
-    `评分 ${Number(info.hardnessRatings || 0)} 条`,
-    `上墙 ${Number(info.wallCards || 0)} 条`,
-    `评论 ${Number(info.comments || 0)} 条`
-  ].join("，");
+  return MOVED_FIELDS.filter((field) => {
+    const raw = info[field.key];
+    if (raw === undefined || raw === null || raw === "") return false;
+    return Number.isFinite(Number(raw));
+  }).map((field) => ({
+    key: field.key,
+    label: field.label,
+    value: Number(info[field.key])
+  }));
 }
 
-function buildMappingSummaryText(mappings) {
-  const list = Array.isArray(mappings) ? mappings : [];
-  if (!list.length) return "本次没有手动周期映射。";
-  return list
-    .map((item) => `${safeText(item.sourceCycleName) || "未命名源周期"} -> ${safeText(item.targetCycleName) || "未命名目标周期"}`)
-    .join("\n");
-}
-
-function formatDateTime(ts) {
-  const value = Number(ts || 0) || 0;
-  if (!value) return "";
-  const d = new Date(value);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
-}
-
-function normalizeMergeHistory(list) {
-  return (Array.isArray(list) ? list : [])
-    .filter((item) => item && item.sourceGymId)
+function normalizeMappings(mappings) {
+  return (Array.isArray(mappings) ? mappings : [])
+    .filter((item) => item && item.sourceCycleId)
     .map((item) => ({
-      sourceGymId: safeText(item.sourceGymId),
-      sourceGymName: safeText(item.sourceGymName) || "未命名岩馆",
-      mergedAtText: formatDateTime(item.mergedAt),
-      cycleMappingCount: Number(item.cycleMappingCount || 0) || 0,
-      mappedCycleCount: Number(item.mappedCycleCount || 0) || 0
+      sourceCycleId: safeText(item.sourceCycleId),
+      sourceCycleName: safeText(item.sourceCycleName) || "未命名源周期",
+      targetCycleName: safeText(item.targetCycleName) || "未命名目标周期"
     }));
-}
-
-function buildModesText(modes) {
-  const labels = {
-    boulder: "抱石",
-    difficulty: "难度",
-    lead: "先锋"
-  };
-  const out = (Array.isArray(modes) ? modes : [])
-    .map((item) => labels[safeText(item).toLowerCase()] || safeText(item))
-    .filter(Boolean);
-  return out.length ? out.join(" / ") : "未设置";
-}
-
-function getCurrentCycleText(gym) {
-  const current = gym && (gym.currentCycle || gym.cycle);
-  if (!current) return "暂无当前周期";
-  const name = safeText(current.name || current.cycle_name) || "未命名周期";
-  const start = safeText(current.startDate || current.start_date);
-  const end = safeText(current.endDate || current.end_date) || "至今";
-  return start ? `${name}（${start} ~ ${end}）` : name;
 }
 
 Page({
   data: {
     payload: null,
-    targetGym: null,
-    movedSummaryText: "",
-    mappingSummaryText: "",
-    modesText: "未设置",
-    currentCycleText: "暂无当前周期",
-    mergeHistory: [],
-    loading: false
+    movedRows: [],
+    mappings: [],
+    mappingsOpen: false,
+    canGoBack: false
   },
   async onLoad(query) {
     const user = await ensureAdminPageAccess();
@@ -101,46 +65,32 @@ Page({
       return;
     }
     if (storageKey) wx.removeStorageSync(`${STORAGE_PREFIX}${storageKey}`);
+    const pages = typeof getCurrentPages === "function" ? getCurrentPages() : [];
     this.setData({
       payload,
-      movedSummaryText: buildMovedSummary(payload && payload.movedCounts),
-      mappingSummaryText: buildMappingSummaryText(payload && payload.cycleMappings),
-      mergeHistory: normalizeMergeHistory(payload && payload.mergeHistory)
+      movedRows: buildMovedRows(payload && payload.movedCounts),
+      mappings: normalizeMappings(payload && payload.cycleMappings),
+      canGoBack: pages.length > 1
     });
-    await this.loadTargetGym();
   },
-  async loadTargetGym() {
-    const payload = this.data.payload || {};
-    const targetGymId = safeText(payload.targetGymId);
-    if (!targetGymId) return;
-    this.setData({ loading: true });
-    try {
-      const res = await get({ gymId: targetGymId });
-      const gym = (res && res.gym) || null;
-      this.setData({
-        targetGym: gym,
-        modesText: buildModesText(gym && gym.supportedModes),
-        currentCycleText: getCurrentCycleText(gym)
-      });
-    } catch (e) {
-      wx.showToast({ title: (e && e.message) || "加载目标馆失败", icon: "none" });
-    } finally {
-      this.setData({ loading: false });
-    }
+  onToggleMappings() {
+    this.setData({ mappingsOpen: !this.data.mappingsOpen });
   },
   onOpenTargetGym() {
     const payload = this.data.payload || {};
     const targetGymId = safeText(payload.targetGymId);
-    if (!targetGymId) return;
+    if (!targetGymId) {
+      wx.showToast({ title: "目标岩馆不存在", icon: "none" });
+      return;
+    }
     wx.redirectTo({ url: `/pages/gym-manage/index?gymId=${targetGymId}` });
   },
-  onBackOwner() {
-    wx.redirectTo({ url: "/pages/owner/index" });
-  },
-  onMergeAgain() {
-    const payload = this.data.payload || {};
-    const targetGymId = safeText(payload.targetGymId);
-    if (!targetGymId) return;
-    wx.redirectTo({ url: `/pages/gym-merge/index?sourceGymId=${targetGymId}` });
+  onBack() {
+    const pages = typeof getCurrentPages === "function" ? getCurrentPages() : [];
+    if (pages.length > 1) {
+      wx.navigateBack({ delta: 1 });
+    } else {
+      wx.redirectTo({ url: "/pages/owner/index" });
+    }
   }
 });

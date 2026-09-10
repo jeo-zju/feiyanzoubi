@@ -1,59 +1,58 @@
-/* circle-edit：仅页面特有布局，元素样式全部来自 app.wxss 全局 */
+/* 新建/编辑岩友圈（compact）：颜色小行 + 表单字段 + 底部唯一保存 */
+page {
+  background: #151714;
+}
 
-.page--circle-edit {
+.ce-page {
+  padding: 24rpx 32rpx calc(160rpx + env(safe-area-inset-bottom));
+}
+
+.ce-field {
+  margin-top: 28rpx;
+}
+
+.ce-field .field-label {
+  margin-bottom: 14rpx;
+}
+
+.ce-field__opt {
+  color: #969D90;
+  font-size: 24rpx;
+  font-weight: 400;
+}
+
+/* 圈标颜色小行 */
+.ce-color-row {
   display: flex;
-  flex-direction: column;
-  gap: 28rpx;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  padding: 4rpx 0;
 }
 
-/* scroll-view 作为弹层主体时，高度约束交给 scroll-view 自身滚动 */
-.page--circle-edit .sheet__bd {
-  overflow: hidden;
-  min-height: 0;
-}
-
-.form-block { flex-shrink: 0; }
-
-/* 可点击的字段标题（右侧带计数） */
-.form-block .field-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.form-kicker__n {
-  color: #c5baff;
-}
-
-/* 圈标颜色选择 */
-.color-row {
-  display: flex;
-  gap: 20rpx;
-  padding: 10rpx 4rpx 0;
-}
-.color-dot {
-  width: 64rpx;
-  height: 64rpx;
+.ce-dot {
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
   position: relative;
-  box-shadow: 0 0 0 4rpx rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 2rpx rgba(255, 255, 255, 0.05);
 }
-.color-dot--on { box-shadow: 0 0 0 4rpx rgba(143, 123, 255, 0.66); }
-.color-dot__check {
+
+.ce-dot--on {
+  box-shadow: 0 0 0 4rpx #D2EF72;
+}
+
+.ce-dot__check {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #151714;
   font-size: 28rpx;
   font-weight: 700;
-  text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.35);
 }
 
-/* 已选岩馆标签 */
-.gym-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  padding: 4rpx 4rpx 0;
+/* 弹层主体滚动 */
+.ce-page .sheet__bd {
+  max-height: 56vh;
 }

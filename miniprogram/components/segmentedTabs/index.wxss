@@ -25,3 +25,48 @@
   background: #8f7bff;
   color: #0b0d15;
 }
+
+/* ---------- v2 岩场邀请函主题：弱绿底选中，不与主按钮抢实心 ---------- */
+.seg--v2 {
+  gap: 8rpx;
+  padding: 8rpx;
+  border-radius: 18rpx;
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+}
+
+.seg--v2 .seg-item {
+  height: 72rpx;
+  border-radius: 14rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #969D90;
+}
+
+.seg--v2 .seg-item--active {
+  background: rgba(210, 239, 114, 0.16);
+  color: #D2EF72;
+  font-weight: 700;
+}
+
+/* v2 紧凑变体（首页日期快捷行）：底色贴近页面、无外框，单项等宽，整体约 80rpx */
+.seg--v2.seg--compact {
+  gap: 8rpx;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.seg--v2.seg--compact .seg-item {
+  height: 80rpx;
+  border-radius: 14rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #969D90;
+}
+
+.seg--v2.seg--compact .seg-item--active {
+  background: rgba(210, 239, 114, 0.16);
+  color: #D2EF72;
+  font-weight: 600;
+}

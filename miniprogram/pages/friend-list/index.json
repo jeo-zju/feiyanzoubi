@@ -2,5 +2,7 @@
   "navigationBarTitleText": "岩友",
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index"
-  }
+  },
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

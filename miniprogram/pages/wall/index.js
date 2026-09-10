@@ -63,6 +63,15 @@ Page({
       wx.showToast({ title: "加载失败", icon: "none" });
     }
   },
+  // 点击缩略进完整名片（card-view）；无 cardId 的历史脏数据不跳
+  onViewCard(e) {
+    const cardId = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id);
+    if (!cardId) {
+      wx.showToast({ title: "名片信息缺失", icon: "none" });
+      return;
+    }
+    wx.navigateTo({ url: `/pages/card-view/index?cardId=${cardId}` });
+  },
   async onHang() {
     try {
       const mine = await cardApi.listMy({ full: true });

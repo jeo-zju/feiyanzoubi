@@ -37,8 +37,16 @@ Page({
     rows: [],
     revertAvailable: false,
     revertTs: 0,
-    revertJustNow: false
+    revertJustNow: false,
+    submitting: false,
+    // 无馆进入时的选馆弹层
+    gymSheetVisible: false,
+    gymOptions: [],
+    gymKeyword: "",
+    gymPager: { page: 0, hasMore: false, loading: false }
   },
+
+  noop() {},
 
   onUnload() {
     if (this._revertTimer) {
@@ -47,7 +55,11 @@ Page({
     }
   },
   async onLoad(query) {
-    const gymId = query && query.gymId ? String(query.gymId) : "";
+    let gymId = query && query.gymId ? String(query.gymId) : "";
+    // 无参进入（攀爬记录页入口）：沿用上次记录的馆，仍无则进入选馆态，未选不可提交
+    if (!gymId) {
+      try { gymId = String(wx.getStorageSync("lastGymId") || ""); } catch (e) {}
+    }
     let mode = "difficulty";
     try {
       const byGym = gymId ? wx.getStorageSync(`checkin_mode_${gymId}`) : "";
@@ -220,9 +232,103 @@ Page({
     this.syncBeforeUnload();
     this.buildRows();
   },
-  async goHome() {
+  // ---- 岩馆选择（视图层选馆适配：无馆进入/更换岩馆共用一个弹层） ----
+  getMyCity() {
+    try {
+      const app = getApp();
+      const me = app && app.globalData && app.globalData.me;
+      return safeText(me && me.city);
+    } catch (e) {
+      return "";
+    }
+  },
+  openGymSheet() {
+    this.setData({ gymSheetVisible: true });
+    this.refreshGymOptions(true);
+  },
+  closeGymSheet() {
+    if (this._gymKeywordTimer) {
+      clearTimeout(this._gymKeywordTimer);
+      this._gymKeywordTimer = null;
+    }
+    this.setData({ gymSheetVisible: false });
+  },
+  onGymKeywordInput(e) {
+    const keyword = safeText(e && e.detail && e.detail.value);
+    this.setData({ gymKeyword: keyword, gymOptions: [], "gymPager.loading": true });
+    if (this._gymKeywordTimer) clearTimeout(this._gymKeywordTimer);
+    const self = this;
+    this._gymKeywordTimer = setTimeout(() => {
+      self._gymKeywordTimer = null;
+      self.refreshGymOptions(true);
+    }, 300);
+  },
+  onGymScrollLower() {
+    this.onGymLoadMore();
+  },
+  async onGymLoadMore() {
+    const st = this.data.gymPager || {};
+    if (st.loading || !st.hasMore) return;
+    await this.refreshGymOptions(false);
+  },
+  async refreshGymOptions(reset) {
+    const st = this.data.gymPager || { page: 0, hasMore: false, loading: false };
+    if (!reset && (st.loading || !st.hasMore)) return;
+    const page = reset ? 1 : Math.max(1, Number(st.page || 0) + 1);
+    this._gymToken = (this._gymToken || 0) + 1;
+    const token = this._gymToken;
+    this.setData({ "gymPager.loading": true });
+    try {
+      const r = await gymApi.list(
+        { city: this.getMyCity(), keyword: safeText(this.data.gymKeyword), page, pageSize: 20 },
+        { loading: false }
+      );
+      if (token !== this._gymToken) return;
+      const options = ((r && r.gyms) || []).map((g) => ({
+        _id: String(g._id || ""),
+        name: safeText(g.name),
+        city: safeText(g.city),
+        address: safeText(g.address)
+      })).filter((g) => g._id && g.name);
+      this.setData({
+        gymOptions: reset ? options : (this.data.gymOptions || []).concat(options),
+        "gymPager.page": page,
+        "gymPager.hasMore": !!(r && r.hasNext),
+        "gymPager.loading": false
+      });
+    } catch (e) {
+      if (token !== this._gymToken) return;
+      this.setData({ "gymPager.loading": false });
+    }
+  },
+  async onPickGym(e) {
+    const gymId = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id);
+    if (!gymId || gymId === this.data.gymId) {
+      this.setData({ gymSheetVisible: false });
+      return;
+    }
+    this.setData({ gymSheetVisible: false });
+    // 换馆与离开同理：有未保存数量先确认
     await this.confirmUnsavedAndRun(async () => {
-      wx.switchTab({ url: "/pages/home/index" });
+      try { wx.setStorageSync("lastGymId", gymId); } catch (err) {}
+      this.setData({
+        gymId,
+        gym: {},
+        cycle: null,
+        cycleLabel: "",
+        totals: {},
+        limits: {},
+        deltas: {},
+        rows: [],
+        date: today(),
+        dateStart: "",
+        dateEnd: today(),
+        revertAvailable: false,
+        revertJustNow: false
+      });
+      this.syncBeforeUnload();
+      await this.loadContext();
+      this.buildRows();
     });
   },
   async goWall() {
@@ -320,7 +426,7 @@ Page({
         title: "撤销本次打卡？",
         content: "会删除对应的打卡记录并回滚进度数据",
         confirmText: "撤销",
-        confirmColor: "#C65A5A",
+        confirmColor: "#F1A19A",
         success(r) { resolve(!!(r && r.confirm)); },
         fail() { resolve(false); }
       });

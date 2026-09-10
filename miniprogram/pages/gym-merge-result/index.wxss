@@ -1,34 +1,128 @@
-/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
-
-.page--result {
-  padding-bottom: 240rpx;
+/* 合并结果（compact）：源馆 → 目标馆 → 迁移摘要，自然滚动 */
+page {
+  background: #151714;
 }
 
-.pre-line {
-  white-space: pre-line;
+.mr-page {
+  padding: 24rpx 32rpx 200rpx;
 }
 
-.detail-value {
+.mr-card {
+  margin-top: 20rpx;
+  padding: 28rpx 24rpx 32rpx;
+}
+.mr-card:first-child {
+  margin-top: 0;
+}
+
+.mr-status {
+  margin-bottom: 20rpx;
+}
+
+/* 源 → 目标 纵向不截断 */
+.mr-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 16rpx;
+}
+.mr-flow__side {
   flex: 1;
   min-width: 0;
-  text-align: right;
+}
+.mr-flow__name {
+  margin-top: 10rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.45;
+  word-break: break-all;
+}
+.mr-flow__arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  font-size: 32rpx;
+  color: #969D90;
+}
+
+/* 摘要行 */
+.mr-sec-t {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  margin-bottom: 12rpx;
+}
+.mr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 16rpx 0;
+  border-top: 1rpx solid #383E34;
+}
+.mr-row:first-child {
+  border-top: none;
+}
+.mr-row__k {
+  font-size: 28rpx;
+  color: #969D90;
+}
+.mr-row__v {
+  font-size: 28rpx;
+  color: #F3F1E7;
   font-weight: 600;
 }
 
-.history-item {
-  padding: 12rpx 0;
+/* 折叠 */
+.mr-collapse__hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64rpx;
+}
+.mr-collapse__hd:active {
+  opacity: 0.8;
+}
+.mr-collapse__t {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+}
+.mr-collapse__arrow {
+  font-size: 28rpx;
+  color: #969D90;
+  transition: transform 0.15s ease;
+}
+.mr-collapse__arrow.is-open {
+  transform: rotate(180deg);
+}
+.mr-collapse__bd {
+  margin-top: 8rpx;
+}
+.mr-map {
+  padding: 16rpx 18rpx;
+  margin-top: 12rpx;
+  border-radius: 14rpx;
+  background: #20241F;
+  border: 1rpx solid #383E34;
+}
+.mr-map:first-child {
+  margin-top: 0;
+}
+.mr-map__name {
+  font-size: 28rpx;
+  color: #F3F1E7;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.mr-map__to {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #B9BDB0;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
-.history-item:first-child {
-  padding-top: 0;
-}
-
-.history-item + .history-item {
-  margin-top: 14rpx;
-  padding-top: 14rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-
-.history-name {
-  font-weight: 700;
+.mr-back {
+  margin-top: 16rpx;
 }

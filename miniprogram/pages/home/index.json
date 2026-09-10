@@ -1,5 +1,9 @@
 {
   "navigationBarTitleText": "找搭子",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#151714",
+  "backgroundTextStyle": "light",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index"

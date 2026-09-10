@@ -1,1 +1,56 @@
-/* 我的约爬页：social-* 系列样式已全部移入 app.wxss 全局，本页无特有样式 */
+/* 我的约爬（compact）：复用首页 plan-card，底部行换成「我的状态 + 名额」 */
+page {
+  background: #151714;
+}
+
+.cm-page {
+  padding: 20rpx 32rpx 48rpx;
+}
+
+.cm-tabs {
+  margin-bottom: 20rpx;
+}
+
+.cm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+/* 状态占位：取代首页发起人行，左侧弹性留给状态，不重复本人头像 */
+.cm-foot {
+  justify-content: space-between;
+}
+
+.cm-status {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #969D90;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-status--joined,
+.cm-status--host {
+  color: #B0D9A6;
+}
+
+.cm-status--pending {
+  color: #E8C58C;
+}
+
+.cm-status--cancelled {
+  color: #F1A19A;
+}
+
+.cm-status--ended {
+  color: #969D90;
+}
+
+/* 第一条已确认：轻微强调（左边框一点亮色，不另造面板） */
+.plan-card.is-next {
+  border-color: rgba(210, 239, 114, 0.45);
+}

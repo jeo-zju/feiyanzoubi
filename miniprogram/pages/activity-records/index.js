@@ -83,7 +83,8 @@ Page({
     activityTotal: 0,
     activityPage: 1,
     activityPageSize: ACTIVITY_PAGE_SIZE,
-    activityPageCount: 1
+    activityPageCount: 1,
+    moreStatsVisible: false
   },
 
   async onLoad() {
@@ -213,12 +214,15 @@ Page({
         delta: (r && r.delta) ? Number(r.delta || 0) : 0,
         modeText: (r && r.mode === "boulder") ? "抱石" : (r && r.mode === "lead" ? "先锋" : (r && r.mode === "toprope" ? "顶绳" : "攀岩"))
       }));
+      const routeCount30d = (Array.isArray(res.chartPoints) ? res.chartPoints : [])
+        .reduce((sum, v) => sum + (Number(v) || 0), 0);
       this.setData({
         stats: {
           ...this.data.stats,
           recent: this._checkins.slice(),
           loading: false
-        }
+        },
+        routeCount30d
       });
       _rebuildActivityList(this);
     } catch (e) {
@@ -266,5 +270,19 @@ Page({
   onActivityNext() {
     if (this.data.activityPage >= this.data.activityPageCount) return;
     this._showActivityPage(this.data.activityPage + 1);
+  },
+
+  noop() {},
+
+  openMoreStats() {
+    this.setData({ moreStatsVisible: true });
+  },
+
+  closeMoreStats() {
+    this.setData({ moreStatsVisible: false });
+  },
+
+  goCheckin() {
+    wx.navigateTo({ url: "/pages/checkin/index" });
   }
 });

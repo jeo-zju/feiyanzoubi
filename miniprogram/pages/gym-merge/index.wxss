@@ -1,25 +1,138 @@
-/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
+/* 合并岩馆（compact）：源馆 → 目标馆 → 预览 → 周期映射，页面自然滚动 */
+page {
+  background: #151714;
+}
 
-.page--merge {
+.mg-page {
+  padding: 24rpx 32rpx 48rpx;
+}
+.mg-page--bar {
   padding-bottom: 200rpx;
 }
 
-.mapping-source {
-  font-weight: 700;
+.mg-card {
+  margin-top: 20rpx;
+  padding: 28rpx 24rpx 32rpx;
+}
+.mg-card:first-child {
+  margin-top: 0;
 }
 
-.pre-line {
-  white-space: pre-line;
+/* 岩馆名称允许换行，长前缀不被截断 */
+.mg-gymname {
+  margin-top: 12rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.45;
+  word-break: break-all;
 }
-
-.warning-box {
-  margin-top: 16rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 16rpx;
-  background: rgba(242, 193, 78, 0.1);
-  border: 1rpx solid rgba(242, 193, 78, 0.24);
-}
-
-.warning-box .hint + .hint {
+.mg-sub {
   margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.mg-select {
+  margin-top: 12rpx;
+}
+.mg-submit {
+  margin-top: 24rpx;
+}
+
+/* 摘要行 */
+.mg-sec-t {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  margin-bottom: 16rpx;
+}
+.mg-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 14rpx 0;
+  border-top: 1rpx solid #383E34;
+}
+.mg-row:first-of-type {
+  border-top: none;
+}
+.mg-row__k {
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #969D90;
+}
+.mg-row__v {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  font-size: 28rpx;
+  color: #B9BDB0;
+  line-height: 1.5;
+  text-align: right;
+}
+.mg-conflict-tag {
+  color: #E8C58C;
+  border-color: rgba(232, 197, 140, 0.4);
+}
+
+/* 警告说明 */
+.mg-warn {
+  margin-top: 12rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 14rpx;
+  background: rgba(232, 197, 140, 0.1);
+  border: 1rpx solid rgba(232, 197, 140, 0.24);
+}
+.mg-warn__item {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.55;
+  color: #E8C58C;
+}
+.mg-warn__item + .mg-warn__item {
+  margin-top: 8rpx;
+}
+
+/* 周期映射逐项 */
+.mg-map {
+  margin-top: 16rpx;
+  padding: 18rpx;
+  border-radius: 14rpx;
+  background: #20241F;
+  border: 1rpx solid #383E34;
+}
+.mg-map__src {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.mg-map__cur {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #B0D9A6;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.mg-map__cur.is-pending {
+  color: #E8C58C;
+}
+.mg-map__select {
+  margin-top: 12rpx;
+}
+.mg-map-summary {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.6;
+  white-space: pre-line;
 }

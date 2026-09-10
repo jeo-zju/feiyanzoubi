@@ -1,17 +1,27 @@
-<view class="page social-page">
-  <view class="social-row">
-    <view class="social-title">约爬通知</view>
-    <button class="btn-text" bindtap="markRead">全部已读</button>
+<view class="page ui-v2 notice-page">
+  <!-- 唯一工具操作：存在未读时才可用 -->
+  <view wx:if="{{hasUnread && !error}}" class="notice-top">
+    <text class="notice-top__read" bindtap="markRead">全部已读</text>
   </view>
-  <view class="social-sub">报名结果、取消及活动变更会保存在这里。</view>
-  <view wx:for="{{list}}" wx:key="_id" class="social-panel" data-id="{{item.planId}}" bindtap="open">
-    <view class="social-row"><text class="social-name">{{item.title}}</text><text wx:if="{{item.unread}}" class="tag tag-warn">未读</text></view>
-    <view class="social-small">{{item.gymName}} · 查看约爬 ›</view>
+
+  <view wx:for="{{list}}" wx:key="_id" class="notice-row" data-id="{{item.planId}}" bindtap="open">
+    <view class="notice-row__dot-slot">
+      <view wx:if="{{item.unread}}" class="notice-row__dot"></view>
+    </view>
+    <view class="notice-row__main">
+      <view class="notice-row__title">{{item.title}}</view>
+      <view class="notice-row__sub">{{item.gymName}}<text wx:if="{{item.timeText}}"> · {{item.timeText}}</text></view>
+    </view>
+    <text class="notice-row__arrow">›</text>
   </view>
-  <view wx:if="{{loading}}" class="empty-state">加载中…</view>
+
+  <view wx:if="{{loading && !list.length}}" class="list-status">加载中…</view>
   <view wx:elif="{{error}}" class="empty-state">
     <view class="empty-state__desc">{{error}}</view>
     <button class="btn btn-ghost" bindtap="retry">重试</button>
   </view>
-  <view wx:elif="{{!list.length}}" class="empty-state">暂时没有新通知</view>
+  <view wx:elif="{{!list.length && !loading}}" class="empty-state notice-empty">暂时没有通知</view>
+
+  <view wx:if="{{loading && list.length}}" class="list-status">正在加载…</view>
+  <view wx:elif="{{list.length && !hasMore}}" class="list-status">没有更多了</view>
 </view>

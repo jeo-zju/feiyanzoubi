@@ -1,52 +1,133 @@
-/* 页面特有布局；元素样式统一由全局 app.wxss 提供 */
-
-.page--mine {
-  min-height: 100vh;
-  max-height: 100vh;
-  height: 100vh;
-  overflow: hidden;
-  padding-bottom: 36rpx;
-  box-sizing: border-box;
+/* 攀爬记录（compact）：两项核心统计 → 日志 → 唯一记录入口 */
+page {
+  background: #151714;
 }
 
-.t-center {
+.ar-page {
+  padding: 24rpx 32rpx calc(160rpx + env(safe-area-inset-bottom));
+}
+
+/* 核心统计两项 */
+.ar-stats {
+  display: flex;
+  gap: 20rpx;
+}
+
+.ar-stat {
+  flex: 1;
+  min-width: 0;
+  background: #20241F;
+  border: 1rpx solid #383E34;
+  border-radius: 20rpx;
+  padding: 28rpx 24rpx;
   text-align: center;
 }
 
-/* 活动记录行 */
-.rec {
-  gap: 16rpx;
+.ar-stat__n {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #F3F1E7;
+  line-height: 1.2;
 }
 
-.rec-left {
+.ar-stat__l {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #969D90;
+}
+
+.ar-more {
+  margin: 18rpx 4rpx 4rpx;
+  text-align: right;
+  font-size: 26rpx;
+  color: #D2EF72;
+}
+
+/* 日志 */
+.ar-log {
+  margin-top: 20rpx;
+  padding: 8rpx 24rpx 20rpx;
+}
+
+.ar-log__hd {
+  padding: 20rpx 4rpx 8rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+}
+
+.ar-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 22rpx 4rpx;
+  border-top: 1rpx solid #383E34;
+}
+
+.ar-row__left {
   flex: 1;
   min-width: 0;
 }
 
-.rec-title {
+.ar-row__title {
   display: flex;
   align-items: center;
-  gap: 10rpx;
-  font-weight: 700;
+  gap: 12rpx;
   min-width: 0;
 }
 
-.rec-gym {
+.ar-badge {
+  flex-shrink: 0;
+}
+
+.ar-row__gym {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rec-sub {
-  margin-top: 6rpx;
+.ar-row__sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.rec-right {
-  font-weight: 700;
+.ar-row__right {
   flex-shrink: 0;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #B9BDB0;
 }
 
-/* 已取消标签：在全局 .tag--off 基础上追加删除线 */
-.tag--cancel {
+/* 状态标签配色（原 tag-warn/tag--off/tag--cancel 的 v2 对应） */
+.ar-badge--checkin {
+  color: #E8C58C;
+  background: rgba(232, 197, 140, 0.12);
+  border-color: rgba(232, 197, 140, 0.3);
+}
+
+.ar-badge--plan-done,
+.ar-badge--joined {
+  color: #B9BDB0;
+  background: rgba(185, 189, 176, 0.1);
+  border-color: rgba(185, 189, 176, 0.26);
+}
+
+.ar-badge--plan-ongoing {
+  color: #B0D9A6;
+  background: rgba(176, 217, 166, 0.1);
+  border-color: rgba(176, 217, 166, 0.3);
+}
+
+.ar-badge--plan-cancel {
+  color: #F1A19A;
+  background: rgba(241, 161, 154, 0.1);
+  border-color: rgba(241, 161, 154, 0.3);
   text-decoration: line-through;
 }

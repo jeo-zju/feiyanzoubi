@@ -24,8 +24,11 @@ Page({
     if (!id) return;
     wx.navigateTo({ url: `/pages/card-view/index?cardId=${id}` });
   },
-  async onCreateLink(e) {
+  async onCreateLink() {
+    // 失败不清空草稿；防重复点击，消耗/幂等仍以服务端既有逻辑为准
+    if (this.data.creating) return;
     if (!this.data.draftCardId) return wx.showToast({ title: "先做草稿", icon: "none" });
+    this.setData({ creating: true });
     try {
       const res = await giftApi.createLink({ cardId: this.data.draftCardId });
       const giftId = safeText(res && res.giftId);
@@ -39,6 +42,8 @@ Page({
       this.setData({ qrFileId });
     } catch (e2) {
       wx.showToast({ title: e2 && e2.message ? e2.message : "生成失败", icon: "none" });
+    } finally {
+      this.setData({ creating: false });
     }
   },
   onCopyGiftId() {

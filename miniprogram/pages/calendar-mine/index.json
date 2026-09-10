@@ -3,5 +3,7 @@
   "enablePullDownRefresh": true,
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index"
-  }
+  },
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

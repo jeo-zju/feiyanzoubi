@@ -1023,3 +1023,6 @@ button {
 button::after {
   border: none;
 }
+
+/* ---------- 用户端 v2「岩场邀请函」主题（规则均以 .ui-v2 限定，不影响后台页） ---------- */
+@import "/styles/user-theme.wxss";

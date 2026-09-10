@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { ownerOf, canViewPlan, endAt } = require("./access");
+const schedule = require("./schedule");
 const idFor = (planId, openid) => "j_" + crypto.createHash("sha256").update(planId + "|" + openid).digest("hex").slice(0, 32);
 const confirmed = row => row && ["joined", "confirmed"].includes(row.status);
 function joinTime(row) {
@@ -28,15 +29,23 @@ function legacyParticipants(joins) {
   });
   return [...latest].filter(([,item])=>confirmed(item.join)||item.join.status === "pending").map(([uid])=>uid);
 }
-function cancellationAudience(plan, joins, extras) {
-  const audience = new Set();
-  const add = value => { if (typeof value === "string" && value) audience.add(value); };
+// 参与者索引（与通知受众分开维护）：发起人始终在内，其余为最新状态
+// pending/confirmed(joined) 的有效成员；cancelled/removed/rejected 不在内。
+// 只有 schema v2 且 participantIds 为数组时才信任事务内索引；
+// 旧计划（缺字段/非 v2）按每条报名的最新状态推导。
+function memberIndex(plan, joins) {
+  const ids = new Set();
+  const add = value => { if (typeof value === "string" && value) ids.add(value); };
   add(ownerOf(plan));
-  // Only schema v2 plus an array is a trustworthy, transactionally current member index.
-  // Plans with an absent/ambiguous index use the latest legacy join state per identity.
-  const indexed=plan && Number(plan.joinSchemaVersion) === 2 && Array.isArray(plan.participantIds);
+  const indexed = plan && Number(plan.joinSchemaVersion) === 2 && Array.isArray(plan.participantIds);
   (indexed ? plan.participantIds : legacyParticipants(joins)).forEach(add);
-  (Array.isArray(extras) ? extras : []).forEach(add);
+  return [...ids];
+}
+function cancellationAudience(plan, joins, extras) {
+  const audience = new Set(memberIndex(plan, joins));
+  (Array.isArray(extras) ? extras : []).forEach(value => {
+    if (typeof value === "string" && value) audience.add(value);
+  });
   return [...audience];
 }
 const error = (code, message) => Object.assign(new Error(message), { code });
@@ -87,6 +96,7 @@ function summary(plan, count) {
   return {
     _id:plan._id, title:plan.title || "一起爬，认识新岩友", gymId:plan.gymId || "",
     gymSnapshot:plan.gymSnapshot || {}, date:plan.date, startTime:plan.startTime, endTime:plan.endTime,
+    timeSlots:Array.isArray(plan.timeSlots) ? plan.timeSlots : [],
     startAt:Number(plan.startAt) || Date.parse(`${plan.date}T${plan.startTime}:00+08:00`), endAt:endAt(plan),
     status:plan.status || "active", visibility:plan.visibility, note:plan.note || "",
     skillTags:plan.skillTags || [], atmosphereTags:plan.atmosphereTags || [],
@@ -134,6 +144,8 @@ async function manage({db,cloud,openid,event}) {
     };
   }
   if (!openid) throw error("AUTH_REQUIRED", "请登录后操作");
+  // 回填维护窗口期冻结所有报名/审批/退出类写入（旧客户端同样受约束）；只读 detail/get_joiners 已提前返回
+  await schedule.assertWritesEnabled(db);
   if (["cancel","remove_joiner","approve_joiner","reject_joiner"].includes(action) && !isOwner) throw error("FORBIDDEN", "仅发起人可操作");
   const target=["remove_joiner","approve_joiner","reject_joiner"].includes(action) ? String(event.targetOpenid || "") : openid;
   if (action !== "cancel" && (!target || target === owner)) throw error("BAD_REQUEST", "不能对发起人执行此操作");
@@ -144,11 +156,14 @@ async function manage({db,cloud,openid,event}) {
   if(action === "join_plan" && !user.nickName && user.displayName === "岩友") throw error("PROFILE_REQUIRED", "先填写昵称，让岩友认识你");
   const candidate=byUser.get(target);
   const joinId=candidate ? candidate._id : idFor(planId,target);
-  return db.runTransaction(async tx => {
+  // 事务冲突时整段重读重判（有限重试）；耗尽重试返回失败，绝不按成功处理。
+  const txResult=await schedule.withRetries(()=>db.runTransaction(async tx => {
     const planRef=tx.collection("RockCalendarPlans").doc(planId);
     const current=await optionalDoc(planRef);
     if(!current) throw error("NOT_FOUND","约爬不存在");
     if(current.visibility !== plan.visibility || JSON.stringify(current.circleIds) !== JSON.stringify(plan.circleIds)) throw error("PLAN_CHANGED","约爬已更新，请刷新后重试");
+    // 当前局时间区间（新数据按 timeSlots 派生；旧数据按真实起止钟点）——日程占用的唯一依据
+    const schedCandidate=schedule.candidateFromPlan(current);
     const currentCount=current.joinSchemaVersion === 2 ? current.confirmedCount : count;
     const joinRef=tx.collection("RockCalendarJoins").doc(joinId);
     const previous=await optionalDoc(joinRef);
@@ -165,13 +180,26 @@ async function manage({db,cloud,openid,event}) {
       if(current.status !== "active" || endAt(current) <= Date.now()) throw error("PLAN_ENDED","约爬已结束或取消");
       if(["join_plan","approve_joiner"].includes(action) && (Number(current.joinDeadline) || endAt(current)) <= Date.now()) throw error("JOIN_CLOSED","报名已截止");
       if(action === "join_plan") {
-        if(previous && (confirmed(previous) || status === "pending")) return {planId,joined:confirmed(previous),status:confirmed(previous)?"confirmed":status,joinId};
+        if(previous && (confirmed(previous) || status === "pending")) {
+          // 幂等重放：补齐可能缺失的日程占用，不做冲突检查，不产生第二条占用
+          const repair=await schedule.ensureOccupancy(tx,{openid:target,planId,status:confirmed(previous)?"confirmed":"pending",candidate:schedCandidate,now:Date.now()});
+          await schedule.commitDayWrites(repair);
+          return {planId,joined:confirmed(previous),status:confirmed(previous)?"confirmed":status,joinId};
+        }
         if(status === "removed") throw error("REMOVED","发起人已移除本次报名");
+        // 统一合同：满员即暂停新申请，直接报名与审批报名一致。已提交的待确认申请
+        // 保留不占位；有人退出释放名额后发起人再确认（approve 仍走下面的容量校验）。
+        if(current.capacity && currentCount >= Number(current.capacity)) throw error("PLAN_FULL","名额已满，看看其他约爬吧");
         status=current.joinMode === "approval" ? "pending" : "confirmed";
         if(status === "confirmed") nextCount++;
         notice=status === "pending" ? "有新的约爬申请等待确认" : "有新岩友加入了约爬";
       } else if(action === "approve_joiner") {
-        if(confirmed(previous)) return {planId,status:"confirmed"};
+        if(confirmed(previous)) {
+          // 幂等重放：占用升级为 confirmed，不做冲突检查，不产生第二条占用
+          const repair=await schedule.ensureOccupancy(tx,{openid:target,planId,status:"confirmed",candidate:schedCandidate,now:Date.now()});
+          await schedule.commitDayWrites(repair);
+          return {planId,status:"confirmed"};
+        }
         if(!previous || status !== "pending") throw error("INVALID_STATE","该申请已处理或取消");
         status="confirmed"; nextCount++; notice="你的约爬申请已通过";
       } else if(action === "reject_joiner") {
@@ -185,6 +213,21 @@ async function manage({db,cloud,openid,event}) {
       }
       if(current.capacity && nextCount > current.capacity) throw error("PLAN_FULL","名额已满，看看其他约爬吧");
     }
+    // 日程占用变更（与报名行、计划计数同一事务提交）：
+    // - join direct→confirmed / approval→pending：预留所选段（pending 预留时段但不占名额）
+    // - approve pending→confirmed：实时校验目标岩友此时段无其他有效安排（错误不泄露对方冲突局详情）
+    // - unjoin/reject/remove：只释放目标人在本局日期的占用；cancel 不逐人释放，以计划 cancelled 状态为权威
+    let schedDayInfos=null;
+    if(action !== "cancel") {
+      if((action==="join_plan"||action==="approve_joiner") && (status==="confirmed"||status==="pending")) {
+        schedDayInfos=await schedule.occupy(tx,{
+          openid:target, planId, status, candidate:schedCandidate, excludePlanId:planId, now:Date.now(),
+          conflictOptions: action==="approve_joiner" ? {message:"该岩友此时段已有安排"} : {includePlanId:true}
+        });
+      } else if(["unjoin_plan","reject_joiner","remove_joiner"].includes(action)) {
+        schedDayInfos=await schedule.release(tx,{openid:target,planId,dates:Object.keys(schedCandidate.byDate),now:Date.now()});
+      }
+    }
     const now=Date.now(), version=Number(current.version || 0)+1;
     if(action !== "cancel") {
       const data={ planId,openid:target,_openid:target,planOwnerOpenid:owner,date:current.date,status,updatedAt:now,updated_at:db.serverDate() };
@@ -196,10 +239,17 @@ async function manage({db,cloud,openid,event}) {
       if(status==="confirmed" || status==="pending") members.add(target); else members.delete(target);
     }
     await planRef.update({data:{ status:action === "cancel" ? "cancelled" : current.status,confirmedCount:Math.max(1,nextCount),isFull:!!current.capacity && nextCount>=current.capacity,participantIds:[...members],joinSchemaVersion:2,version,updatedAt:now }});
+    if(schedDayInfos) await schedule.commitDayWrites(schedDayInfos);
     // One durable event per state transition. Notification UI queries audience, without an external push dependency.
     const audience=action === "cancel" ? [...members] : [isOwner ? target : owner];
     if(audience.length) await tx.collection("RockPlanEvents").doc(`${planId}_${version}`).set({data:{planId,audience:[...new Set(audience)],actor:openid,title:notice,createdAt:now,gymName:(current.gymSnapshot||{}).name || "攀岩馆"}});
     return {planId,joined:status === "confirmed",status,joinId,removed:status === "removed",cancelled:action === "cancel"};
-  });
+  }));
+  if(action==="cancel" && txResult && txResult.cancelled){
+    // 取消以计划 cancelled 状态为准入权威（其他用户报名时事务内实时核验）；
+    // 这里仅做事后尽力清理，减少 RockUserScheduleDays 死占用，不决定准入。
+    try{ await schedule.cleanupPlanOccupancy(db, plan, cancellationAudience(plan,joins), Date.now()); }catch(e){}
+  }
+  return txResult;
 }
-module.exports={supported,manage,summary,rows,profile,avatars,blocked,confirmed,cancellationAudience,optionalDoc};
+module.exports={supported,manage,summary,rows,profile,avatars,blocked,confirmed,memberIndex,cancellationAudience,optionalDoc};

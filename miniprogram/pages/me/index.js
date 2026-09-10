@@ -75,7 +75,7 @@ Page({
     defaultAvatar: DEFAULT_AVATAR,
     canSeeToolbox: false,
     drawerOpen: false,
-    version: "2.0.24",
+    version: "2.0.25",
 
     credit: { remaining: 0, limit: 10 },
     creditPercent: 0,
@@ -97,6 +97,74 @@ Page({
     try {
       wx.showShareMenu({ withShareTicket: true, menus: ["shareAppMessage", "shareTimeline"] });
     } catch (e) {}
+  },
+
+  // tabBar 页首次切入时 onShow 可能早于画布首次布局完成，onReady 作为导出前置门控之一
+  onReady() {
+    this._pageReady = true;
+  },
+
+  _ensurePageReady() {
+    if (this._pageReady) return Promise.resolve();
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const tick = () => {
+        if (this._pageReady || Date.now() - start > 3000) return resolve();
+        setTimeout(tick, 30);
+      };
+      tick();
+    });
+  },
+
+  // 等离屏画布完成布局（有非零尺寸）；「canvas is empty」常见原因就是导出早于节点注册
+  _waitCanvasLayout() {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const query = () => {
+        try {
+          wx.createSelectorQuery()
+            .in(this)
+            .select(".offscreen-canvas__inner")
+            .boundingClientRect((rect) => {
+              if (rect && rect.width > 0 && rect.height > 0) return resolve(true);
+              if (Date.now() - start > 3000) return resolve(false);
+              setTimeout(query, 50);
+            })
+            .exec();
+        } catch (e) {
+          resolve(false);
+        }
+      };
+      query();
+    });
+  },
+
+  async _waitCanvasReady() {
+    await this._ensurePageReady();
+    const ready = await this._waitCanvasLayout();
+    if (!ready) console.warn("[me] 离屏画布 3s 内未就绪，仍尝试导出一次");
+    return ready;
+  },
+
+  _canvasToTempFile(W, H) {
+    return new Promise((resolve) => {
+      try {
+        wx.canvasToTempFilePath({
+          canvasId: "myCardPreviewCanvas",
+          width: W,
+          height: H,
+          destWidth: W,
+          destHeight: H,
+          fileType: "png",
+          quality: 1,
+          success: (r) => resolve(r && r.tempFilePath ? r.tempFilePath : ""),
+          fail: (err) => { console.warn("[me] canvasToTempFilePath fail", err && err.errMsg); resolve(""); }
+        }, this);
+      } catch (e) {
+        console.warn("[me] canvasToTempFilePath throw", e && e.message);
+        resolve("");
+      }
+    });
   },
 
   onShareAppMessage() {
@@ -184,8 +252,9 @@ Page({
       } catch (_) {}
     }
     const rpx2px = (rpx) => (rpx * winW) / 750;
-    const pagePad = rpx2px(24 * 2);
-    const cardBdPad = rpx2px(22 * 2);
+    // v2 版式：页面左右各 32rpx，名片卡内边距各 20rpx
+    const pagePad = rpx2px(32 * 2);
+    const cardBdPad = rpx2px(20 * 2);
     const w = Math.floor(Math.max(240, winW - pagePad - cardBdPad));
     const h = Math.floor(w / CARD_RATIO);
     if (w !== this.data.myCardCssW || h !== this.data.myCardCssH) {
@@ -201,6 +270,15 @@ Page({
   goRecords(){wx.navigateTo({url:"/pages/activity-records/index"});},
   goNotifications(){wx.navigateTo({url:"/pages/notifications/index"});},
   goProfileEdit() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/profile-edit/index" }); } catch (_) {} },
+  // 二轮：名片入口条——有名片进完整预览（查看/分享/保存都在 card-view），无名片进资料页创建
+  goCardView() {
+    const card = this.data.myPrimaryCard;
+    if (card && card.cardId) {
+      try { wx.navigateTo({ url: "/pages/card-view/index?cardId=" + encodeURIComponent(card.cardId) }); } catch (_) {}
+    } else {
+      this.goProfileEdit();
+    }
+  },
   goOwner() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/owner/index" }); } catch (_) {} },
   goBackstage() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/backstage/index" }); } catch (_) {} },
   goDebugLogs() { this.setData({ drawerOpen: false }); try { wx.navigateTo({ url: "/pages/debug-logs/index" }); } catch (_) {} },
@@ -365,7 +443,6 @@ Page({
     } catch (_) {}
 
     const primary = this.data.myPrimaryCard || {};
-    const ctx = wx.createCanvasContext("myCardPreviewCanvas", this);
     const W = CARD_PX_W;
     const H = CARD_PX_H;
     const avatarSrc =
@@ -386,7 +463,7 @@ Page({
     const me = this.data.me || {};
     const user = this.data.user || {};
     const gymsLabel = me.city ? me.city : "浪迹天涯";
-    drawFrontCard(ctx, {
+    const drawPayload = {
       W, H, front: primary, me, user, gymsLabel, avatarPath, layout: "fixed",
       extra: {
         climbSkills: me.climbSkills || {},
@@ -398,28 +475,29 @@ Page({
         xhsId: me.xhsId || "",
         showXhs: !!me.showXhs
       }
-    });
-    try { await flushCanvas(ctx); } catch (_) {}
-    if (token !== this._cardPreviewToken) return;
-    const tempPath = await new Promise((resolve) => {
-      try {
-        wx.canvasToTempFilePath({
-          canvasId: "myCardPreviewCanvas",
-          width: W,
-          height: H,
-          destWidth: W,
-          destHeight: H,
-          fileType: "png",
-          quality: 1,
-          success: (r) => resolve(r && r.tempFilePath ? r.tempFilePath : ""),
-          fail: (err) => { console.warn("[me] canvasToTempFilePath fail", err && err.errMsg); resolve(""); }
-        }, this);
-      } catch (e) { console.warn("[me] canvasToTempFilePath throw", e && e.message); resolve(""); }
-    });
+    };
+
+    // issue #36: 「canvas is empty」多为导出早于画布节点注册/位图合成。
+    // 导出前先确认 onReady + 画布非零布局；失败则重绘重导，最多 3 次，避免首入页面名片空白
+    let tempPath = "";
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (token !== this._cardPreviewToken) return;
+      await this._waitCanvasReady();
+      const ctx = wx.createCanvasContext("myCardPreviewCanvas", this);
+      drawFrontCard(ctx, drawPayload);
+      try { await flushCanvas(ctx); } catch (_) {}
+      // 部分机型 draw 回调早于位图合成，留一帧间隔再导出；重试间隔更长
+      await new Promise((r) => setTimeout(r, attempt === 1 ? 60 : 240));
+      if (token !== this._cardPreviewToken) return;
+      tempPath = await this._canvasToTempFile(W, H);
+      if (tempPath) break;
+      console.warn(`[me] 名片画布第 ${attempt} 次导出为空，重绘后重试`);
+      await new Promise((r) => setTimeout(r, 200));
+    }
     if (token !== this._cardPreviewToken) return;
     if (!tempPath) {
-      // issue #36: 导出失败时记录日志并保留重试机会，避免静默卡死在骨架屏
-      console.warn("[me] canvasToTempFilePath 未返回临时路径，本轮跳过渲染，等待下次进入页面重试");
+      // issue #36: 连续失败时记录日志并保留重试机会，避免静默卡死在骨架屏
+      console.warn("[me] canvasToTempFilePath 3 次均未返回临时路径，本轮跳过渲染，等待下次进入页面重试");
       return;
     }
     try {

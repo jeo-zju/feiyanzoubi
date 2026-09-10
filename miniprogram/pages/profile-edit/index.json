@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "编辑资料"
+  "navigationBarTitleText": "编辑资料",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

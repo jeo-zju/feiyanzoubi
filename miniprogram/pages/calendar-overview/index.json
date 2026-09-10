@@ -1,8 +1,9 @@
 {
+  "navigationBarTitleText": "岩馆日历",
   "disableScroll": false,
   "usingComponents": {
-    "gym-card": "../../components/gymCard/index",
-    "seg-tabs": "../../components/segmentedTabs/index",
-    "paginator": "../../components/paginator/index"
-  }
+    "seg-tabs": "../../components/segmentedTabs/index"
+  },
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

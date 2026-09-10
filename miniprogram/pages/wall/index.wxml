@@ -1,29 +1,27 @@
-<view class="page">
-  <view class="card card-hero">
-    <view class="card-bd">
-      <view class="section-kicker">攀岩墙</view>
-      <view class="section-title-lg">{{gym.name || '攀岩墙'}}</view>
-      <view class="section-desc">容量 {{capacity}}，当前 {{total}}。满了会请最早那位先下去透气。</view>
-      <view class="btn btn-warn mt" bindtap="onHang">我要上墙</view>
+<view class="page ui-v2 wl-page">
+  <!-- 馆名 + 张数；容量替换规则只在此（上墙决策前）出现一次 -->
+  <view class="wl-head card">
+    <view class="wl-head__row">
+      <text class="wl-head__name">{{gym.name || '岩馆名片墙'}}</text>
+      <text class="wl-head__count">{{total}}/{{capacity}}</text>
     </view>
+    <view class="wl-head__rule">墙上满 {{capacity}} 张时，新名片会替换最早挂上去的那张。</view>
+    <button class="btn btn-primary btn--block" bindtap="onHang">我要上墙</button>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd">墙上名片</view>
-    <view class="card-bd">
-      <view wx:if="{{!cards.length}}" class="empty-state">空墙一面，等你开张</view>
-      <view class="grid">
-        <view wx:for="{{cards}}" wx:key="_id" class="panel cell">
-          <image
-            class="avatar"
-            mode="aspectFill"
-            src="{{(item.snapshot.avatarMode==='custom'?item.snapshot.avatarFileId:item.snapshot.avatarUrl) || defaultAvatar}}"
-          ></image>
-          <view class="name">{{item.snapshot.displayName}}</view>
-          <view class="muted cell-sub">{{item.snapshot.title}}</view>
-          <view class="muted cell-desc">{{item.snapshot.oneLiner}}</view>
-        </view>
-      </view>
+  <!-- 名片两列缩略：只补姓名，头衔/一句话不重复，点击进完整名片 -->
+  <view wx:if="{{cards.length}}" class="wl-grid">
+    <view wx:for="{{cards}}" wx:key="_id" class="wl-cell" data-id="{{item.cardId}}" bindtap="onViewCard">
+      <image
+        class="wl-cell__avatar"
+        mode="aspectFill"
+        lazy-load
+        src="{{(item.snapshot.avatarMode==='custom'?item.snapshot.avatarFileId:item.snapshot.avatarUrl) || defaultAvatar}}"
+      ></image>
+      <view class="wl-cell__name">{{item.snapshot.displayName || '岩友'}}</view>
     </view>
+  </view>
+  <view wx:else class="empty-state wl-empty">
+    <view class="empty-state__desc">墙上还没有名片，挂第一张吧</view>
   </view>
 </view>

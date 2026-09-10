@@ -1,70 +1,68 @@
-<view class="page page--merge">
-  <view class="card card-pad">
-    <view class="field-label">源岩馆</view>
-    <view class="section-title-lg">{{sourceGym.name || sourceGym.gymName || '加载中'}}</view>
-    <view class="hint" wx:if="{{sourceGym.city}}">{{sourceGym.city}}</view>
+<view class="page ui-v2 mg-page {{preview ? 'mg-page--bar' : ''}}">
+  <!-- 源岩馆 -->
+  <view class="card mg-card">
+    <text class="field-label">源岩馆（合并后停用）</text>
+    <view class="mg-gymname">{{sourceGym.name || sourceGym.gymName || '加载中…'}}</view>
+    <view wx:if="{{sourceGym.city || sourceGym.address}}" class="mg-sub">{{sourceGym.city}} {{sourceGym.address}}</view>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd">选择目标岩馆</view>
-    <view class="card-bd">
-      <view class="section-desc">会尽量加载全部可管理岩馆，并支持按名称、城市、地址筛选。</view>
-      <view class="field-select mt-sm" bindtap="onOpenTargetSheet">
-        <text>{{targetGym ? targetGym.name : '请选择目标岩馆'}}</text>
-        <text class="field-select__arrow">▾</text>
-      </view>
-      <view wx:if="{{targetGym}}" class="panel panel-soft mt">
-        <view class="field-label">当前目标馆</view>
-        <view>{{targetGym.name}}</view>
-        <view class="hint mt-sm">{{targetGym.city || '未设置城市'}} {{targetGym.address || ''}}</view>
-      </view>
-      <view class="btn btn-primary btn--block mt" bindtap="onPreviewMerge" loading="{{loadingPreview}}">查看合并预览</view>
+  <!-- 目标岩馆：只选择一次，不重复展示完整卡片 -->
+  <view class="card mg-card">
+    <text class="field-label">目标岩馆（并入此馆）</text>
+    <view class="field-select mg-select" bindtap="onOpenTargetSheet">
+      <text class="field-select__value {{targetGym ? '' : 'ph'}}">{{targetGym ? targetGym.name : '请选择目标岩馆'}}</text>
+      <text class="field-select__arrow">⌄</text>
+    </view>
+    <view class="btn btn-primary mg-submit {{(!targetGym || loadingPreview) ? 'btn--disabled' : ''}}" bindtap="onPreviewMerge">
+      {{loadingPreview ? '检查中…' : '查看合并预览'}}
     </view>
   </view>
 
-  <view wx:if="{{preview}}" class="card mt">
-    <view class="card-hd">合并预览</view>
-    <view class="card-bd">
-      <view class="panel">
-        <view class="field-label">源岩馆</view>
-        <view>{{preview.summary.sourceText || '无数据'}}</view>
+  <!-- 预览摘要 -->
+  <view wx:if="{{preview}}" class="card mg-card">
+    <view class="mg-sec-t">合并预览</view>
+    <view class="mg-row">
+      <text class="mg-row__k">源数据</text>
+      <text class="mg-row__v">{{preview.summary.sourceText || '无数据'}}</text>
+    </view>
+    <view class="mg-row">
+      <text class="mg-row__k">目标数据</text>
+      <text class="mg-row__v">{{preview.summary.targetText || '无数据'}}</text>
+    </view>
+    <view class="mg-row">
+      <text class="mg-row__k">周期冲突</text>
+      <view class="mg-row__v">
+        <text>{{preview.cyclePlan.conflictCount || 0}} 个</text>
+        <text wx:if="{{preview.cyclePlan.conflictCount > 0}}" class="tag mg-conflict-tag">需映射</text>
       </view>
-      <view class="panel mt-sm">
-        <view class="field-label">目标岩馆</view>
-        <view>{{preview.summary.targetText || '无数据'}}</view>
-      </view>
-      <view class="panel mt-sm">
-        <view class="field-label">周期冲突</view>
-        <view>{{preview.cyclePlan.conflictCount || 0}} 个</view>
-      </view>
-      <view wx:if="{{preview.warnings && preview.warnings.length}}" class="warning-box">
-        <view wx:for="{{preview.warnings}}" wx:key="*this" class="hint">{{item}}</view>
-      </view>
-      <view class="section-tip">{{canSubmit ? '条件已满足，可以执行合并。' : '请先补齐目标馆选择和周期映射。'}}</view>
+    </view>
+    <view wx:if="{{preview.warnings && preview.warnings.length}}" class="mg-warn">
+      <text wx:for="{{preview.warnings}}" wx:key="*this" class="mg-warn__item">{{item}}</text>
+    </view>
+    <view class="state-banner {{canSubmit ? 'is-success' : 'is-pending'}}">
+      <text>{{canSubmit ? '条件已满足，可以执行合并' : '还差 ' + mappingRemaining + ' 项周期映射才能合并'}}</text>
     </view>
   </view>
 
-  <view wx:if="{{preview && cycleMappings.length}}" class="card mt">
-    <view class="card-hd">周期映射</view>
-    <view class="card-bd">
-      <view class="section-desc">为每个重叠的源周期选择要并入的目标周期。</view>
-      <view wx:for="{{cycleMappings}}" wx:key="sourceCycleId" class="panel mt-sm">
-        <view class="mapping-source">{{item.sourceCycleName}} {{item.sourceRange}}</view>
-        <view class="hint mt-sm">{{item.targetCycleName ? item.targetCycleName + ' ' + item.targetRange : '未选择目标周期'}}</view>
-        <picker mode="selector" range="{{item.targetOptions}}" range-key="label" data-index="{{index}}" bindchange="onPickCycleMapping">
-          <view class="field-select mt-sm">
-            <text class="field-select__value">选择目标周期</text>
-            <text class="field-select__arrow">▾</text>
-          </view>
-        </picker>
+  <!-- 必要周期映射：逐项纵向展开 -->
+  <view wx:if="{{preview && cycleMappings.length}}" class="card mg-card">
+    <view class="mg-sec-t">周期映射（{{cycleMappings.length - mappingRemaining}}/{{cycleMappings.length}}）</view>
+    <view wx:for="{{cycleMappings}}" wx:key="sourceCycleId" class="mg-map">
+      <view class="mg-map__src">{{item.sourceCycleName}} {{item.sourceRange}}</view>
+      <view class="mg-map__cur {{item.targetCycleId ? '' : 'is-pending'}}">
+        {{item.targetCycleName ? item.targetCycleName + ' ' + item.targetRange : '未选择目标周期'}}
       </view>
-      <view class="panel mt-sm">
-        <view class="field-label">映射确认</view>
-        <view class="pre-line">{{mappingSummaryText}}</view>
-      </view>
+      <picker mode="selector" range="{{item.targetOptions}}" range-key="label" data-index="{{index}}" bindchange="onPickCycleMapping">
+        <view class="field-select mg-map__select">
+          <text class="field-select__value">选择目标周期</text>
+          <text class="field-select__arrow">⌄</text>
+        </view>
+      </picker>
     </view>
+    <view class="mg-map-summary">{{mappingSummaryText}}</view>
   </view>
 
+  <!-- 目标岩馆选择 sheet -->
   <view wx:if="{{targetSheetVisible}}" class="sheet-mask" bindtap="onCloseTargetSheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd">
@@ -95,18 +93,17 @@
             <view class="sheet-item__name">{{item.name}}</view>
             <view class="sheet-item__sub">{{item.city || '未设置城市'}}</view>
           </view>
-          <text wx:if="{{targetGymId===item._id}}" class="sheet-item__check">✓</text>
+          <text wx:if="{{targetGymId === item._id}}" class="sheet-item__check">✓</text>
         </view>
         <view wx:if="{{!filteredTargetGyms.length && !loading}}" class="sheet-empty">暂无匹配的目标岩馆</view>
       </scroll-view>
     </view>
   </view>
 
+  <!-- 确认动作：固定底栏，仅一段流程的最后一步使用 -->
   <view wx:if="{{preview}}" class="action-bar">
-    <view class="action-bar__row">
-      <view class="btn btn-primary btn--block {{!canSubmit ? 'btn--disabled' : ''}}" bindtap="onSubmitMerge">
-        确认执行合并
-      </view>
+    <view class="btn btn-primary {{!canSubmit || submitting ? 'btn--disabled' : ''}}" bindtap="onSubmitMerge">
+      {{submitting ? '合并中…' : '确认执行合并'}}
     </view>
   </view>
 </view>

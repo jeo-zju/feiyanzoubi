@@ -35,6 +35,14 @@ function uniqueModes(list) {
   return out;
 }
 
+function markModeOptions(options, supportedModes) {
+  const enabled = new Set(uniqueModes(supportedModes));
+  return (Array.isArray(options) ? options : []).map((item) => ({
+    ...item,
+    selected: enabled.has(item.key)
+  }));
+}
+
 function buildRouteTabs(modes) {
   const labels = {
     boulder: "抱石",
@@ -133,16 +141,24 @@ Page({
     closeEndDate: today(),
     tab: "info",
     tabs: [
-      { key: "info", label: "岩馆信息" },
-      { key: "cycle", label: "周期设置" },
-      { key: "routes", label: "线路录入" }
+      { key: "info", label: "资料" },
+      { key: "cycle", label: "周期" },
+      { key: "routes", label: "线路" }
     ],
+    // 各段草稿独立保留；脏标记仅用于提示，切换段不会静默丢失输入
+    infoDirty: false,
+    cycleDirty: false,
+    routesDirty: false,
+    mergeHistoryOpen: false,
+    dangerOpen: false,
+    cycleHistoryOpen: false,
+    closeCycleOpen: false,
     form: { name: "", city: "", address: "", supportedModes: ["boulder", "difficulty"] },
-    modeOptions: [
+    modeOptions: markModeOptions([
       { key: "boulder", label: "抱石" },
       { key: "difficulty", label: "难度" },
       { key: "lead", label: "先锋" }
-    ],
+    ], ["boulder", "difficulty"]),
     cycleForm: {
       name: "",
       startDate: today(),
@@ -179,6 +195,7 @@ Page({
       if (!user) return;
     }
     const gymId = query && query.gymId ? String(query.gymId) : "";
+    wx.setNavigationBarTitle({ title: gymId ? "岩馆管理" : "创建岩馆" });
     this.setData({
       gymId,
       user,
@@ -205,6 +222,8 @@ Page({
           address: gym.address || gym.addr || gym.location || "",
           supportedModes: uniqueModes(gym.supportedModes || ["boulder", "difficulty"])
         },
+        // WXML 只读取布尔字段，避免依赖不可调用的 Array#indexOf 表达式
+        modeOptions: markModeOptions(this.data.modeOptions, gym.supportedModes || ["boulder", "difficulty"]),
         cycleForm: {
           name: currentCycle.name || currentCycle.cycle_name || "",
           startDate: currentCycle.startDate || currentCycle.start_date || today(),
@@ -253,18 +272,30 @@ Page({
     this.setData({ tab: e.detail.value });
     this.refreshRouteRows();
   },
+  toggleMergeHistory() {
+    this.setData({ mergeHistoryOpen: !this.data.mergeHistoryOpen });
+  },
+  toggleDanger() {
+    this.setData({ dangerOpen: !this.data.dangerOpen });
+  },
+  toggleCycleHistory() {
+    this.setData({ cycleHistoryOpen: !this.data.cycleHistoryOpen });
+  },
+  toggleCloseCycle() {
+    this.setData({ closeCycleOpen: !this.data.closeCycleOpen });
+  },
   onRouteModeChange(e) {
     this.setData({ routeMode: e.detail.value });
     this.refreshRouteRows();
   },
   onName(e) {
-    this.setData({ form: { ...this.data.form, name: e.detail.value } });
+    this.setData({ form: { ...this.data.form, name: e.detail.value }, infoDirty: true });
   },
   onCity(e) {
-    this.setData({ form: { ...this.data.form, city: e.detail.value } });
+    this.setData({ form: { ...this.data.form, city: e.detail.value }, infoDirty: true });
   },
   onAddress(e) {
-    this.setData({ form: { ...this.data.form, address: e.detail.value } });
+    this.setData({ form: { ...this.data.form, address: e.detail.value }, infoDirty: true });
   },
   onToggleMode(e) {
     const mode = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.mode : "";
@@ -280,40 +311,42 @@ Page({
     const routeMode = routeTabs.some((item) => item.key === this.data.routeMode) ? this.data.routeMode : routeTabs[0].key;
     this.setData({
       form: { ...this.data.form, supportedModes: normalized },
+      modeOptions: markModeOptions(this.data.modeOptions, normalized),
       routeTabs,
-      routeMode
+      routeMode,
+      infoDirty: true
     });
     this.refreshRouteRows();
   },
   onCycleName(e) {
-    this.setData({ cycleForm: { ...this.data.cycleForm, name: e.detail.value } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, name: e.detail.value }, cycleDirty: true });
   },
   onCycleStart(e) {
-    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: e.detail.value } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: e.detail.value }, cycleDirty: true });
   },
   onCycleStartToday() {
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: `${y}-${m}-${day}` } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: `${y}-${m}-${day}` }, cycleDirty: true });
   },
   onCycleStartMonth() {
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
-    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: `${y}-${m}-01` } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, startDate: `${y}-${m}-01` }, cycleDirty: true });
   },
   onBoulderGrades(e) {
-    this.setData({ cycleForm: { ...this.data.cycleForm, boulderGrades: e.detail.value } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, boulderGrades: e.detail.value }, cycleDirty: true });
     this.refreshRouteRows();
   },
   onDifficultyGrades(e) {
-    this.setData({ cycleForm: { ...this.data.cycleForm, difficultyGrades: e.detail.value } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, difficultyGrades: e.detail.value }, cycleDirty: true });
     this.refreshRouteRows();
   },
   onLeadGrades(e) {
-    this.setData({ cycleForm: { ...this.data.cycleForm, leadGrades: e.detail.value } });
+    this.setData({ cycleForm: { ...this.data.cycleForm, leadGrades: e.detail.value }, cycleDirty: true });
     this.refreshRouteRows();
   },
   onPickBoulderTemplate() {
@@ -324,7 +357,7 @@ Page({
         const idx = res && typeof res.tapIndex === "number" ? res.tapIndex : -1;
         const tpl = idx >= 0 ? BOULDER_TEMPLATES[idx] : null;
         if (!tpl) return;
-        this.setData({ cycleForm: { ...this.data.cycleForm, boulderGrades: tpl.grades.join(",") } });
+        this.setData({ cycleForm: { ...this.data.cycleForm, boulderGrades: tpl.grades.join(",") }, cycleDirty: true });
         this.refreshRouteRows();
       }
     });
@@ -337,7 +370,7 @@ Page({
         const idx = res && typeof res.tapIndex === "number" ? res.tapIndex : -1;
         const tpl = idx >= 0 ? DIFFICULTY_TEMPLATES[idx] : null;
         if (!tpl) return;
-        this.setData({ cycleForm: { ...this.data.cycleForm, difficultyGrades: tpl.grades.join(",") } });
+        this.setData({ cycleForm: { ...this.data.cycleForm, difficultyGrades: tpl.grades.join(",") }, cycleDirty: true });
         this.refreshRouteRows();
       }
     });
@@ -350,12 +383,16 @@ Page({
         const idx = res && typeof res.tapIndex === "number" ? res.tapIndex : -1;
         const tpl = idx >= 0 ? LEAD_TEMPLATES[idx] : null;
         if (!tpl) return;
-        this.setData({ cycleForm: { ...this.data.cycleForm, leadGrades: tpl.grades.join(",") } });
+        this.setData({ cycleForm: { ...this.data.cycleForm, leadGrades: tpl.grades.join(",") }, cycleDirty: true });
         this.refreshRouteRows();
       }
     });
   },
   onSelectCycle(e) {
+    if (this.data.cycleDirty) {
+      wx.showToast({ title: "请先保存当前周期修改", icon: "none" });
+      return;
+    }
     const id = e && e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.id : "";
     const cycles = this.data.cycles || [];
     const c = cycles.find((x) => x && String(x._id) === String(id));
@@ -368,7 +405,8 @@ Page({
         difficultyGrades: (c.difficultyGrades || c.rope_grades || c.difficulty_grades || []).join(","),
         leadGrades: (c.leadGrades || c.lead_grades || []).join(",")
       },
-      cycleEditing: { _id: c._id, status: c.status || "" }
+      cycleEditing: { _id: c._id, status: c.status || "" },
+      cycleDirty: false
     });
   },
   async onDeleteCycle(e) {
@@ -467,7 +505,7 @@ Page({
     const mode = this.data.routeMode;
     const map = { ...((this.data.routeCounts && this.data.routeCounts[mode]) || {}) };
     map[grade] = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
-    this.setData({ routeCounts: { ...this.data.routeCounts, [mode]: map } });
+    this.setData({ routeCounts: { ...this.data.routeCounts, [mode]: map }, routesDirty: true });
     this.refreshRouteRows();
   },
   onCustomGrade(e) {
@@ -486,7 +524,9 @@ Page({
     list.push(g);
     this.setData({
       customGrade: "",
-      cycleForm: { ...this.data.cycleForm, [key]: list.join(",") }
+      cycleForm: { ...this.data.cycleForm, [key]: list.join(",") },
+      cycleDirty: true,
+      routesDirty: true
     });
     this.refreshRouteRows();
   },
@@ -510,6 +550,7 @@ Page({
       this.setData({ gymId });
       wx.showToast({ title: "已保存", icon: "none" });
       await this.loadGym();
+      this.setData({ infoDirty: false });
     } catch (e) {
       wx.showToast({ title: "保存失败", icon: "none" });
     }
@@ -557,6 +598,7 @@ Page({
         wx.showToast({ title: "已保存", icon: "none" });
       }
       await this.loadGym();
+      this.setData({ cycleDirty: false });
       if (this.data.tab === "routes") this.refreshRouteRows();
     } catch (e) {
       wx.showToast({ title: (e && e.message) || "保存失败", icon: "none" });
@@ -583,6 +625,7 @@ Page({
         wx.showToast({ title: "已更新", icon: "none" });
       }
       await this.loadGym();
+      this.setData({ routesDirty: false });
     } catch (e) {
       wx.showToast({ title: (e && e.message) || "更新失败", icon: "none" });
     }
@@ -633,9 +676,6 @@ Page({
   onMergeGym() {
     if (!this.data.gymId) return;
     wx.navigateTo({ url: `/pages/gym-merge/index?sourceGymId=${this.data.gymId}` });
-  },
-  backOwner() {
-    wx.navigateBack({ delta: 1 });
   }
 });
 

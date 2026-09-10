@@ -1,20 +1,122 @@
-<view class="page page--pub">
-  <view class="social-title">{{planId?'编辑约爬':'发起一次约爬'}}</view>
-  <view class="social-sub">说清去哪、何时、怎么爬，让新岩友放心加入。</view>
+<view class="page ui-v2 publish-page">
   <view wx:if="{{formLoading}}" class="empty-state">准备中…</view>
 
-  <view class="social-panel">
-    <view class="social-label">01 · 去哪家馆</view>
-    <view wx:if="{{selectedGymId}}" class="field-select" bindtap="onTapChangeGym">
-      <text class="field-select__value">{{selectedGymName}}</text>
-      <text class="field-select__arrow">▾</text>
-    </view>
-    <block wx:else>
-      <view class="searchbar">
-        <text class="searchbar__ic">🔍</text>
-        <input class="searchbar__input" placeholder="搜索岩馆名称或地址" placeholder-class="ph" value="{{gymKeyword}}" bindinput="onGymKeywordInput" />
+  <block wx:else>
+    <!-- 核心四组：岩馆 / 日期 / 时间 -->
+    <view class="pub-card">
+      <view class="pub-row {{selectedGymId?'':'pub-row--ph'}}" bindtap="onTapChangeGym">
+        <text class="pub-row__label">岩馆</text>
+        <view class="pub-row__main">
+          <text class="pub-row__value">{{selectedGymName || '选择岩馆'}}</text>
+        </view>
+        <text class="pub-row__arrow">›</text>
       </view>
-      <scroll-view scroll-y class="gym-pick__list" bindscrolltolower="onGymPickerScrollLower">
+
+      <!-- 日期：14 天横滑条，选择时即可看到星期几 -->
+      <view class="pub-row pub-row--stack">
+        <text class="pub-row__label">日期</text>
+        <scroll-view scroll-x class="pub-dates" enhanced show-scrollbar="{{false}}">
+          <view wx:for="{{dateCells}}" wx:key="date" class="pub-date {{item.selected?'pub-date--on':''}}" data-date="{{item.date}}" bindtap="onPickDate">
+            <text class="pub-date__wk">{{item.wkLabel}}</text>
+            <text class="pub-date__day">{{item.label}}</text>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 时间：上午/下午/晚上可多选，不指定具体时间 -->
+      <view class="pub-row pub-row--stack">
+        <text class="pub-row__label">时间</text>
+        <view class="pub-tags">
+          <view wx:for="{{timeSlotOptions}}" wx:key="key" class="tag {{item.on?'tag--on':'tag--off'}} {{conflictSlots.indexOf(item.key)>=0?'tag--conflict':''}}" data-key="{{item.key}}" bindtap="onToggleTimeSlot">{{item.label}}</view>
+        </view>
+      </view>
+      <view wx:if="{{conflictText}}" class="pub-conflict">
+        <text class="pub-conflict__dot">!</text>
+        <text class="pub-conflict__text">{{conflictText}}，请调整日期或时段</text>
+      </view>
+      <view class="pub-card__note">时段可多选，具体时间报名后可在群内再约</view>
+    </view>
+
+    <!-- 核心四组：类型 / 总人数 -->
+    <view class="pub-card">
+      <view class="pub-row pub-row--stack">
+        <text class="pub-row__label">类型</text>
+        <view class="pub-tags">
+          <block wx:for="{{skillTags}}" wx:key="key">
+            <view wx:if="{{item.key!=='protector'}}" class="tag {{item.on?'tag--on':'tag--off'}}" data-key="{{item.key}}" bindtap="onToggleSkillTag">{{item.label}}</view>
+          </block>
+        </view>
+      </view>
+      <view class="pub-row pub-row--stack">
+        <text class="pub-row__label">总人数</text>
+        <view class="pub-stepper">
+          <view class="pub-stepper__btn {{capacity<=capacityMin?'pub-stepper__btn--off':''}}" bindtap="onCapacityMinus">−</view>
+          <text class="pub-stepper__num">{{capacity}}</text>
+          <view class="pub-stepper__btn {{capacity>=12?'pub-stepper__btn--off':''}}" bindtap="onCapacityPlus">＋</view>
+        </view>
+      </view>
+      <view class="pub-card__note">包含你自己{{planId?'，不能少于已确认人数':''}}</view>
+    </view>
+
+    <!-- 选填：补充说明 / 集合与联络（默认折叠，数据不丢失） -->
+    <view class="pub-card">
+      <view class="pub-row" bindtap="toggleNote">
+        <text class="pub-row__label">补充说明</text>
+        <view class="pub-row__main">
+          <text wx:if="{{noteOpen}}" class="pub-row__value pub-row__value--ph">收起</text>
+          <text wx:elif="{{note}}" class="pub-row__value pub-row__value--one">{{note}}</text>
+          <text wx:else class="pub-row__value pub-row__value--ph">选填</text>
+        </view>
+        <text class="pub-row__arrow">{{noteOpen?'⌃':'›'}}</text>
+      </view>
+      <view wx:if="{{noteOpen}}" class="pub-fold">
+        <textarea class="textarea pub-textarea" maxlength="200" focus="{{noteOpen}}" placeholder="补充说明，例如：想轻松爬一会儿，欢迎一起" placeholder-class="ph" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <view class="pub-row" bindtap="toggleContact">
+        <text class="pub-row__label">集合与联络</text>
+        <view class="pub-row__main">
+          <text wx:if="{{contactOpen}}" class="pub-row__value pub-row__value--ph">收起</text>
+          <text wx:elif="{{meetingPoint || contact}}" class="pub-row__value">已填写</text>
+          <text wx:else class="pub-row__value pub-row__value--ph">选填</text>
+        </view>
+        <text class="pub-row__arrow">{{contactOpen?'⌃':'›'}}</text>
+      </view>
+      <view wx:if="{{contactOpen}}" class="pub-fold">
+        <view class="pub-card__note">仅你和有权限的已确认成员可见。</view>
+        <input class="input pub-input" maxlength="100" placeholder="集合位置，例如：前台旁边" placeholder-class="ph" data-key="meetingPoint" value="{{meetingPoint}}" bindinput="onField" />
+        <input class="input pub-input" placeholder="联络方式，例如：微信号（选填）" placeholder-class="ph" data-key="contact" value="{{contact}}" bindinput="onField" />
+      </view>
+    </view>
+
+    <!-- 设置摘要：可见范围 / 报名方式，低频项进设置弹层 -->
+    <view class="pub-settings" bindtap="openSettings">
+      <view class="pub-settings__main">
+        <view class="pub-settings__t">{{settingsSummary}}</view>
+        <view wx:if="{{settingsExtra}}" class="pub-settings__sub">{{settingsExtra}}</view>
+      </view>
+      <text class="pub-settings__cta">设置 ›</text>
+    </view>
+
+    <view class="social-bottom">
+      <button class="btn btn-primary" disabled="{{submitting || formLoading || formError}}" loading="{{submitting}}" bindtap="onPublish">{{planId?'保存修改':'发布约爬'}}</button>
+    </view>
+  </block>
+
+  <!-- 岩馆选择底部弹层 -->
+  <view wx:if="{{gymPickOpen}}" class="sheet-mask" bindtap="onCloseGymPicker" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">选择岩馆</text>
+        <view class="sheet__close" bindtap="onCloseGymPicker">✕</view>
+      </view>
+      <view class="sheet__search">
+        <view class="searchbar">
+          <text class="searchbar__ic">🔍</text>
+          <input class="searchbar__input" placeholder="搜索岩馆名称或地址" placeholder-class="ph" value="{{gymKeyword}}" bindinput="onGymKeywordInput" />
+        </view>
+      </view>
+      <scroll-view scroll-y class="sheet__bd gym-pick__scroll" bindscrolltolower="onGymPickerScrollLower">
         <view wx:for="{{gymOptions}}" wx:key="_id" class="sheet-item" data-gymid="{{item._id}}" data-gymname="{{item.name}}" bindtap="onPickGym">
           <view class="sheet-item__info">
             <view class="sheet-item__name">{{item.name}}</view>
@@ -24,73 +126,44 @@
         <view wx:if="{{_gymPickerState.loading}}" class="sheet-empty">加载中…</view>
         <view wx:elif="{{!gymOptions.length}}" class="sheet-empty">没有找到岩馆，试试其他关键词</view>
       </scroll-view>
-    </block>
+    </view>
   </view>
 
-  <view class="social-panel">
-    <view class="social-label">02 · 什么时候</view>
-    <view class="social-small">{{dateRangeLabel}}</view>
-    <view class="cal-grid mt-sm">
-      <view wx:for="{{dateCells}}" wx:key="date" class="cal-cell {{item.selected?'cal-cell--selected':''}}" data-date="{{item.date}}" bindtap="onSelectDate">
-        <view>{{item.label}}</view>
-        <view class="social-small">{{item.weekdayShort}}</view>
+  <!-- 设置弹层：标题/氛围/求保护员/可见范围/报名方式，草稿态，完成才应用 -->
+  <view wx:if="{{settingsOpen}}" class="sheet-mask" bindtap="closeSettings" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">设置</text>
+        <view class="sheet__close" bindtap="closeSettings">✕</view>
+      </view>
+      <scroll-view scroll-y class="sheet__bd">
+        <view class="set-group">
+          <view class="set-group__t">可见范围</view>
+          <seg-tabs theme="v2" tabs="{{visibilityTabs}}" value="{{dVisibility}}" bind:change="onDraftVisibilityChange" />
+          <view wx:if="{{dVisibilityHint}}" class="set-group__note">{{dVisibilityHint}}</view>
+        </view>
+        <view class="sheet-item set-switch">
+          <text class="sheet-item__label">加入前需要我确认</text>
+          <switch color="#D2EF72" checked="{{dJoinMode==='approval'}}" bindchange="onDraftApproval" />
+        </view>
+        <view class="set-group">
+          <view class="set-group__t">活动短标题（选填）</view>
+          <input class="input set-input" maxlength="40" placeholder="留空则使用默认标题" placeholder-class="ph" value="{{dTitle}}" bindinput="onDraftTitle" />
+        </view>
+        <view class="set-group">
+          <view class="set-group__t">活动氛围（选填）</view>
+          <view class="set-tags">
+            <view wx:for="{{atmosphereOptions}}" wx:key="*this" class="tag {{(dAtmosphereTags[0]===item || dAtmosphereTags[1]===item || dAtmosphereTags[2]===item) ? 'tag--on' : 'tag--off'}}" data-value="{{item}}" bindtap="onToggleDraftAtmosphere">{{item}}</view>
+          </view>
+        </view>
+        <view class="sheet-item set-switch">
+          <text class="sheet-item__label">需要保护员</text>
+          <switch color="#D2EF72" checked="{{dProtector}}" bindchange="onToggleDraftProtector" />
+        </view>
+      </scroll-view>
+      <view class="sheet__ft set-sheet__ft">
+        <button class="btn btn-primary set-sheet__btn" bindtap="applySettings">完成</button>
       </view>
     </view>
-    <view class="social-row cal-time-row">
-      <picker class="cal-time" mode="time" value="{{startTime}}" bindchange="onStartTimeChange">
-        <view class="field-select">开始 {{startTime}}<text class="field-select__arrow">▾</text></view>
-      </picker>
-      <text>至</text>
-      <picker class="cal-time" mode="time" value="{{endTime}}" bindchange="onEndTimeChange">
-        <view class="field-select">结束 {{endTime}}<text class="field-select__arrow">▾</text></view>
-      </picker>
-    </view>
-  </view>
-
-  <view class="social-panel">
-    <view class="social-label">03 · 怎么一起爬</view>
-    <view class="social-small">攀爬类型，可多选</view>
-    <view class="tag-grid mt-sm">
-      <view wx:for="{{skillTags}}" wx:key="key" class="tag {{item.on?'tag--on':'tag--off'}}" data-key="{{item.key}}" bindtap="onToggleSkillTag">{{item.label}}</view>
-    </view>
-    <view class="social-small mt">活动氛围，可选</view>
-    <view class="tag-grid mt-sm">
-      <view wx:for="{{atmosphereOptions}}" wx:key="*this" class="tag {{(atmosphereTags[0]===item || atmosphereTags[1]===item || atmosphereTags[2]===item) ? 'tag--on' : 'tag--off'}}" data-value="{{item}}" bindtap="onAtmosphere">{{item}}</view>
-    </view>
-    <input class="input mt" maxlength="40" placeholder="一句话邀请，例如：周三晚休闲抱石" placeholder-class="ph" value="{{title}}" data-key="title" bindinput="onField" />
-    <input class="input mt" maxlength="200" placeholder="补充说明（可选）" placeholder-class="ph" value="{{note}}" bindinput="onNoteInput" />
-  </view>
-
-  <view class="social-panel">
-    <view class="social-label">04 · 留几个名额</view>
-    <view class="social-row">
-      <text>总人数（含自己）</text>
-      <input class="input capacity-input" type="number" value="{{capacity}}" data-key="capacity" bindinput="onField" />
-    </view>
-    <view class="social-row">
-      <view class="social-person">
-        <view>加入前需要我确认</view>
-        <view class="social-small">关闭后，有名额即可加入；活动开始时截止报名。</view>
-      </view>
-      <switch color="#8f7bff" checked="{{joinMode==='approval'}}" bindchange="onApproval" />
-    </view>
-  </view>
-
-  <view class="social-panel">
-    <view class="social-row" bindtap="toggleMore">
-      <text>集合信息与可见范围</text>
-      <text class="btn-text">{{moreOpen?'收起':'展开'}} ⌄</text>
-    </view>
-    <block wx:if="{{moreOpen}}">
-      <view class="social-small">下面两项仅自己和已确认成员可见，不会出现在公开列表中。</view>
-      <input class="input mt" maxlength="100" placeholder="集合位置，例如：前台旁边（可选）" placeholder-class="ph" data-key="meetingPoint" value="{{meetingPoint}}" bindinput="onField" />
-      <input class="input mt" maxlength="100" placeholder="愿意提供的联络方式（可选）" placeholder-class="ph" data-key="contact" value="{{contact}}" bindinput="onField" />
-      <view class="mt"><seg-tabs tabs="{{visibilityTabs}}" value="{{visibility}}" bind:change="onVisibilityChange" /></view>
-      <view class="social-small mt-sm">{{visibilityHint}}</view>
-    </block>
-  </view>
-
-  <view class="social-bottom">
-    <button class="btn btn-primary" disabled="{{submitting || formLoading || formError}}" loading="{{submitting}}" bindtap="onPublish">{{planId?'保存修改并通知岩友':'发起约爬'}}</button>
   </view>
 </view>

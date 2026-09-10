@@ -1,31 +1,35 @@
-<view class="page page--claim">
-  <view class="card card-hero">
-    <view class="card-bd">
-      <view class="section-title-lg">有人把名片塞给你了</view>
-      <view class="section-desc">领了就是你的：可设为主卡，也可保存成图片</view>
+<view class="page ui-v2 cc-page">
+  <block wx:if="{{card}}">
+    <!-- 名片完整预览：等比显示，不裁卡面 -->
+    <view class="cc-stage">
+      <canvas
+        canvas-id="cardCanvas"
+        class="cc-canvas"
+        style="width: {{canvasCssW}}px; height: {{canvasCssH}}px;"
+        width="{{canvasW}}"
+        height="{{canvasH}}"
+      ></canvas>
     </view>
-  </view>
 
-  <view class="card mt">
-    <view class="card-hd">名片预览</view>
-    <view class="card-bd">
-      <view wx:if="{{card}}" class="panel">
-        <view class="page-title">{{card.front.displayName}}</view>
-        <view class="meta">
-          <view class="tag">{{card.front.title}}</view>
-          <view wx:if="{{card.front.mbti}}" class="tag tag-warn ml">{{card.front.mbti}}</view>
-        </view>
-        <view class="one">{{card.front.oneLiner}}</view>
-      </view>
-      <view wx:else class="empty-state">
-        <view class="empty-state__desc">加载中…</view>
-      </view>
-    </view>
-  </view>
+    <!-- 简短状态说明 -->
+    <view class="cc-status">{{statusText}}</view>
 
-  <view class="action-bar">
-    <view class="action-bar__row">
-      <view class="btn btn-primary" bindtap="onClaim">领取并保存</view>
+    <view class="action-bar cc-actions">
+      <!-- 待领取：领取动作同时把名片收入名片夹（沿用原行为） -->
+      <button wx:if="{{stage==='pending'}}" class="btn btn-primary" loading="{{claiming}}" disabled="{{claiming}}" bindtap="onClaim">领取并保存</button>
+      <!-- 领取成功：同一操作槽变为查看 -->
+      <button wx:elif="{{stage==='claimed'}}" class="btn btn-primary" bindtap="onViewCard">查看名片</button>
+      <!-- 已被领取 / 已取消：不可再领 -->
+      <block wx:else>
+        <button class="btn btn-ghost" bindtap="goMe">去我的名片夹</button>
+        <button class="btn" disabled>{{closedText}}</button>
+      </block>
     </view>
+  </block>
+
+  <view wx:elif="{{loadError}}" class="empty-state">
+    <view class="empty-state__desc">{{loadErrorText || '名片加载失败'}}</view>
+    <button class="btn btn-ghost" bindtap="onRetry">重试</button>
   </view>
+  <view wx:else class="list-status">加载中…</view>
 </view>

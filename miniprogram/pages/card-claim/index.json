@@ -1,4 +1,5 @@
 {
-  "navigationBarTitleText": "领取名片"
+  "navigationBarTitleText": "领取名片",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }
-

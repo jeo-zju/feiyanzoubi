@@ -1,69 +1,95 @@
-<view class="page">
-  <view class="card card-hero">
-    <view class="top">
-      <view class="row">
-        <view class="section-kicker">打卡</view>
-        <view
-          wx:if="{{revertAvailable || revertJustNow}}"
-          class="btn mini {{revertAvailable ? 'btn-warn' : 'btn-ghost btn--disabled'}}"
-          bindtap="onTapRevert"
-        >撤销本次打卡</view>
+<view class="page ui-v2 ck-page">
+  <!-- 馆名可更换（原「去爬其他馆」合并于此）＋日期，攀岩墙收为次入口 -->
+  <view class="card ck-head">
+    <view class="field-select ck-gym" bindtap="openGymSheet">
+      <view class="ck-gym__main">
+        <text class="field-select__value {{gym.name ? '' : 'ph'}}">{{gym.name || '选择岩馆'}}</text>
+        <text wx:if="{{gym.name}}" class="ck-gym__sub">点击更换</text>
       </view>
-      <view class="top-row">
-        <view class="gym-wrap">
-          <view class="gym">{{gym.name}}</view>
-          <view class="section-desc top-desc">记录今天在馆里的完成情况</view>
-        </view>
-        <view class="actions">
-          <view class="btn btn-ghost mini" bindtap="goWall">攀岩墙</view>
-          <view class="btn btn-warn mini" bindtap="goHome">去爬其他馆</view>
-        </view>
-      </view>
-      <view class="top-sub">
-        <view class="tag">{{cycleLabel}}</view>
-        <view class="tag tag-warn" bindtap="openCalendar">打卡日期 {{date}} ▾</view>
-      </view>
+      <text class="field-select__arrow">⌄</text>
     </view>
-    <view class="card-bd">
-      <seg-tabs tabs="{{modeTabs}}" value="{{mode}}" bind:change="onModeChange" />
-      <view class="panel table">
-        <view class="thead">
-          <view class="th th-grade muted">等级</view>
-          <view class="th th-total muted">累计/上限</view>
-          <view class="th th-check muted">打卡</view>
-        </view>
-        <view class="tbody">
-          <view class="tr" wx:for="{{rows}}" wx:key="key">
-            <view class="td td-grade">
-              <view class="tag">{{item.label}}</view>
-            </view>
-            <view class="td td-total">{{item.progressText}}</view>
-            <view class="td td-check">
-              <view class="stepper">
-                <view
-                  class="icon-btn {{item.delta>0?'':'step-disabled'}}"
-                  data-key="{{item.key}}"
-                  bindtap="onDec"
-                >
-                  -
-                </view>
-                <view class="delta-text">{{item.deltaText}}</view>
-                <view
-                  class="icon-btn icon-btn--warn {{item.canInc?'':'step-disabled'}}"
-                  data-key="{{item.key}}"
-                  bindtap="onInc"
-                >
-                  +
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
+    <view class="ck-head__row">
+      <view class="tag ck-date" bindtap="openCalendar">打卡日期 {{date}} ⌄</view>
+      <button wx:if="{{gymId}}" class="btn-text ck-wall" bindtap="goWall">攀岩墙</button>
     </view>
   </view>
 
-  <view class="btn btn-primary mt" bindtap="onSubmit">今天就爬到这了！</view>
+  <block wx:if="{{gymId}}">
+    <view wx:if="{{cycleLabel}}" class="ck-cycle">当前周期 · {{cycleLabel}}</view>
+    <seg-tabs class="ck-tabs" theme="v2" tabs="{{modeTabs}}" value="{{mode}}" bind:change="onModeChange" />
+
+    <!-- 保存结果摘要与撤销：只在同一区出现 -->
+    <view wx:if="{{revertAvailable}}" class="state-banner is-success ck-result">
+      <text class="state-banner__ic">✓</text>
+      <text class="ck-result__text">已保存本次记录，30 分钟内可撤销。</text>
+      <button class="btn-text btn-text--danger ck-result__undo" bindtap="onTapRevert">撤销本次</button>
+    </view>
+    <view wx:elif="{{revertJustNow}}" class="state-banner is-pending ck-result">
+      <text class="state-banner__ic">!</text>
+      <text class="ck-result__text">本次打卡已撤销。</text>
+    </view>
+
+    <view class="card ck-table">
+      <view class="ck-thead">
+        <view class="ck-th ck-th-grade">等级</view>
+        <view class="ck-th ck-th-total">累计/上限</view>
+        <view class="ck-th ck-th-check">本次</view>
+      </view>
+      <view class="ck-row" wx:for="{{rows}}" wx:key="key">
+        <view class="ck-grade"><text class="tag">{{item.label}}</text></view>
+        <view class="ck-total">{{item.progressText}}</view>
+        <view class="ck-stepper">
+          <view class="ck-step {{item.delta>0?'':'ck-step--off'}}" data-key="{{item.key}}" bindtap="onDec">−</view>
+          <view class="ck-delta">{{item.deltaText}}</view>
+          <view class="ck-step {{item.canInc?'':'ck-step--off'}}" data-key="{{item.key}}" bindtap="onInc">＋</view>
+        </view>
+      </view>
+      <view wx:if="{{!rows.length}}" class="empty-state">
+        <view class="empty-state__desc">当前周期暂无等级表</view>
+      </view>
+    </view>
+
+    <view class="action-bar">
+      <button class="btn btn-primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmit">保存记录</button>
+    </view>
+  </block>
+
+  <!-- 无馆：先选馆，未选不可提交 -->
+  <view wx:else class="empty-state ck-nogym">
+    <view class="empty-state__title">先选择岩馆</view>
+    <view class="empty-state__desc">不同岩馆的周期与等级表各自独立</view>
+    <button class="btn btn-primary" bindtap="openGymSheet">选择岩馆</button>
+  </view>
+
+  <!-- 岩馆选择 -->
+  <view wx:if="{{gymSheetVisible}}" class="sheet-mask" bindtap="closeGymSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd">
+        <text class="sheet__title">选择岩馆</text>
+        <view class="sheet__close" bindtap="closeGymSheet">✕</view>
+      </view>
+      <view class="sheet__search">
+        <view class="searchbar">
+          <text class="searchbar__ic">🔍</text>
+          <input class="searchbar__input" placeholder="搜索岩馆名称 / 地址" value="{{gymKeyword}}" confirm-type="search" bindinput="onGymKeywordInput" bindconfirm="onGymKeywordInput" placeholder-class="ph" />
+        </view>
+      </view>
+      <scroll-view class="sheet__bd" scroll-y lower-threshold="80" bindscrolltolower="onGymScrollLower">
+        <block wx:if="{{gymOptions.length > 0}}">
+          <view class="sheet-item" wx:for="{{gymOptions}}" wx:key="_id" data-id="{{item._id}}" bindtap="onPickGym">
+            <view class="sheet-item__ic">馆</view>
+            <view class="sheet-item__info">
+              <text class="sheet-item__name">{{item.name}}</text>
+              <text class="sheet-item__sub">{{item.city || ''}}{{item.address ? ' · ' + item.address : ''}}</text>
+            </view>
+            <text wx:if="{{item._id===gymId}}" class="sheet-item__check">✓</text>
+          </view>
+          <view wx:if="{{gymPager.hasMore}}" class="sheet-more" bindtap="onGymLoadMore">{{gymPager.loading ? '加载中…' : '加载更多'}}</view>
+        </block>
+        <view wx:else class="sheet-empty">{{gymPager.loading ? '加载中…' : (gymKeyword ? '没有找到匹配的岩馆' : '当前城市暂无岩馆')}}</view>
+      </scroll-view>
+    </view>
+  </view>
 
   <date-cal
     visible="{{calendarVisible}}"
@@ -74,4 +100,3 @@
     bind:close="closeCalendar"
   />
 </view>
-

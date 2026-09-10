@@ -1,8 +1,8 @@
 {
   "usingComponents": {
-    "gym-card": "../../components/gymCard/index",
     "paginator": "../../components/paginator/index"
   },
-  "navigationBarTitleText": "馆长模式"
+  "navigationBarTitleText": "我的岩馆",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }
-

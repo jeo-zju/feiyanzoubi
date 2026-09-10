@@ -1,54 +1,79 @@
-<view class="page discover-page">
-  <view class="discover-heading">
-    <view>
-      <view class="eyebrow">一起爬，认识新岩友</view>
-      <view class="page-title" bindtap="openCitySheet">{{city}} <text class="city-arrow">⌄</text></view>
+<view class="page ui-v2 discover-page">
+  <!-- A 顶部：城市入口 + 日历视图，严格贴两边；通知从「我的」进入 -->
+  <view class="discover-top">
+    <view class="city-entry" bindtap="openCitySheet">
+      <text class="city-entry__name">{{city}}</text>
+      <text class="city-entry__arrow">⌄</text>
     </view>
-    <button class="btn-text" bindtap="notifications">通知</button>
+    <view class="calendar-entry" bindtap="calendar">
+      <text class="calendar-entry__label">日历视图</text>
+    </view>
   </view>
-  <view class="date-tabs"><seg-tabs tabs="{{dateTabs}}" value="{{dateTab}}" bind:change="pickDate" /></view>
+
+  <!-- B 单行短标题 -->
+  <view class="hero-title">找个人，一起爬<text class="hero-dot">。</text></view>
+
+  <!-- C 日期快捷行：compact 等宽分段 -->
+  <view class="date-tabs"><seg-tabs theme="v2" compact tabs="{{dateTabs}}" value="{{dateTab}}" bind:change="pickDate" /></view>
+
+  <!-- D 筛选工具行：左岩馆（弹性）、右筛选（固定宽），不再均分出第三格 -->
   <view class="filter-row">
-    <view class="field-select filter-field" bindtap="openGym">
-      <text class="field-select__value">{{gymName}}</text>
-      <text class="field-select__arrow">▾</text>
+    <view class="filter-chip filter-chip--gym" bindtap="openGym">
+      <text class="filter-chip__label">{{gymName}}</text>
+      <text class="filter-chip__arrow">⌄</text>
     </view>
-    <picker class="filter-field" range="{{typeLabels}}" value="{{typeIndex}}" bindchange="pickType">
-      <view class="field-select">
-        <text class="field-select__value">{{typeLabels[typeIndex]}}</text>
-        <text class="field-select__arrow">▾</text>
-      </view>
-    </picker>
-    <button class="btn-text" bindtap="calendar">日历</button>
+    <view class="filter-chip filter-chip--filter" bindtap="openFilterSheet">
+      <text class="filter-chip__label">筛选<text wx:if="{{filterCount}}" class="filter-chip__count">·{{filterCount}}</text></text>
+      <text class="filter-chip__arrow">⌄</text>
+    </view>
   </view>
-  <view class="availability"><text>仅看有名额的约爬</text><switch class="switch-sm" checked="{{onlyAvailable}}" bindchange="toggleAvailable" color="#8f7bff" /></view>
-  <view class="card card-pad plan-card" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="openPlan">
-    <view class="plan-card__date">{{item.date}} · {{item.startTime}}–{{item.endTime}}</view>
-    <view class="plan-title">{{item.title}}</view>
-    <view class="plan-card__gym">{{item.gymName}}</view>
-    <view class="host-row">
-      <image class="host-avatar" src="{{item.user.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
-      <view>
-        <view class="host-name">{{item.user.displayName}}</view>
-        <view class="host-level">{{item.skillText}}</view>
+
+  <!-- 约爬列表：日期时间一行、标题/馆名全宽、标签轻量行、底部人物左/名额右 -->
+  <view class="discover-list">
+    <view class="plan-card {{item.stateKey==='full'?'is-full':item.stateKey==='closed'?'is-closed':''}}" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="openPlan">
+      <view class="plan-card__top">
+        <text class="plan-card__date"><text class="ticket__week">{{item.weekdayText}}</text> · {{item.mdText}}</text>
+        <text class="plan-card__time">{{item.timeSlotText ? item.timeSlotText : item.startTime + '–' + item.endTime}}</text>
+      </view>
+      <view class="plan-card__title">{{item.title}}</view>
+      <view class="plan-card__gym">{{item.gymName}}</view>
+      <view wx:if="{{item.skillTags.length || item.atmosphereTags.length}}" class="plan-card__tags">{{item.typeText}}{{item.atmosphereText ? ' · ' + item.atmosphereText : ''}}</view>
+      <view class="plan-card__person">
+        <image class="plan-card__avatar" src="{{item.user.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
+        <view class="plan-card__person-main">
+          <view class="plan-card__name">{{item.user.displayName}}</view>
+          <view class="plan-card__skill">{{item.skillText}}</view>
+        </view>
+        <view class="plan-card__seats">
+          <view class="plan-card__seats-main">{{item.seatsMain}}</view>
+          <view class="plan-card__seats-sub">{{item.seatsSub}}</view>
+        </view>
       </view>
     </view>
-    <view class="plan-tags">{{item.typeText}}{{item.atmosphereText?' · '+item.atmosphereText:''}}</view>
-    <view class="plan-card__footer"><text>{{item.countText}}</text><text class="plan-cta">{{item.joinable?'查看并加入':'查看约爬'}} ›</text></view>
   </view>
+
   <view wx:if="{{error}}" class="empty-state">
     <view class="empty-state__desc">{{error}}</view>
     <button class="btn btn-ghost" bindtap="retry">重试</button>
   </view>
-  <view wx:elif="{{!list.length && !loading}}" class="empty-state">
-    <view class="empty-state__title">还没有合适的约爬</view>
-    <view class="empty-state__desc">发起一场，邀请新岩友一起爬。也可以换个时间或岩馆看看。</view>
-    <button class="btn btn-primary" bindtap="publish">发起这段时间的约爬</button>
+  <view wx:elif="{{!list.length && !loading}}" class="empty-state discover-empty">
+    <view class="route-mark discover-empty__mark">
+      <view class="route-mark__line" style="left:20rpx; top:62rpx; width:50rpx; transform: translateY(-50%) rotate(-37deg);"></view>
+      <view class="route-mark__line" style="left:60rpx; top:32rpx; width:46rpx; transform: translateY(-50%) rotate(-15deg);"></view>
+      <view class="route-mark__dot" style="left:14rpx; top:56rpx;"></view>
+      <view class="route-mark__dot" style="left:54rpx; top:26rpx;"></view>
+      <view class="route-mark__dot" style="left:98rpx; top:14rpx;"></view>
+    </view>
+    <view class="empty-state__title">这个时间还没有约爬</view>
+    <view class="empty-state__desc">换个筛选看看，或发起第一场，邀请新岩友一起爬。</view>
     <button class="btn-text" bindtap="clearFilters">清除筛选</button>
   </view>
   <view wx:if="{{loading}}" class="list-status">正在寻找约爬…</view>
-  <view wx:elif="{{list.length && !hasMore}}" class="list-status">近期约爬都在这里了</view>
-  <view class="action-bar"><button class="btn btn-primary" bindtap="publish">＋ 发起约爬</button></view>
+  <view wx:elif="{{list.length && !hasMore}}" class="list-status">没有更多了</view>
 
+  <view class="action-bar"><button class="btn btn-primary" bindtap="publish">发起约爬</button></view>
+
+  <!-- 城市选择 -->
   <view wx:if="{{citySheetVisible}}" class="sheet-mask" bindtap="closeCitySheet" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd"><text class="sheet__title">选择城市</text><view class="sheet__close" bindtap="closeCitySheet">✕</view></view>
@@ -61,6 +86,7 @@
     </view>
   </view>
 
+  <!-- 岩馆选择 -->
   <view wx:if="{{gymPicker}}" class="sheet-mask" bindtap="closeGym" catchtouchmove="noop">
     <view class="sheet" catchtap="noop">
       <view class="sheet__hd"><text class="sheet__title">选择岩馆</text><view class="sheet__close" bindtap="closeGym">✕</view></view>
@@ -80,6 +106,30 @@
         <view wx:elif="{{!gyms.length && !gymLoading}}" class="sheet-empty">没有找到匹配的岩馆</view>
         <view wx:elif="{{gymHasMore}}" class="sheet-more" bindtap="moreGyms">加载更多</view>
       </scroll-view>
+    </view>
+  </view>
+
+  <!-- 筛选弹层：类型单选 + 仅看有名额 + 日历入口；草稿态，应用才生效 -->
+  <view wx:if="{{filterSheetVisible}}" class="sheet-mask" bindtap="closeFilterSheet" catchtouchmove="noop">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet__hd"><text class="sheet__title">筛选</text><view class="sheet__close" bindtap="closeFilterSheet">✕</view></view>
+      <scroll-view scroll-y class="sheet__bd">
+        <view class="filter-group">
+          <view class="filter-group__t">类型</view>
+          <view wx:for="{{typeLabels}}" wx:key="*this" class="sheet-item" data-index="{{index}}" bindtap="pickDraftType">
+            <text class="sheet-item__label">{{item}}</text>
+            <text wx:if="{{draftTypeIndex === index}}" class="sheet-item__check">✓</text>
+          </view>
+        </view>
+        <view class="sheet-item filter-switch-row">
+          <text class="sheet-item__label">仅看有名额的约爬</text>
+          <switch color="#D2EF72" checked="{{draftOnlyAvailable}}" bindchange="toggleDraftAvailable" />
+        </view>
+      </scroll-view>
+      <view class="sheet__ft filter-sheet__ft">
+        <button class="btn btn-ghost filter-sheet__btn" bindtap="resetFilterDraft">重置</button>
+        <button class="btn btn-primary filter-sheet__btn" bindtap="applyFilter">应用</button>
+      </view>
     </view>
   </view>
 </view>

@@ -491,7 +491,14 @@ exports.main = async (event) => {
       if (name) patch.name = name;
       if (gymPatch.city != null) patch.city = safeText(gymPatch.city);
       if (gymPatch.address != null) patch.address = safeText(gymPatch.address);
+      if (gymPatch.phone != null) patch.phone = safeText(gymPatch.phone);
+      if (gymPatch.lat != null) patch.lat = Number(gymPatch.lat) || null;
+      if (gymPatch.lng != null) patch.lng = Number(gymPatch.lng) || null;
       if (gymPatch.supportedModes != null) patch.supportedModes = uniqueModes(gymPatch.supportedModes);
+      // 人工编辑岩馆字段后标记为已人工维护，同步不得覆盖地址/电话/位置/城市
+      if (gymPatch.city != null || gymPatch.address != null || gymPatch.phone != null || gymPatch.lat != null || gymPatch.lng != null || name) {
+        patch.claimedByOwner = true;
+      }
     }
 
     if (cyclePatch) {

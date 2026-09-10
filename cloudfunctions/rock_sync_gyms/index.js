@@ -1,26 +1,32 @@
-const https = require("https");
 const cloud = require("wx-server-sdk");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 const _ = db.command;
+
+const {
+  safeText,
+  clampInt,
+  uniqueTexts,
+  DEFAULT_SYNC_KEYWORDS,
+  normalizePoi,
+  buildSourceLinkId
+} = require("./normalize");
+const { findExistingGym } = require("./match");
+const {
+  buildNewGymDoc,
+  buildGymPatch,
+  saveSourceRecord,
+  shouldQueueReview,
+  saveReviewQueue
+} = require("./write");
+const { fetchTencentSearch, sleep, REQUEST_INTERVAL_MS } = require("./provider");
+
 const BOOTSTRAP_ADMIN_IDS = ["42098a0769e3423400183ddf36230f95"];
-const REQUEST_INTERVAL_MS = 350;
-const TENCENT_CATEGORY_FILTER = "category=运动健身";
-const DEFAULT_SYNC_KEYWORDS = [
-  "攀岩",
-  "攀岩馆",
-  "抱石馆",
-  "攀岩训练馆"
-];
-const STRONG_GYM_NAME_RE = /(攀岩馆|抱石馆|室内攀岩|攀岩|抱石|岩馆|boulder|bouldering|climbing)/i;
-const CLIMBING_CATEGORY_RE = /(攀岩|抱石|极限运动)/i;
-const WEAK_GYM_NAME_RE = /(训练馆|训练中心|俱乐部|中心|运动馆|运动中心)/i;
-const IRRELEVANT_RE = /(ktv|马术|车辆改装|改装|汽修|洗车|酒吧|足浴|棋牌|台球|网吧|按摩|足疗|酒店|宾馆|民宿|摄影|宠物|驾校|汽车美容|餐厅|火锅|烤肉|烧烤|茶楼|spa|轰趴)/i;
-const SPORTS_CATEGORY_RE = /^运动健身(?::|：|$)/;
-const GATE_LIKE_NAME_RE = /((东|西|南|北|中)[0-9一二三四五六七八九十]*门|出入口|入口|出口)$/;
-const CAMPUS_OR_COMPOUND_RE = /(大学|学院|学校|校区|中学|小学|幼儿园|小区|苑|园区|广场|公寓|社区)/;
+
+// 支持的 action 枚举：preview（预览）/ apply（正式写入）/ dispatch（创建分片供 worker 领取）
+const VALID_ACTIONS = ["preview", "apply", "dispatch"];
 
 function traceId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -32,304 +38,6 @@ function ok(data, tid) {
 
 function fail(code, message, tid) {
   return { ok: false, error: { code, message }, traceId: tid };
-}
-
-function safeText(v) {
-  return v == null ? "" : String(v).trim();
-}
-
-function clampInt(value, min, max, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(min, Math.min(max, Math.floor(n)));
-}
-
-function uniqueTexts(list) {
-  const out = [];
-  const seen = {};
-  (Array.isArray(list) ? list : []).forEach((item) => {
-    const text = safeText(item);
-    if (!text) return;
-    if (seen[text]) return;
-    seen[text] = true;
-    out.push(text);
-  });
-  return out;
-}
-
-function normalizeName(name) {
-  return safeText(name)
-    .replace(/[()（）【】\[\]\s]+/g, "")
-    .replace(/攀岩馆|抱石馆|岩馆|体验馆|中心店|店$/g, "")
-    .toLowerCase();
-}
-
-function uniqueModes(list) {
-  const out = [];
-  const seen = {};
-  (Array.isArray(list) ? list : []).forEach((item) => {
-    const mode = safeText(item).toLowerCase();
-    if (!mode) return;
-    if (!["boulder", "difficulty", "lead"].includes(mode)) return;
-    if (seen[mode]) return;
-    seen[mode] = true;
-    out.push(mode);
-  });
-  return out;
-}
-
-function inferSupportedModes(input) {
-  const text = safeText(input).toLowerCase();
-  const supportedModes = [];
-  const reasons = [];
-
-  if (/抱石|boulder|bouldering/.test(text)) {
-    supportedModes.push("boulder");
-    reasons.push("命中抱石关键词");
-  }
-  if (/难度|顶绳|绳攀|rope|top rope|auto belay|自动保护/.test(text)) {
-    supportedModes.push("difficulty");
-    reasons.push("命中难度关键词");
-  }
-  if (/先锋|lead/.test(text)) {
-    supportedModes.push("lead");
-    reasons.push("命中先锋关键词");
-  }
-  if (/综合|全能|双区/.test(text)) {
-    supportedModes.push("boulder", "difficulty");
-    reasons.push("命中综合关键词");
-  }
-
-  return {
-    supportedModes: uniqueModes(supportedModes),
-    confidence: reasons.length ? 0.8 : 0.2,
-    reasons: reasons.length ? reasons : ["仅凭搜索结果暂未识别可用打卡模式"]
-  };
-}
-
-function assessPoiRelevance(poi, scope) {
-  const name = safeText(poi && poi.title);
-  const category = safeText(poi && poi.category);
-  const keyword = safeText(scope && scope.keyword);
-  const nameAndCategory = `${name} ${category}`;
-  const reasons = [];
-  const hasStrongName = STRONG_GYM_NAME_RE.test(name);
-  const hasClimbingCategory = CLIMBING_CATEGORY_RE.test(category);
-  const hasWeakGymName = WEAK_GYM_NAME_RE.test(name);
-  const inSportsCategory = SPORTS_CATEGORY_RE.test(category);
-  const keywordIsPrecise = DEFAULT_SYNC_KEYWORDS.includes(keyword);
-
-  if (IRRELEVANT_RE.test(nameAndCategory)) {
-    return {
-      accepted: false,
-      reason: "命中无关行业黑名单",
-      confidence: 0
-    };
-  }
-  if (!inSportsCategory) {
-    return {
-      accepted: false,
-      reason: "不在运动健身类目",
-      confidence: 0
-    };
-  }
-  if (GATE_LIKE_NAME_RE.test(name) || (CAMPUS_OR_COMPOUND_RE.test(name) && /门$/.test(name))) {
-    return {
-      accepted: false,
-      reason: "名称更像学校或园区出入口",
-      confidence: 0
-    };
-  }
-  if (hasStrongName) reasons.push("名称命中岩馆关键词");
-  if (hasClimbingCategory) reasons.push("类目命中攀岩相关");
-  if (inSportsCategory) reasons.push("类目属于运动健身");
-  if (keywordIsPrecise) reasons.push("来源关键词为高精度词");
-  if (hasWeakGymName) reasons.push("名称命中场馆弱提示词");
-
-  if (!hasStrongName && !hasClimbingCategory) {
-    return {
-      accepted: false,
-      reason: "名称和类目都未明确体现岩馆",
-      confidence: 0.1
-    };
-  }
-  if (!hasStrongName && hasClimbingCategory && !hasWeakGymName) {
-    return {
-      accepted: false,
-      reason: "仅类目相关但名称不够明确",
-      confidence: 0.35
-    };
-  }
-
-  const confidence = hasStrongName ? 0.95 : 0.75;
-  return {
-    accepted: true,
-    reason: reasons.join("；") || "通过严格相关性过滤",
-    confidence
-  };
-}
-
-function requestJson(url) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(
-      url,
-      {
-        timeout: 12000,
-        headers: {
-          Accept: "application/json"
-        }
-      },
-      (res) => {
-        let raw = "";
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => {
-          raw += chunk;
-        });
-        res.on("end", () => {
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            return reject(new Error(`HTTP_${res.statusCode}`));
-          }
-          try {
-            resolve(JSON.parse(raw || "{}"));
-          } catch (e) {
-            reject(new Error("MAP_RESPONSE_PARSE_FAILED"));
-          }
-        });
-      }
-    );
-    req.on("timeout", () => {
-      req.destroy(new Error("MAP_REQUEST_TIMEOUT"));
-    });
-    req.on("error", reject);
-  });
-}
-
-function buildTencentSearchUrl(params) {
-  const query = new URLSearchParams();
-  Object.keys(params || {}).forEach((key) => {
-    const value = params[key];
-    if (value == null || value === "") return;
-    query.set(key, String(value));
-  });
-  return `https://apis.map.qq.com/ws/place/v1/search?${query.toString()}`;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
-}
-
-function normalizePoi(item, scope) {
-  const poi = item || {};
-  const ad = poi.ad_info || {};
-  const location = poi.location || {};
-  const modeInfo = inferSupportedModes(`${safeText(poi.title)} ${safeText(poi.category)}`);
-  const relevance = assessPoiRelevance(poi, scope);
-  return {
-    provider: "tencent",
-    providerPoiId: safeText(poi.id),
-    sourceCity: safeText(scope && scope.city),
-    sourceKeyword: safeText(scope && scope.keyword),
-    name: safeText(poi.title),
-    normalizedName: normalizeName(poi.title),
-    address: safeText(poi.address),
-    phone: safeText(poi.tel),
-    category: safeText(poi.category),
-    province: safeText(ad.province),
-    city: safeText(ad.city),
-    district: safeText(ad.district),
-    adcode: safeText(ad.adcode),
-    lat: Number(location.lat) || 0,
-    lng: Number(location.lng) || 0,
-    supportedModes: modeInfo.supportedModes,
-    modeConfidence: modeInfo.confidence,
-    modeReasons: modeInfo.reasons,
-    relevanceAccepted: !!relevance.accepted,
-    relevanceReason: safeText(relevance.reason),
-    relevanceConfidence: Number(relevance.confidence) || 0
-  };
-}
-
-function toRad(v) {
-  return (Number(v) * Math.PI) / 180;
-}
-
-function distanceInMeters(aLat, aLng, bLat, bLng) {
-  const lat1 = Number(aLat);
-  const lng1 = Number(aLng);
-  const lat2 = Number(bLat);
-  const lng2 = Number(bLng);
-  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return Number.MAX_SAFE_INTEGER;
-  const R = 6378137;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const x =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
-}
-
-function buildBatchId(provider) {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${safeText(provider) || "sync"}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(
-    now.getHours()
-  )}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-}
-
-function buildSourceRef(item, now) {
-  return {
-    provider: item.provider,
-    providerPoiId: item.providerPoiId,
-    providerName: item.name,
-    fetchedAt: now,
-    lastSeenAt: now
-  };
-}
-
-function mergeAliasNames(current, nextName) {
-  const list = Array.isArray(current) ? current.slice(0) : [];
-  const name = safeText(nextName);
-  if (!name) return list;
-  if (!list.includes(name)) list.push(name);
-  return list.slice(0, 20);
-}
-
-function mergeSourceRefs(current, item, now) {
-  const list = Array.isArray(current) ? current.slice(0) : [];
-  const idx = list.findIndex(
-    (ref) => safeText(ref && ref.provider) === item.provider && safeText(ref && ref.providerPoiId) === item.providerPoiId
-  );
-  if (idx >= 0) {
-    list[idx] = {
-      ...(list[idx] || {}),
-      provider: item.provider,
-      providerPoiId: item.providerPoiId,
-      providerName: item.name,
-      fetchedAt: list[idx].fetchedAt || now,
-      lastSeenAt: now
-    };
-    return list;
-  }
-  list.push(buildSourceRef(item, now));
-  return list.slice(0, 20);
-}
-
-function canAutoUpdateModes(gym) {
-  const source = safeText(gym && gym.supportedModesSource);
-  return !source || source === "auto_rule";
-}
-
-function chooseSupportedModes(currentGym, item) {
-  const currentModes = uniqueModes((currentGym && currentGym.supportedModes) || []);
-  const nextModes = uniqueModes(item && item.supportedModes);
-  if (currentModes.length) return null;
-  if (!nextModes.length) return null;
-  if (!canAutoUpdateModes(currentGym)) return null;
-  return {
-    supportedModes: nextModes,
-    supportedModesSource: "auto_rule",
-    supportedModesConfidence: Number(item && item.modeConfidence) || 0
-  };
 }
 
 function isBootstrapAdminId(value) {
@@ -354,12 +62,26 @@ async function isAdmin(openid) {
   return user.role === "admin" || user.isAdmin === true;
 }
 
+/**
+ * 判断是否为可信的服务端调度调用。
+ * 云函数间调用时 wxctx.SOURCE 为 "云函数"，且不应有普通用户 OPENID。
+ * 这里仅做基础校验，真正的服务身份隔离需在部署时通过云函数调用权限配置。
+ */
+function isTrustedServerCall(wxctx, event) {
+  const source = safeText(wxctx && wxctx.SOURCE);
+  // 云函数内部调用（SCF 触发）且无客户端 OPENID
+  if (source === "云函数" && !wxctx.OPENID) return true;
+  // 显式服务端调度标记（由内部调度函数传入，普通客户端无法构造可信来源）
+  if (event && event.__serverDispatch === true && !wxctx.OPENID) return true;
+  return false;
+}
+
 async function createSyncRun(batchId, meta) {
   const payload = {
     batchId,
     provider: safeText(meta && meta.provider),
     triggerType: safeText(meta && meta.triggerType) || "manual",
-    writeMode: !!(meta && meta.writeMode),
+    action: safeText(meta && meta.action) || "preview",
     scope: meta && meta.scope ? meta.scope : {},
     stats: {
       requests: 0,
@@ -368,6 +90,11 @@ async function createSyncRun(batchId, meta) {
       filteredIrrelevant: 0,
       inserted: 0,
       updated: 0,
+      skipped: 0,
+      reviewQueued: 0,
+      wouldInsert: 0,
+      wouldUpdate: 0,
+      wouldReview: 0,
       sourceSaved: 0
     },
     startedAt: Date.now(),
@@ -393,292 +120,28 @@ async function finishSyncRun(runId, patch) {
   });
 }
 
-async function saveSourceRecord(item, batchId) {
+function buildSourceLinkIdFromItem(item) {
+  return buildSourceLinkId(item.provider, item.providerPoiId);
+}
+
+function buildBatchId(provider) {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${safeText(provider) || "sync"}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(
+    now.getHours()
+  )}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+/**
+ * 处理单个候选：匹配 → 决定 → 写入/审核。
+ * action = preview 时只计算变更，不写 RockGyms。
+ */
+async function processItem(db, item, batchId, runId, action) {
   const now = Date.now();
-  const record = {
-    provider: item.provider,
-    providerPoiId: item.providerPoiId,
-    batchId,
-    fetchedAt: now,
-    keyword: item.sourceKeyword,
-    region: item.sourceCity,
-    rawName: item.name,
-    rawAddress: item.address,
-    rawPhone: item.phone,
-    rawLocation: { lat: item.lat, lng: item.lng },
-    rawCategory: item.category,
-    rawPayload: item,
-    normalized: {
-      name: item.name,
-      normalizedName: item.normalizedName,
-      province: item.province,
-      city: item.city,
-      district: item.district,
-      address: item.address,
-      lat: item.lat,
-      lng: item.lng,
-      phone: item.phone,
-      supportedModes: uniqueModes(item.supportedModes)
-    },
-    processState: "fetched",
-    createdAt: now,
-    updatedAt: now
-  };
-  await db.collection("RockGymSourceRecords").add({ data: record });
-}
+  const match = await findExistingGym(db, item);
 
-function shouldQueueReview(item, writeResult) {
-  if (!item) return false;
-  if (writeResult && writeResult.action === "skip") return false;
-  if (!uniqueModes(item.supportedModes).length) return true;
-  if (Number(item.modeConfidence || 0) < 0.7) return true;
-  if (writeResult && writeResult.action === "update" && Number(writeResult.score || 0) < 1.2) return true;
-  return false;
-}
-
-async function saveReviewQueue(item, batchId, writeResult) {
-  const now = Date.now();
-  const doc = {
-    batchId,
-    provider: item.provider,
-    providerPoiId: item.providerPoiId,
-    name: item.name,
-    city: item.city,
-    district: item.district,
-    address: item.address,
-    phone: item.phone,
-    supportedModes: uniqueModes(item.supportedModes),
-    modeConfidence: Number(item.modeConfidence) || 0,
-    modeReasons: Array.isArray(item.modeReasons) ? item.modeReasons : [],
-    gymId: writeResult && writeResult.gymId ? String(writeResult.gymId) : "",
-    writeAction: writeResult && writeResult.action ? writeResult.action : "",
-    matchScore: Number(writeResult && writeResult.score) || 0,
-    reviewState: "pending",
-    reviewReason: !uniqueModes(item.supportedModes).length ? "mode_missing" : "low_confidence",
-    rawPayload: item,
-    createdAt: now,
-    updatedAt: now
-  };
-  await db.collection("RockGymReviewQueue").add({ data: doc });
-}
-
-function normalizeExistingGym(gym) {
-  if (!gym) return null;
-  return {
-    ...gym,
-    name: safeText(gym.name || gym.gymName || gym.title),
-    normalizedName: safeText(gym.normalizedName || normalizeName(gym.name || gym.gymName || gym.title)),
-    city: safeText(gym.city || gym.cityName || gym.locationCity),
-    address: safeText(gym.address || gym.addr || gym.location),
-    phone: safeText(gym.phone || gym.tel),
-    lat: Number(gym.lat || (gym.location && gym.location.lat) || 0) || 0,
-    lng: Number(gym.lng || (gym.location && gym.location.lng) || 0) || 0,
-    supportedModes: uniqueModes(gym.supportedModes),
-    status: safeText(gym.status).toLowerCase() || "active",
-    mergedIntoGymId: safeText(gym.mergedIntoGymId)
-  };
-}
-
-function isExactSourceRefMatch(gym, item) {
-  const current = normalizeExistingGym(gym);
-  if (!current) return false;
-  const sourceRefs = Array.isArray(current.sourceRefs) ? current.sourceRefs : [];
-  return sourceRefs.some(
-    (ref) => safeText(ref && ref.provider) === item.provider && safeText(ref && ref.providerPoiId) === item.providerPoiId
-  );
-}
-
-function scoreGymCandidate(gym, item) {
-  const current = normalizeExistingGym(gym);
-  if (!current) return 0;
-  let score = 0;
-  const sourceRefs = Array.isArray(current.sourceRefs) ? current.sourceRefs : [];
-  if (
-    sourceRefs.some(
-      (ref) => safeText(ref && ref.provider) === item.provider && safeText(ref && ref.providerPoiId) === item.providerPoiId
-    )
-  ) {
-    return 10;
-  }
-  if (current.normalizedName && current.normalizedName === item.normalizedName) score += 1;
-  if (current.name && current.name === item.name) score += 0.6;
-  if (current.address && current.address === item.address) score += 0.5;
-  if (current.phone && item.phone && current.phone === item.phone) score += 0.4;
-  const dist = distanceInMeters(current.lat, current.lng, item.lat, item.lng);
-  if (dist <= 100) score += 0.5;
-  else if (dist <= 300) score += 0.3;
-  return score;
-}
-
-async function findExistingGym(item) {
-  const col = db.collection("RockGyms");
-  const candidates = [];
-  const pushList = (list) => {
-    (Array.isArray(list) ? list : []).forEach((doc) => {
-      if (!doc || !doc._id) return;
-      if (candidates.some((x) => String(x._id) === String(doc._id))) return;
-      candidates.push(doc);
-    });
-  };
-
-  if (item.city) {
-    try {
-      const byCity = await col.where({ city: item.city }).limit(100).get();
-      pushList(byCity && byCity.data);
-    } catch (e) {}
-  }
-  if (!candidates.length && item.name) {
-    try {
-      const byName = await col.where({ name: item.name }).limit(50).get();
-      pushList(byName && byName.data);
-    } catch (e) {}
-  }
-  if (!candidates.length) return null;
-
-  let best = null;
-  let bestScore = 0;
-  candidates
-    .filter((doc) => normalizeExistingGym(doc).status === "active")
-    .forEach((doc) => {
-      const score = scoreGymCandidate(doc, item);
-      if (score > bestScore) {
-        bestScore = score;
-        best = doc;
-      }
-    });
-  if (best && bestScore >= 1) {
-    return { gym: best, score: bestScore };
-  }
-
-  const mergedExact = candidates.find((doc) => {
-    const current = normalizeExistingGym(doc);
-    return current.status === "merged" && current.mergedIntoGymId && isExactSourceRefMatch(doc, item);
-  });
-  if (mergedExact) {
-    try {
-      const mergedTargetId = safeText(mergedExact.mergedIntoGymId);
-      const targetRes = await col.doc(mergedTargetId).get();
-      const targetGym = targetRes && targetRes.data ? targetRes.data : null;
-      const targetStatus = normalizeExistingGym(targetGym);
-      if (targetGym && targetStatus && targetStatus.status === "active") {
-        return {
-          gym: targetGym,
-          score: 10,
-          reason: "merged_target_update",
-          matchedGymId: safeText(mergedExact._id),
-          matchedGymName: safeText(mergedExact.name || mergedExact.gymName || mergedExact.title)
-        };
-      }
-    } catch (e) {}
-  }
-
-  const deletedExact = candidates.find((doc) => {
-    const current = normalizeExistingGym(doc);
-    return current.status === "deleted" && isExactSourceRefMatch(doc, item);
-  });
-  if (deletedExact) {
-    return { skip: true, score: 10, reason: "deleted_match", gym: deletedExact };
-  }
-
-  candidates.forEach((doc) => {
-    const score = scoreGymCandidate(doc, item);
-    if (score > bestScore) {
-      bestScore = score;
-      best = doc;
-    }
-  });
-  if (best && bestScore >= 1 && normalizeExistingGym(best).status === "active") {
-    return { gym: best, score: bestScore };
-  }
-  return null;
-}
-
-function buildNewGymDoc(item, batchId) {
-  const now = Date.now();
-  return {
-    name: item.name,
-    normalizedName: item.normalizedName,
-    aliasNames: [],
-    province: item.province,
-    city: item.city,
-    district: item.district,
-    address: item.address,
-    phone: item.phone,
-    lat: item.lat,
-    lng: item.lng,
-    location: { lat: item.lat, lng: item.lng },
-    supportedModes: uniqueModes(item.supportedModes),
-    supportedModesSource: uniqueModes(item.supportedModes).length ? "auto_rule" : "",
-    supportedModesConfidence: Number(item.modeConfidence) || 0,
-    status: "active",
-    claimedByOwner: false,
-    sourceRefs: [buildSourceRef(item, now)],
-    sourceSummary: {
-      primaryProvider: item.provider,
-      sourceCount: 1
-    },
-    syncMeta: {
-      firstSeenAt: now,
-      lastSeenAt: now,
-      lastSyncedAt: now,
-      lastVerifiedAt: now
-    },
-    reviewState: "approved",
-    visitCount: 0,
-    visit_count: 0,
-    createdAt: now,
-    updatedAt: now,
-    created_at: db.serverDate(),
-    updated_at: db.serverDate(),
-    syncBatchId: batchId
-  };
-}
-
-function buildGymPatch(existingGym, item, batchId) {
-  const gym = normalizeExistingGym(existingGym);
-  const now = Date.now();
-  const patch = {
-    normalizedName: item.normalizedName || gym.normalizedName,
-    province: item.province || safeText(gym.province),
-    city: item.city || gym.city,
-    district: item.district || safeText(gym.district),
-    address: item.address || gym.address,
-    phone: item.phone || gym.phone,
-    lat: item.lat || gym.lat || 0,
-    lng: item.lng || gym.lng || 0,
-    location: {
-      lat: item.lat || gym.lat || 0,
-      lng: item.lng || gym.lng || 0
-    },
-    status: "active",
-    sourceRefs: mergeSourceRefs(gym.sourceRefs, item, now),
-    sourceSummary: {
-      primaryProvider: item.provider,
-      sourceCount: mergeSourceRefs(gym.sourceRefs, item, now).length
-    },
-    syncMeta: {
-      firstSeenAt: Number(gym.syncMeta && gym.syncMeta.firstSeenAt) || now,
-      lastSeenAt: now,
-      lastSyncedAt: now,
-      lastVerifiedAt: now
-    },
-    aliasNames: safeText(gym.name) && safeText(gym.name) !== item.name ? mergeAliasNames(gym.aliasNames, item.name) : gym.aliasNames || [],
-    updatedAt: now,
-    updated_at: db.serverDate(),
-    syncBatchId: batchId
-  };
-  const modePatch = chooseSupportedModes(gym, item);
-  if (modePatch) {
-    patch.supportedModes = modePatch.supportedModes;
-    patch.supportedModesSource = modePatch.supportedModesSource;
-    patch.supportedModesConfidence = modePatch.supportedModesConfidence;
-  }
-  return patch;
-}
-
-async function upsertGym(item, batchId) {
-  const match = await findExistingGym(item);
-  if (match && match.skip) {
+  if (match.action === "skip") {
+    await saveSourceRecord(db, item, batchId, runId, "skipped", match.gym && match.gym._id);
     return {
       action: "skip",
       gymId: match.gym && match.gym._id ? String(match.gym._id) : "",
@@ -686,45 +149,127 @@ async function upsertGym(item, batchId) {
       reason: match.reason || ""
     };
   }
-  if (!match || !match.gym) {
-    const doc = buildNewGymDoc(item, batchId);
-    const res = await db.collection("RockGyms").add({ data: doc });
+
+  if (match.action === "review") {
+    // 实体存疑或匹配不确定 → 进审核，不自动建馆
+    if (action === "apply") {
+      const sourceRecordId = await saveSourceRecord(db, item, batchId, runId, "pending_review", "");
+      try {
+        await saveReviewQueue(db, item, batchId, runId, { action: "review", score: 0, reason: match.reason });
+      } catch (e) {
+        // 审核入队失败不吞，回写来源记录状态
+        await saveSourceRecord(db, item, batchId, runId, "review_queue_failed", "");
+        throw e;
+      }
+      return {
+        action: "review",
+        sourceRecordId,
+        reason: match.reason || "needs_review",
+        score: 0
+      };
+    }
+    return { action: "would_review", reason: match.reason || "needs_review", score: 0 };
+  }
+
+  if (match.action === "insert") {
+    // 实体存疑（非 accepted）不自动建馆，进审核队列
+    if (item.relevanceDecision !== "accepted") {
+      if (action === "apply") {
+        await saveSourceRecord(db, item, batchId, runId, "pending_review", "");
+        try {
+          await saveReviewQueue(db, item, batchId, runId, { action: "review", score: 0, reason: item.relevanceReason });
+        } catch (e) {
+          await saveSourceRecord(db, item, batchId, runId, "review_queue_failed", "");
+          throw e;
+        }
+        return { action: "review", reason: item.relevanceReason || "entity_needs_review", score: 0 };
+      }
+      return { action: "would_review", reason: item.relevanceReason || "entity_needs_review", score: 0 };
+    }
+    if (action === "apply") {
+      const doc = buildNewGymDoc(item, batchId, now);
+      const linkId = buildSourceLinkIdFromItem(item);
+      // 事务：原子创建主馆与来源映射
+      const tx = await db.startTransaction();
+      let gymId = "";
+      try {
+        const addRes = await tx.collection("RockGyms").add({ data: doc });
+        gymId = addRes && addRes._id ? addRes._id : "";
+        const linkDoc = {
+          provider: item.provider,
+          providerPoiId: item.providerPoiId,
+          gymId,
+          status: "active",
+          createdAt: now,
+          updatedAt: now
+        };
+        await tx.collection("RockGymSourceLinks").doc(linkId).set({ data: linkDoc });
+        await tx.commit();
+      } catch (e) {
+        try {
+          await tx.rollback();
+        } catch (rbErr) {}
+        throw e;
+      }
+      await saveSourceRecord(db, item, batchId, runId, "inserted", gymId);
+      // 模式未识别仍需审核（但实体已确认，馆已创建并对用户可见）
+      if (shouldQueueReview(item, { action: "insert" })) {
+        await saveReviewQueue(db, item, batchId, runId, { action: "insert", gymId, score: 0 });
+      }
+      return { action: "insert", gymId, score: 0 };
+    }
+    return { action: "would_insert", score: 0 };
+  }
+
+  // action === "merge" → 更新已有馆
+  if (action === "apply") {
+    const patch = buildGymPatch(match.gym, item, batchId, now);
+    const gymId = String(match.gym._id);
+    const linkId = buildSourceLinkIdFromItem(item);
+    // 事务：原子更新主馆与来源映射
+    const tx = await db.startTransaction();
+    try {
+      await tx.collection("RockGyms").doc(gymId).update({ data: patch });
+      await tx.collection("RockGymSourceLinks").doc(linkId).set({
+        data: {
+          provider: item.provider,
+          providerPoiId: item.providerPoiId,
+          gymId,
+          status: "active",
+          updatedAt: now
+        }
+      });
+      await tx.commit();
+    } catch (e) {
+      try {
+        await tx.rollback();
+      } catch (rbErr) {}
+      throw e;
+    }
+    await saveSourceRecord(db, item, batchId, runId, "updated", gymId);
+    if (shouldQueueReview(item, { action: "update", score: match.score, reason: match.reason })) {
+      await saveReviewQueue(db, item, batchId, runId, {
+        action: "update",
+        gymId,
+        score: match.score,
+        reason: match.reason
+      });
+    }
     return {
-      action: "insert",
-      gymId: res && res._id ? res._id : "",
-      score: 0
+      action: "update",
+      gymId,
+      score: match.score,
+      reason: match.reason || "",
+      matchedGymId: match.matchedGymId || "",
+      matchedGymName: safeText(match.gym && (match.gym.name || match.gym.gymName || match.gym.title))
     };
   }
-  const patch = buildGymPatch(match.gym, item, batchId);
-  await db.collection("RockGyms").doc(match.gym._id).update({ data: patch });
   return {
-    action: "update",
+    action: "would_update",
     gymId: String(match.gym._id),
     score: match.score,
-    reason: match.reason || "",
-    matchedGymId: match.matchedGymId || "",
-    matchedGymName: match.matchedGymName || ""
+    reason: match.reason || ""
   };
-}
-
-async function fetchTencentSearch(apiKey, city, keyword, pageIndex, pageSize) {
-  const url = buildTencentSearchUrl({
-    key: apiKey,
-    keyword,
-    boundary: `region(${city},0)`,
-    filter: TENCENT_CATEGORY_FILTER,
-    page_size: pageSize,
-    page_index: pageIndex,
-    output: "json"
-  });
-  const response = await requestJson(url);
-  if (!response || Number(response.status) !== 0) {
-    const message = safeText(response && response.message) || "地图接口调用失败";
-    const err = new Error(message);
-    err.code = `MAP_${safeText(response && response.status) || "FAILED"}`;
-    throw err;
-  }
-  return response;
 }
 
 exports.main = async (event) => {
@@ -738,16 +283,23 @@ exports.main = async (event) => {
     inserted: 0,
     updated: 0,
     skipped: 0,
-    sourceSaved: 0,
     reviewQueued: 0,
+    wouldInsert: 0,
+    wouldUpdate: 0,
+    wouldReview: 0,
+    sourceSaved: 0,
     skipReasons: {}
   };
   try {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
-    if (!(await isAdmin(openid))) {
+    const trustedServer = isTrustedServerCall(wxctx, event);
+
+    // 权限：管理员 或 可信服务端调度
+    if (!trustedServer && !(await isAdmin(openid))) {
       return fail("FORBIDDEN", "无权限", tid);
     }
+
     const provider = safeText(event && event.provider) || "tencent";
     if (provider !== "tencent") {
       return fail("UNSUPPORTED_PROVIDER", "当前仅支持腾讯位置服务", tid);
@@ -758,33 +310,71 @@ exports.main = async (event) => {
       return fail("MAP_KEY_MISSING", "未配置 TENCENT_MAP_KEY", tid);
     }
 
-    const writeMode = !!(event && event.write);
-    const dryRun = writeMode ? false : event && event.dryRun !== false;
+    // 严格 action 枚举，禁止用真值转换
+    const rawAction = safeText(event && event.action);
+    const legacyWrite = event && event.write === true;
+    const action = VALID_ACTIONS.includes(rawAction) ? rawAction : legacyWrite ? "apply" : "preview";
+    const isApply = action === "apply";
 
     const city = safeText(event && event.city) || safeText(Array.isArray(event && event.cities) ? event.cities[0] : "") || "北京市";
     const keywords = uniqueTexts((event && event.keywords) || [event && event.keyword || ""]).length
       ? uniqueTexts((event && event.keywords) || [event && event.keyword || ""])
       : DEFAULT_SYNC_KEYWORDS.slice(0);
-    const pageLimit = clampInt(event && event.pageLimit, 1, 5, 1);
+    const pageLimit = clampInt(event && event.pageLimit, 1, 20, 1);
     const pageSize = clampInt(event && event.pageSize, 1, 20, 10);
     const batchId = safeText(event && event.batchId) || buildBatchId(provider);
 
     if (!city) return fail("BAD_REQUEST", "缺少城市", tid);
     if (!keywords.length) return fail("BAD_REQUEST", "缺少关键词", tid);
 
+    const triggerType = trustedServer ? safeText(event && event.triggerType) || "scheduled" : "manual";
+
     const run = await createSyncRun(batchId, {
       provider,
-      triggerType: "manual",
-      writeMode,
+      triggerType,
+      action,
       scope: { city, keywords, pageLimit, pageSize, requestIntervalMs: REQUEST_INTERVAL_MS },
-      openid
+      openid: trustedServer ? "" : openid
     });
     syncRunId = run._id;
+
+    // dispatch：只创建分片，不执行抓取，由 worker 领取处理
+    if (action === "dispatch") {
+      const shardCol = db.collection("RockGymSyncShards");
+      const now = Date.now();
+      let shardCount = 0;
+      for (let ki = 0; ki < keywords.length; ki++) {
+        for (let p = 1; p <= pageLimit; p++) {
+          const shard = {
+            runId: syncRunId,
+            batchId,
+            provider,
+            city,
+            keyword: keywords[ki],
+            page: p,
+            pageSize,
+            status: "queued",
+            retryCount: 0,
+            leaseOwner: "",
+            leaseExpiresAt: 0,
+            leaseVersion: 0,
+            priority: ki * 100 + p,
+            createdAt: now,
+            updatedAt: now
+          };
+          await shardCol.add({ data: shard });
+          shardCount += 1;
+        }
+      }
+      await finishSyncRun(syncRunId, { success: true, stats: { ...stats, shardCount } });
+      return ok({ provider, batchId, action: "dispatch", runId: syncRunId, shardCount, city, keywords, pageLimit }, tid);
+    }
 
     const requests = [];
     const seen = {};
     const filteredSeen = {};
     let requestCount = 0;
+    let truncated = false;
 
     for (let j = 0; j < keywords.length; j++) {
       const keyword = keywords[j];
@@ -804,16 +394,26 @@ exports.main = async (event) => {
           const key = safeText(poi && poi.id);
           if (!key) return;
           const normalized = normalizePoi(poi, { city, keyword });
-          if (!normalized.relevanceAccepted) {
+          if (normalized.relevanceDecision === "rejected") {
             if (!filteredSeen[key]) {
               filteredSeen[key] = normalized;
               stats.filteredIrrelevant += 1;
             }
             return;
           }
-          if (seen[key]) return;
+          if (seen[key]) {
+            // 合并 provenance：同 POI 多关键词命中
+            const existing = seen[key];
+            existing._provenance = existing._provenance || [existing.sourceKeyword];
+            if (!existing._provenance.includes(keyword)) existing._provenance.push(keyword);
+            return;
+          }
           seen[key] = normalized;
         });
+        // 触及分页上限时标记截断
+        if (list.length >= pageSize && page >= pageLimit) {
+          truncated = true;
+        }
         if (list.length < pageSize) break;
       }
     }
@@ -823,36 +423,31 @@ exports.main = async (event) => {
     stats.unique = items.length;
 
     const writeResults = [];
-    if (writeMode) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        await saveSourceRecord(item, batchId);
-        stats.sourceSaved += 1;
-        const res = await upsertGym(item, batchId);
-        if (res.action === "insert") stats.inserted += 1;
-        if (res.action === "update") stats.updated += 1;
-        if (res.action === "skip") {
-          stats.skipped += 1;
-          const reason = safeText(res.reason) || "unknown";
-          stats.skipReasons[reason] = Number(stats.skipReasons[reason] || 0) + 1;
-        }
-        if (shouldQueueReview(item, res)) {
-          try {
-            await saveReviewQueue(item, batchId, res);
-            stats.reviewQueued += 1;
-          } catch (e) {}
-        }
-        writeResults.push({
-          providerPoiId: item.providerPoiId,
-          name: item.name,
-          gymId: res.gymId,
-          action: res.action,
-          score: res.score,
-          reason: safeText(res.reason),
-          matchedGymId: safeText(res.matchedGymId),
-          matchedGymName: safeText(res.matchedGymName)
-        });
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const res = await processItem(db, item, batchId, syncRunId, action);
+      if (res.action === "insert") stats.inserted += 1;
+      if (res.action === "update") stats.updated += 1;
+      if (res.action === "skip") {
+        stats.skipped += 1;
+        const reason = safeText(res.reason) || "unknown";
+        stats.skipReasons[reason] = Number(stats.skipReasons[reason] || 0) + 1;
       }
+      if (res.action === "review") stats.reviewQueued += 1;
+      if (res.action === "would_insert") stats.wouldInsert += 1;
+      if (res.action === "would_update") stats.wouldUpdate += 1;
+      if (res.action === "would_review") stats.wouldReview += 1;
+      if (isApply) stats.sourceSaved += 1;
+      writeResults.push({
+        providerPoiId: item.providerPoiId,
+        name: item.name,
+        gymId: res.gymId || "",
+        action: res.action,
+        score: res.score || 0,
+        reason: safeText(res.reason),
+        matchedGymId: safeText(res.matchedGymId),
+        matchedGymName: safeText(res.matchedGymName)
+      });
     }
 
     await finishSyncRun(syncRunId, { success: true, stats });
@@ -860,8 +455,8 @@ exports.main = async (event) => {
       {
         provider,
         batchId,
-        dryRun,
-        write: writeMode,
+        action,
+        truncated,
         stats,
         requests,
         items: items.slice(0, 60),

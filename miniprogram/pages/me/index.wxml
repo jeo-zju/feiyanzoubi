@@ -1,84 +1,67 @@
-<view class="page">
-  <view class="card card-soft card--card">
-    <view class="card-bd">
-      <view class="card-block">
-        <view class="mycard mycard-render-box" style="width: {{myCardCssW}}px; height: {{myCardCssH}}px;">
-          <image wx:if="{{myCardPreviewImage}}" class="mycard-render" src="{{myCardPreviewImage}}" mode="aspectFit" binderror="onCardPreviewImgError"></image>
-          <view wx:elif="{{noCard && !cardSyncing}}" class="mycard-skeleton mycard-empty" bindtap="goProfileEdit">
-            <view class="sk-empty">
-              <view class="sk-empty__ic">🧗</view>
-              <view class="sk-empty__t">还没有你的攀岩名片</view>
-              <view class="sk-empty__d">点击编辑资料，填写信息后自动生成</view>
-              <view class="btn btn-primary mini sk-empty__btn">去创建</view>
-            </view>
-          </view>
-          <view wx:else class="mycard-skeleton">
-            <view class="sk-bar"></view>
-            <view class="sk-row sk-row--1">
-              <view class="sk-avatar"></view>
-              <view class="sk-right">
-                <view class="sk-line sk-line--w1"></view>
-                <view class="sk-line sk-line--w2"></view>
-                <view class="sk-line sk-line--w3"></view>
-              </view>
-            </view>
-            <view class="sk-row sk-row--2">
-              <view class="sk-chip"></view>
-              <view class="sk-chip sk-chip--m"></view>
-              <view class="sk-chip sk-chip--s"></view>
-              <view class="sk-chip sk-chip--ok"></view>
-            </view>
-            <view class="sk-row sk-row--3">
-              <view class="sk-meta"></view>
-              <view class="sk-meta sk-meta--m"></view>
-              <view class="sk-meta sk-meta--push"></view>
-            </view>
-            <view class="sk-row sk-row--4">
-              <view class="sk-line sk-line--full"></view>
-              <view class="sk-line sk-line--med"></view>
-            </view>
-            <view class="sk-ft">飞岩走壁 · 攀岩名片</view>
-          </view>
-        </view>
-        <view class="mycard-foot-actions">
-          <button class="btn btn-ghost mini" open-type="share">分享</button>
-          <view class="btn btn-ghost mini" catchtap="goSaveMyCard">保存</view>
-          <view class="btn btn-ghost mini" catchtap="goProfileEdit">编辑资料</view>
-          <view wx:if="{{canSeeToolbox}}" class="icon-btn" catchtap="onOpenDrawer">⚙</view>
-        </view>
-      </view>
+<view class="page ui-v2 me-page">
+  <!-- 身份区：头像 / 昵称 / 城市·岩友号 / 编辑 -->
+  <view class="me-head">
+    <image class="me-head__avatar" src="{{user.avatarUrl || defaultAvatar}}" mode="aspectFill" />
+    <view class="me-head__main">
+      <view class="me-head__name">{{user.nickName || '岩友'}}</view>
+      <view class="me-head__meta">{{me.city ? me.city : '浪迹天涯'}}<text wx:if="{{me.rockId}}"> · 岩友号 {{me.rockId}}</text></view>
+    </view>
+    <button class="btn btn-ghost mini me-head__btn" bindtap="goProfileEdit">编辑</button>
+  </view>
+
+  <!-- 攀岩名片入口条：完整名片、分享与保存在 card-view 完成 -->
+  <view class="card-entry" bindtap="goCardView">
+    <view class="card-entry__thumb">
+      <image wx:if="{{myCardPreviewImage}}" class="card-entry__img" src="{{myCardPreviewImage}}" mode="aspectFill" binderror="onCardPreviewImgError"></image>
+      <text wx:else class="card-entry__thumb-ph">名片</text>
+    </view>
+    <view class="card-entry__main">
+      <view class="card-entry__title">{{noCard ? '创建我的攀岩名片' : '我的攀岩名片'}}</view>
+      <view class="card-entry__sub">{{cardSyncing ? '名片生成中…' : noCard ? '填写资料后自动生成' : '查看、分享与保存'}}</view>
+    </view>
+    <view class="card-entry__arrow">›</view>
+  </view>
+
+  <!-- 岩友 / 岩友圈：扁平双入口条 -->
+  <view class="dual-row">
+    <view class="dual-row__cell" bindtap="goFriendList">
+      <text class="dual-row__t">我的岩友</text>
+    </view>
+    <view class="dual-row__divider"></view>
+    <view class="dual-row__cell" bindtap="goCircleList">
+      <text class="dual-row__t">岩友圈</text>
     </view>
   </view>
 
-  <view class="glance-grid mt-sm">
-    <view class="card glance-card glance-card--btn" bindtap="goFriendList">
-      <view class="card-bd glance-bd">
-        <view class="glance-top">
-          <view class="glance-title">岩友</view>
-          <view class="glance-mark glance-mark--friends">👥</view>
-        </view>
-        <view class="glance-cta mt-sm">去列表 ›</view>
-      </view>
+  <!-- 功能菜单：合并为一组，入口名自解释 -->
+  <view class="menu-group">
+    <view class="menu-row" bindtap="goRecords">
+      <text class="menu-row__t">攀爬记录</text>
+      <text class="menu-row__arrow">›</text>
     </view>
-    <view class="card glance-card glance-card--btn" bindtap="goCircleList">
-      <view class="card-bd glance-bd">
-        <view class="glance-top">
-          <view class="glance-title">岩友圈</view>
-          <view class="glance-mark glance-mark--circles">🪢</view>
-        </view>
-        <view class="glance-cta mt-sm">去列表 ›</view>
-      </view>
+    <view class="menu-row" bindtap="goNotifications">
+      <text class="menu-row__t">约爬通知</text>
+      <text class="menu-row__arrow">›</text>
+    </view>
+    <view class="menu-row" bindtap="goSafety">
+      <text class="menu-row__t">屏蔽与安全</text>
+      <text class="menu-row__arrow">›</text>
+    </view>
+    <view class="menu-row" bindtap="goOwner">
+      <text class="menu-row__t">我管理的岩馆</text>
+      <text class="menu-row__arrow">›</text>
+    </view>
+    <view wx:if="{{canSeeToolbox}}" class="menu-row" bindtap="onOpenDrawer">
+      <text class="menu-row__t">管理工具</text>
+      <text class="menu-row__sub">后台入口</text>
+      <text class="menu-row__arrow">›</text>
     </view>
   </view>
 
-  <view class="card mt-sm"><view class="card-bd">
-    <view class="list-row" bindtap="goNotifications"><text>约爬通知</text><text>›</text></view>
-    <view class="list-row" bindtap="goRecords"><text>攀爬记录</text><text>›</text></view>
-    <view class="list-row" bindtap="goSafety"><text>屏蔽与安全</text><text>›</text></view>
-    <view class="list-row" bindtap="goOwner"><text>我管理的岩馆</text><text>›</text></view>
-  </view></view>
+  <view class="page-version">v{{version}}</view>
   <view class="page-footpad"></view>
 
+  <!-- 馆长/管理员抽屉：岩馆合并等管理入口保留在此，结构与 handler 不变 -->
   <view class="drawer-mask {{drawerOpen?'drawer-mask--on':''}}" bindtap="onCloseDrawer"></view>
   <view class="drawer-panel {{drawerOpen?'drawer-panel--on':''}}" catchtap="noop">
     <view class="drawer-hd">
@@ -112,6 +95,7 @@
     </scroll-view>
   </view>
 
+  <!-- 离屏画布：960×606 固定尺寸，禁止改定位方式（名片导出/分享图依赖） -->
   <view class="offscreen-canvas">
     <canvas canvas-id="myCardPreviewCanvas" class="offscreen-canvas__inner" width="960" height="606"></canvas>
   </view>

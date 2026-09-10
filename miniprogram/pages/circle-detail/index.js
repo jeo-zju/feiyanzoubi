@@ -17,8 +17,12 @@ Page({
     myMembership: null,
     myStatus: "",
     pendingCount: 0,
-    memberCardVisible: false,
+    canApply: false,
+    loadError: false,
+    memberSheetVisible: false,
+    memberSheetView: "list",
     memberCard: null,
+    pendingSheetVisible: false,
     gymSheetVisible: false,
     settingSheetVisible: false,
     linkGymSheetVisible: false,
@@ -51,33 +55,43 @@ Page({
       const myOpenid = String(me.openid || me._openid || "" );
       const members = await this.resolveAvatars((r && r.members) || []);
       const pendings = await this.resolveAvatars((r && r.pendings) || []);
+      const isAdmin = !!(r && r.isAdmin);
+      const myStatus = (r && r.myMembership && safeText(r.myMembership.status)) || "";
       this.setData({
         myOpenid,
         circle: r && r.circle ? r.circle : null,
         members,
         pendings,
         gyms: (r && r.gyms) || [],
-        isAdmin: !!(r && r.isAdmin),
+        isAdmin,
         myMembership: (r && r.myMembership) || null,
-        myStatus: (r && r.myMembership && safeText(r.myMembership.status)) || "",
-        pendingCount: Number(r && r.pendingCount ? r.pendingCount : 0)
+        myStatus,
+        pendingCount: Number(r && r.pendingCount ? r.pendingCount : 0),
+        canApply: !isAdmin && myStatus !== "accepted",
+        loadError: false
       });
     } catch (e) {
+      this.setData({ loadError: true, circle: null });
       wx.showToast({ title: e && e.message || "加载失败", icon: "none" });
     }
   },
 
-  // #25: 点击成员行 → 名片弹窗（展示主卡 displayName/称呼/头像/岩友号）
+  // 成员摘要 → 单层成员弹层
+  openMemberSheet() { this.setData({ memberSheetVisible: true, memberSheetView: "list" }); },
+  closeMemberSheet() { this.setData({ memberSheetVisible: false, memberSheetView: "list", memberCard: null }); },
+  backToMemberList() { this.setData({ memberSheetView: "list", memberCard: null }); },
+
+  // 待审批弹层（管理者）
+  openPendingSheet() { this.setData({ pendingSheetVisible: true }); },
+  closePendingSheet() { this.setData({ pendingSheetVisible: false }); },
+
+  // #25: 点击成员行 → 在同一弹层内替换为名片视图（展示主卡 displayName/称呼/头像/岩友号）
   onTapMember(e) {
     const openid = safeText(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.oid);
     if (!openid) return;
     const found = (this.data.members || []).find((m) => String(m.openid || "") === openid);
     if (!found) return;
-    this.setData({ memberCard: found, memberCardVisible: true });
-  },
-
-  closeMemberCard() {
-    this.setData({ memberCardVisible: false, memberCard: null });
+    this.setData({ memberCard: found, memberSheetView: "card" });
   },
 
   async onTapApply() {
@@ -129,7 +143,7 @@ Page({
     wx.showModal({
       title: "移除该成员？",
       confirmText: "移除",
-      confirmColor: "#C65A5A",
+      confirmColor: "#F1A19A",
       async success(r) {
         if (!r.confirm) return;
         try {
@@ -219,8 +233,11 @@ Page({
   },
 
   openGymSheet() {
-    // 关联岩馆列表已展示在顶部卡片；这里保留管理能力（管理员移除/新增关联）
+    // 正文馆摘要行与设置弹层共用同一个馆列表弹层
     this.setData({ gymSheetVisible: true, settingSheetVisible: false });
+  },
+  openGymSheetFromSetting() {
+    this.setData({ settingSheetVisible: false, gymSheetVisible: true });
   },
   closeGymSheet() { this.setData({ gymSheetVisible: false }); },
 
@@ -231,7 +248,7 @@ Page({
       title: "解散岩友圈？",
       content: "解散后不可恢复，成员将看不到这个圈子",
       confirmText: "解散",
-      confirmColor: "#C65A5A",
+      confirmColor: "#F1A19A",
       async success(r) {
         if (!r.confirm) return;
         try {
@@ -251,7 +268,7 @@ Page({
     wx.showModal({
       title: "退出岩友圈？",
       confirmText: "退出",
-      confirmColor: "#C65A5A",
+      confirmColor: "#F1A19A",
       async success(r) {
         if (!r.confirm) return;
         try {

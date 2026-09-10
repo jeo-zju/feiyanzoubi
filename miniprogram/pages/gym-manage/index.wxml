@@ -1,134 +1,182 @@
-<view class="page viewport-page">
-  <view class="card card-hero">
-    <view class="card-bd">
-      <view class="section-title-lg">{{gymId ? '岩馆管理' : '创建岩馆'}}</view>
+<view class="page ui-v2 gm-page">
+  <!-- 三段导航：资料 / 周期 / 线路；切段保留各自草稿 -->
+  <seg-tabs class="gm-tabs" theme="v2" tabs="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
+
+  <!-- ============ 资料 ============ -->
+  <view wx:if="{{tab === 'info'}}" class="card gm-card">
+    <view class="gm-field">
+      <text class="field-label">岩馆名称</text>
+      <input class="input" placeholder="如：飞岩岩馆" placeholder-class="ph" value="{{form.name}}" bindinput="onName" />
     </view>
-  </view>
+    <view class="gm-field">
+      <text class="field-label">城市</text>
+      <input class="input" placeholder="如：上海" placeholder-class="ph" value="{{form.city}}" bindinput="onCity" />
+    </view>
+    <view class="gm-field">
+      <text class="field-label">地址</text>
+      <input class="input" placeholder="如：XX 路 XX 号" placeholder-class="ph" value="{{form.address}}" bindinput="onAddress" />
+    </view>
 
-  <view class="mt">
-    <seg-tabs tabs="{{tabs}}" value="{{tab}}" bind:change="onTabChange" />
-  </view>
+    <text class="field-label">前台可打卡模式</text>
+    <view class="gm-tagrow">
+      <view
+        wx:for="{{modeOptions}}"
+        wx:key="key"
+        class="tag {{item.selected ? 'tag--on' : ''}}"
+        data-mode="{{item.key}}"
+        bindtap="onToggleMode"
+      >{{item.label}}</view>
+    </view>
 
-  <scroll-view scroll-y enhanced="{{true}}" bounces="{{false}}" class="viewport-scroll">
-    <view wx:if="{{tab==='info'}}" class="card mt">
-      <view class="card-hd">岩馆信息</view>
-      <view class="card-bd">
-        <input class="input mb" placeholder="岩馆名（比如：飞岩岩馆）" placeholder-class="ph" value="{{form.name}}" bindinput="onName" />
-        <input class="input mb" placeholder="城市（比如：上海）" placeholder-class="ph" value="{{form.city}}" bindinput="onCity" />
-        <input class="input mb" placeholder="地址（比如：XX 路 XX 号）" placeholder-class="ph" value="{{form.address}}" bindinput="onAddress" />
-        <view class="field-label">前台可打卡模式</view>
-        <view class="row mb">
-          <view
-            wx:for="{{modeOptions}}"
-            wx:key="key"
-            class="tag {{form.supportedModes.indexOf(item.key) >= 0 ? 'tag--on' : 'tag--off'}}"
-            data-mode="{{item.key}}"
-            bindtap="onToggleMode"
-          >
-            {{item.label}}
-          </view>
+    <!-- 合并历史：默认折叠 -->
+    <view wx:if="{{mergeHistory.length}}" class="gm-collapse">
+      <view class="gm-collapse__hd" bindtap="toggleMergeHistory">
+        <text class="gm-collapse__t">合并历史（{{mergeHistory.length}}）</text>
+        <text class="gm-collapse__arrow {{mergeHistoryOpen ? 'is-open' : ''}}">⌄</text>
+      </view>
+      <view wx:if="{{mergeHistoryOpen}}" class="gm-collapse__bd">
+        <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="gm-merge">
+          <view class="gm-merge__name">{{item.sourceGymName}}</view>
+          <view class="gm-merge__sub">{{item.mergedAtText}} 合并到当前馆</view>
+          <view class="gm-merge__sub">映射周期 {{item.cycleMappingCount}} 个，合并周期 {{item.mappedCycleCount}} 个</view>
         </view>
-        <view wx:if="{{mergeHistory.length}}" class="merge-history">
-          <view class="section-title">合并历史</view>
-          <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="merge-item">
-            <view class="merge-name">{{item.sourceGymName}}</view>
-            <view class="muted hist-sub">{{item.mergedAtText}} 合并到当前馆</view>
-            <view class="muted hist-sub">映射周期 {{item.cycleMappingCount}} 个，合并周期 {{item.mappedCycleCount}} 个</view>
-          </view>
-        </view>
-        <view class="btn btn-primary" bindtap="saveGym">{{gymId?'保存岩馆':'创建岩馆'}}</view>
-        <view wx:if="{{gymId}}" class="danger-zone">
-          <view class="divider mt-sm"></view>
-          <view class="section-title mt-sm">危险操作</view>
-          <view class="hint mt-sm">合并会把当前岩馆的历史数据迁移到目标岩馆，当前仅支持无周期重叠的安全合并。</view>
-          <view class="btn btn-warn mini mt-sm" bindtap="onMergeGym">合并到其他岩馆</view>
-          <view class="hint mt-sm">删除后该岩馆会从前台和“我的岩馆”列表隐藏，并停止新的打卡。</view>
-          <view class="btn btn-danger mini mt-sm" bindtap="onDeleteGym">删除岩馆</view>
-        </view>
-        <view class="btn btn-ghost mt-sm" bindtap="backOwner">返回我的岩馆</view>
       </view>
     </view>
 
-    <view wx:if="{{tab==='cycle'}}" class="card mt">
-      <view class="card-hd">当前周期</view>
-      <view class="card-bd">
-        <view wx:if="{{!canManageDirectly}}" class="hint mb">
-          当前馆未录入周期时，你提交的周期和线路数量会直接生效；如果该馆已有周期，你的修改会进入管理员审核。
-        </view>
-        <view class="field-label">周期名</view>
-        <input class="input mb" placeholder="周期名（比如：2026 春季新线）" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
-        <view class="field-label">开始日期</view>
+    <view class="btn btn-primary gm-submit" bindtap="saveGym">{{gymId ? '保存岩馆' : '创建岩馆'}}</view>
+    <text wx:if="{{infoDirty}}" class="gm-dirty">有未保存的修改</text>
+
+    <!-- 危险操作：放末尾、默认折叠，影响说明保留 -->
+    <view wx:if="{{gymId}}" class="gm-danger">
+      <view class="gm-collapse__hd" bindtap="toggleDanger">
+        <text class="gm-collapse__t gm-danger__t">合并 / 删除岩馆</text>
+        <text class="gm-collapse__arrow {{dangerOpen ? 'is-open' : ''}}">⌄</text>
+      </view>
+      <view wx:if="{{dangerOpen}}" class="gm-collapse__bd">
+        <text class="gm-hint">合并会把当前岩馆的历史数据迁移到目标岩馆，当前仅支持无周期重叠的安全合并。</text>
+        <view class="btn btn-ghost gm-danger-btn" bindtap="onMergeGym">合并到其他岩馆</view>
+        <text class="gm-hint">删除后该岩馆会从前台和「我的岩馆」列表隐藏，并停止新的打卡。</text>
+        <view class="btn btn-ghost gm-danger-btn gm-danger-btn--warn" bindtap="onDeleteGym">删除岩馆</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ============ 周期 ============ -->
+  <view wx:if="{{tab === 'cycle'}}" class="card gm-card">
+    <view wx:if="{{!gymId}}" class="empty-state gm-empty">
+      <view class="empty-state__desc">先在「资料」中创建岩馆，再设置周期</view>
+    </view>
+    <block wx:else>
+      <text wx:if="{{!canManageDirectly}}" class="gm-hint gm-hint--banner">
+        该馆已有周期：你提交的修改会进入管理员审核，审核通过后生效。
+      </text>
+
+      <view class="gm-field">
+        <text class="field-label">周期名</text>
+        <input class="input" placeholder="如：2026 春季新线" placeholder-class="ph" value="{{cycleForm.name}}" bindinput="onCycleName" />
+      </view>
+      <view class="gm-field">
+        <text class="field-label">开始日期</text>
         <picker mode="date" value="{{cycleForm.startDate}}" bindchange="onCycleStart">
-          <view class="field-select mb">{{cycleForm.startDate}}<text class="field-select__arrow">▾</text></view>
+          <view class="field-select gm-date">
+            <text class="field-select__value">{{cycleForm.startDate}}</text>
+            <text class="field-select__arrow">⌄</text>
+          </view>
         </picker>
-        <view class="row mb">
-          <view class="btn btn-ghost mini" bindtap="onCycleStartToday">今天</view>
-          <view class="btn btn-ghost mini" bindtap="onCycleStartMonth">本月1号</view>
+        <view class="gm-quickrow">
+          <text class="btn-text" bindtap="onCycleStartToday">今天</text>
+          <text class="btn-text" bindtap="onCycleStartMonth">本月 1 号</text>
         </view>
-        <view class="row mb">
-          <input class="input flex" placeholder="抱石等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
-          <view class="btn btn-warn mini ml" bindtap="onPickBoulderTemplate">套用</view>
-        </view>
-        <view class="row mb">
-          <input class="input flex" placeholder="难度等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
-          <view class="btn btn-warn mini ml" bindtap="onPickDifficultyTemplate">套用</view>
-        </view>
-        <view class="row mb">
-          <input class="input flex" placeholder="先锋等级（逗号分隔）" placeholder-class="ph" value="{{cycleForm.leadGrades}}" bindinput="onLeadGrades" />
-          <view class="btn btn-warn mini ml" bindtap="onPickLeadTemplate">套用</view>
-        </view>
-        <view class="btn btn-primary" bindtap="saveCycle">保存当前周期</view>
+      </view>
 
-        <view class="divider mt-sm"></view>
-        <view class="section-title mt-sm">历史周期</view>
-        <view class="hist-list">
-          <view wx:for="{{cycles}}" wx:key="_id" class="hist-item" data-id="{{item._id}}" bindtap="onSelectCycle">
-            <view class="hist-main">
-              <view class="hist-name">{{item.name||item.cycle_name||'默认周期'}}</view>
-              <view class="muted hist-sub">{{item.startDate||item.start_date}} ~ {{item.endDate||item.end_date||'至今'}}</view>
+      <view class="gm-field">
+        <view class="gm-field-head">
+          <text class="field-label">抱石等级（逗号分隔）</text>
+          <text class="btn-text gm-template" bindtap="onPickBoulderTemplate">套用模板</text>
+        </view>
+        <input class="input" placeholder="V0,V1,V2…" placeholder-class="ph" value="{{cycleForm.boulderGrades}}" bindinput="onBoulderGrades" />
+      </view>
+      <view class="gm-field">
+        <view class="gm-field-head">
+          <text class="field-label">难度等级（逗号分隔）</text>
+          <text class="btn-text gm-template" bindtap="onPickDifficultyTemplate">套用模板</text>
+        </view>
+        <input class="input" placeholder="5.10a,5.10b…" placeholder-class="ph" value="{{cycleForm.difficultyGrades}}" bindinput="onDifficultyGrades" />
+      </view>
+      <view class="gm-field">
+        <view class="gm-field-head">
+          <text class="field-label">先锋等级（逗号分隔）</text>
+          <text class="btn-text gm-template" bindtap="onPickLeadTemplate">套用模板</text>
+        </view>
+        <input class="input" placeholder="5.10a,5.10b…" placeholder-class="ph" value="{{cycleForm.leadGrades}}" bindinput="onLeadGrades" />
+      </view>
+
+      <view class="btn btn-primary gm-submit" bindtap="saveCycle">保存当前周期</view>
+      <text wx:if="{{cycleDirty}}" class="gm-dirty">有未保存的修改</text>
+
+      <!-- 历史周期：默认折叠，删除确认保留 -->
+      <view class="gm-collapse">
+        <view class="gm-collapse__hd" bindtap="toggleCycleHistory">
+          <text class="gm-collapse__t">历史周期（{{cycles.length}}）</text>
+          <text class="gm-collapse__arrow {{cycleHistoryOpen ? 'is-open' : ''}}">⌄</text>
+        </view>
+        <view wx:if="{{cycleHistoryOpen}}" class="gm-collapse__bd">
+          <view wx:for="{{cycles}}" wx:key="_id" class="gm-hist" data-id="{{item._id}}" bindtap="onSelectCycle">
+            <view class="gm-hist__main">
+              <text class="gm-hist__name">{{item.name || item.cycle_name || '默认周期'}}</text>
+              <text class="gm-hist__sub">{{item.startDate || item.start_date}} ~ {{item.endDate || item.end_date || '至今'}}</text>
             </view>
-            <view class="hist-right">
-              <view class="tag {{item.status==='archived'?'tag--off':'tag-warn'}}">{{item.status==='archived'?'已关闭':'进行中'}}</view>
-              <view class="btn btn-danger mini" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</view>
-            </view>
+            <text class="tag {{item.status === 'archived' ? '' : 'tag--on'}}">{{item.status === 'archived' ? '已关闭' : '进行中'}}</text>
+            <text class="btn-text btn-text--danger gm-hist__del" data-id="{{item._id}}" catchtap="onDeleteCycle">删除</text>
           </view>
         </view>
+      </view>
 
-        <view class="divider mt-sm"></view>
-        <view class="section-title mt-sm">关闭当前周期</view>
-        <view class="field-label">结束日期</view>
-        <view class="row mb">
-          <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate" class="flex">
-            <view class="field-select"><text class="field-select__value">{{closeEndDate}}</text><text class="field-select__arrow">▾</text></view>
+      <!-- 关闭当前周期：收纳在当前周期管理内 -->
+      <view class="gm-collapse">
+        <view class="gm-collapse__hd" bindtap="toggleCloseCycle">
+          <text class="gm-collapse__t">关闭当前周期</text>
+          <text class="gm-collapse__arrow {{closeCycleOpen ? 'is-open' : ''}}">⌄</text>
+        </view>
+        <view wx:if="{{closeCycleOpen}}" class="gm-collapse__bd">
+          <text class="field-label">结束日期</text>
+          <picker mode="date" value="{{closeEndDate}}" bindchange="onCloseEndDate">
+            <view class="field-select gm-date">
+              <text class="field-select__value">{{closeEndDate}}</text>
+              <text class="field-select__arrow">⌄</text>
+            </view>
           </picker>
-          <view class="btn btn-warn mini ml" bindtap="onCloseCycle">关闭周期</view>
+          <view class="btn btn-ghost gm-danger-btn" bindtap="onCloseCycle">关闭周期</view>
         </view>
-
-        <view class="btn btn-ghost mt-sm" bindtap="backOwner">返回我的岩馆</view>
       </view>
-    </view>
+    </block>
+  </view>
 
-    <view wx:if="{{tab==='routes'}}" class="card mt">
-      <view class="card-hd">线路录入</view>
-      <view class="card-bd">
-        <view wx:if="{{!canManageDirectly}}" class="hint mb">
-          当前馆未录入周期时，你提交的线路数量会直接生效；如果该馆已有周期，你的修改会进入管理员审核。
-        </view>
-        <seg-tabs tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
-        <view class="rows">
-          <view wx:for="{{routeRows}}" wx:key="grade" class="route-row">
-            <view class="route-grade">{{item.grade}}</view>
-            <input class="input route-input" type="number" value="{{item.count}}" data-grade="{{item.grade}}" bindinput="onRouteCount" />
-          </view>
-        </view>
-        <view class="row mt-sm">
-          <input class="input flex" placeholder="自定义等级（如 V0-V1）" placeholder-class="ph" value="{{customGrade}}" bindinput="onCustomGrade" />
-          <view class="btn btn-warn mini ml" bindtap="addGrade">添加等级</view>
-        </view>
-        <view class="btn btn-primary mt-sm" bindtap="saveRoutes">更新线路</view>
-        <view class="btn btn-ghost mt-sm" bindtap="backOwner">返回我的岩馆</view>
-      </view>
+  <!-- ============ 线路 ============ -->
+  <view wx:if="{{tab === 'routes'}}" class="card gm-card">
+    <view wx:if="{{!gymId}}" class="empty-state gm-empty">
+      <view class="empty-state__desc">先在「资料」中创建岩馆，再录入线路</view>
     </view>
-  </scroll-view>
+    <block wx:else>
+      <text wx:if="{{!canManageDirectly}}" class="gm-hint gm-hint--banner">
+        该馆已有周期：你提交的线路数量会进入管理员审核，审核通过后生效。
+      </text>
+      <seg-tabs class="gm-subtabs" theme="v2" compact tabs="{{routeTabs}}" value="{{routeMode}}" bind:change="onRouteModeChange" />
+      <view class="gm-rows">
+        <view wx:for="{{routeRows}}" wx:key="grade" class="gm-route">
+          <text class="gm-route__grade">{{item.grade}}</text>
+          <input class="input gm-route__input" type="number" value="{{item.count}}" data-grade="{{item.grade}}" bindinput="onRouteCount" />
+        </view>
+        <view wx:if="{{!routeRows.length}}" class="empty-state gm-empty">
+          <view class="empty-state__desc">当前模式还没有等级，可在「周期」中补充等级</view>
+        </view>
+      </view>
+      <view class="gm-addgrade">
+        <input class="input" placeholder="自定义等级（如 V0-V1）" placeholder-class="ph" value="{{customGrade}}" bindinput="onCustomGrade" />
+        <text class="btn-text gm-addgrade__btn" bindtap="addGrade">添加等级</text>
+      </view>
+      <view class="btn btn-primary gm-submit" bindtap="saveRoutes">更新线路</view>
+      <text wx:if="{{routesDirty}}" class="gm-dirty">有未保存的修改</text>
+    </block>
+  </view>
 </view>
-

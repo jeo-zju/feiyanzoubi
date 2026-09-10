@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "约爬通知",
-  "enablePullDownRefresh": true
+  "enablePullDownRefresh": true,
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

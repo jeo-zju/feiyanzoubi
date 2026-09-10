@@ -1,38 +1,38 @@
-<view class="page">
-  <view class="card card-hero">
-    <view class="card-bd">
-      <view class="section-kicker">送卡</view>
-      <view class="section-title-lg">做一张送给朋友</view>
-      <view class="section-desc">每次创建链接或直送都会消耗 1 次灵感，先准备草稿，再选择赠送方式。</view>
-      <view class="row mt">
-        <view class="btn btn-primary flex" bindtap="goMake">1. 先做草稿</view>
-        <view class="btn btn-ghost flex ml" bindtap="goSaveDraft" wx:if="{{draftCardId}}">保存草稿图</view>
+<view class="page ui-v2 cg-page">
+  <!-- 阶段一：准备草稿 -->
+  <view wx:if="{{!giftId}}" class="card cg-card">
+    <view class="cg-step">
+      <view class="cg-step__t">1. 准备草稿</view>
+      <view class="cg-step__d">先在名片编辑器做好要送出的名片草稿。</view>
+      <view class="cg-draft-row">
+        <text class="tag {{draftCardId ? 'tag--on' : ''}}">{{draftCardId ? '草稿已准备' : '暂无草稿'}}</text>
+        <button wx:if="{{draftCardId}}" class="btn-text" bindtap="goSaveDraft">查看草稿图</button>
       </view>
-      <view class="section-tip mt">当前草稿：{{draftCardId || '暂无'}}</view>
+      <button class="btn btn-ghost btn--block" bindtap="goMake">{{draftCardId ? '重新做一张草稿' : '去做草稿'}}</button>
+    </view>
+
+    <view class="cg-step">
+      <view class="cg-step__t">2. 生成领取信息</view>
+      <view class="cg-step__d">生成领取码消耗 1 次灵感；生成后可转发或让朋友扫码领取。</view>
+      <button class="btn btn-primary btn--block" loading="{{creating}}" disabled="{{creating || !draftCardId}}" bindtap="onCreateLink">生成领取码</button>
     </view>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd">2. 选择赠送方式</view>
-    <view class="card-bd">
-      <view class="panel">
-        <view class="section-title">链接领取</view>
-        <view class="section-tip">生成后可直接转发给好友，或者让对方扫码领取。</view>
-        <view class="btn btn-warn btn--block mt" bindtap="onCreateLink">生成领取码</view>
-        <view class="btn btn-ghost btn--block mt" open-type="share" wx:if="{{giftId}}">转发给微信好友</view>
+  <!-- 阶段二：领取码与转发（同屏不再展示已完成步骤/教程） -->
+  <block wx:else>
+    <view class="card cg-card cg-result">
+      <view class="cg-result__t">领取码已生成</view>
+      <view class="cg-qr">
+        <image wx:if="{{qrFileId}}" class="cg-qr__img" mode="aspectFit" src="{{qrFileId}}"></image>
+        <view wx:else class="cg-qr__loading">二维码生成中…</view>
+      </view>
+      <view class="cg-code-row">
+        <text class="cg-code">{{giftId}}</text>
+        <button class="btn-text" bindtap="onCopyGiftId">复制</button>
       </view>
     </view>
-  </view>
-
-  <view class="card mt" wx:if="{{giftId}}">
-    <view class="card-hd">领取码</view>
-    <view class="card-bd">
-      <view class="row">
-        <view class="tag flex">{{giftId}}</view>
-        <view class="btn btn-ghost ml" bindtap="onCopyGiftId">复制</view>
-      </view>
-      <image wx:if="{{qrFileId}}" class="qr" mode="aspectFit" src="{{qrFileId}}"></image>
-      <view class="section-tip">让朋友扫码即可领取</view>
+    <view class="action-bar cg-actions">
+      <button class="btn btn-primary" open-type="share">转发给好友领取</button>
     </view>
-  </view>
+  </block>
 </view>

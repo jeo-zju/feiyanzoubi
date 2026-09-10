@@ -1,25 +1,34 @@
-<view class="page social-page">
-  <view class="social-row">
-    <view class="social-title">我的约爬</view>
-    <button class="btn-text" bindtap="notifications">通知</button>
+<view class="page ui-v2 cm-page">
+  <seg-tabs class="cm-tabs" theme="v2" tabs="{{tabs}}" value="{{tab}}" bind:change="pickTab" />
+
+  <view class="cm-list">
+    <view wx:for="{{list}}" wx:key="_id"
+      class="plan-card plan-card--mine {{item.statusKey==='cancelled' ? 'is-closed' : ''}} {{item.isNext ? 'is-next' : ''}}"
+      data-id="{{item._id}}" bindtap="open">
+      <view class="plan-card__top">
+        <text class="plan-card__date"><text class="ticket__week">{{item.weekdayText}}</text> · {{item.mdText}}</text>
+        <text class="plan-card__time">{{item.timeSlotText ? item.timeSlotText : item.startTime}}<text wx:if="{{!item.timeSlotText && item.endTime}}">–{{item.endTime}}</text></text>
+      </view>
+      <view class="plan-card__title">{{item.title}}</view>
+      <view class="plan-card__gym">{{item.gymName}}<text wx:if="{{item.typeText && item.typeText!=='一起攀岩'}}"> · {{item.typeText}}</text></view>
+      <view class="plan-card__person cm-foot">
+        <text class="cm-status cm-status--{{item.statusKey}}">{{item.statusText}}</text>
+        <view class="plan-card__seats">
+          <view class="plan-card__seats-main">{{item.seatsMain}}</view>
+          <view class="plan-card__seats-sub">{{item.seatsSub}}</view>
+        </view>
+      </view>
+    </view>
   </view>
-  <view class="social-sub">一起爬，从这里出发。</view>
-  <view class="mt-lg"><seg-tabs tabs="{{tabs}}" value="{{tab}}" bind:change="pickTab" /></view>
-  <view wx:for="{{list}}" wx:key="_id" class="social-panel" data-id="{{item._id}}" bindtap="open">
-    <view class="social-row"><text class="social-label">{{item.date}} · {{item.startTime}}</text><text class="tag tag-warn">{{item.statusText}}</text></view>
-    <view class="social-name">{{item.title}}</view>
-    <view class="social-sub">{{item.gymName}} · {{item.typeText}}</view>
-    <view class="social-small">{{item.countText}}</view>
-  </view>
+
   <view wx:if="{{error}}" class="empty-state">
     <view class="empty-state__desc">{{error}}</view>
     <button class="btn btn-ghost" bindtap="retry">重试</button>
   </view>
   <view wx:elif="{{!loading && !list.length}}" class="empty-state">
     <view class="empty-state__title">还没有这类约爬</view>
-    <button class="btn btn-primary" bindtap="discover">去认识新岩友</button>
+    <button class="btn btn-primary" bindtap="discover">找搭子</button>
   </view>
   <view wx:if="{{loading}}" class="list-status">加载中…</view>
-  <view wx:elif="{{hasMore}}" class="list-status">向上滑动查看更多</view>
-  <button class="btn-text" bindtap="records">查看攀爬记录 ›</button>
+  <view wx:elif="{{hasMore}}" class="list-status">上拉加载更多</view>
 </view>

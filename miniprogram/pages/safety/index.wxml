@@ -1,30 +1,54 @@
-<view class="page social-page">
-  <view class="social-title">屏蔽与安全</view>
-  <view class="social-sub">报名不是公开联系方式的授权。举报入口位于约爬详情的「更多」。</view>
-
-  <view class="social-panel">
-    <view class="social-label">已屏蔽的岩友</view>
-    <view wx:for="{{blocks}}" wx:key="_id" class="social-row">
-      <text class="social-person">{{item.name}}</text>
-      <button class="btn-text" data-id="{{item.targetOpenid}}" bindtap="unblock">解除屏蔽</button>
-    </view>
-    <view wx:if="{{!blocks.length && !loading}}" class="social-small">暂未屏蔽任何岩友</view>
-  </view>
-
-  <view wx:if="{{isAdmin}}" class="social-panel">
-    <view class="social-label">待处理举报 · 管理员</view>
-    <view wx:for="{{reports}}" wx:key="_id" class="panel mt-sm">
-      <view>{{item.snapshot.title}} · {{item.snapshot.gymName}}</view>
-      <view class="social-copy">举报原因：{{item.reason}}</view>
-      <view class="social-small">内容快照：{{item.snapshot.note}}</view>
-      <button class="btn-text" data-id="{{item._id}}" bindtap="resolve">处理举报</button>
-    </view>
-    <view wx:if="{{!reports.length}}" class="social-small">暂无待处理举报</view>
-  </view>
-
-  <view wx:if="{{loading}}" class="empty-state">加载中…</view>
+<view class="page ui-v2 safety-page">
   <view wx:if="{{error}}" class="empty-state">
     <view class="empty-state__desc">{{error}}</view>
     <button class="btn btn-ghost" bindtap="load">重试</button>
   </view>
+
+  <block wx:else>
+    <!-- 屏蔽名单：逐行姓名＋解除 -->
+    <view class="sec safety-sec--first">
+      <view wx:if="{{blocks.length}}" class="safety-list">
+        <view wx:for="{{blocks}}" wx:key="_id" class="menu-row safety-block-row">
+          <text class="menu-row__t">{{item.name}}</text>
+          <button class="btn-text btn-text--danger" data-id="{{item.targetOpenid}}" bindtap="unblock">解除</button>
+        </view>
+      </view>
+      <view wx:elif="{{!loading}}" class="safety-empty">暂无屏蔽的岩友</view>
+    </view>
+
+    <!-- 隐私与举报帮助：可展开，关键权限事实可查 -->
+    <view class="sec">
+      <view class="menu-row safety-help-row" bindtap="toggleHelp">
+        <text class="menu-row__t">隐私与举报帮助</text>
+        <text class="menu-row__arrow">{{helpOpen ? '⌄' : '›'}}</text>
+      </view>
+      <view wx:if="{{helpOpen}}" class="safety-help__bd">
+        <view>报名不是公开联系方式的授权。</view>
+        <view>屏蔽后，双方不会再看到彼此发布的约爬，解除后恢复。</view>
+        <view>举报具体约爬，请进入该约爬详情，通过「更多」提交。</view>
+      </view>
+    </view>
+
+    <!-- 管理员举报区：权限与处置入口不变，仅修正排版不截断 -->
+    <view wx:if="{{isAdmin}}" class="sec">
+      <view class="sec__hd">
+        <text class="sec__title">待处理举报</text>
+        <text class="sec__meta">管理员</text>
+      </view>
+      <view wx:if="{{reports.length}}">
+        <view wx:for="{{reports}}" wx:key="_id" class="card safety-report">
+          <view class="safety-report__title">{{item.snapshot.title}}</view>
+          <view class="safety-report__gym">{{item.snapshot.gymName}}</view>
+          <view class="safety-report__reason">举报原因：{{item.reason}}</view>
+          <view wx:if="{{item.snapshot.note}}" class="safety-report__note">内容快照：{{item.snapshot.note}}</view>
+          <view class="safety-report__ft">
+            <button class="btn btn-ghost btn--block" data-id="{{item._id}}" bindtap="resolve">处理举报</button>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="safety-empty">暂无待处理举报</view>
+    </view>
+
+    <view wx:if="{{loading && !blocks.length}}" class="list-status">加载中…</view>
+  </block>
 </view>

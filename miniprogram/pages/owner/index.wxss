@@ -1,1 +1,80 @@
-/* 本页样式全部由全局 app.wxss 提供 */
+/* 我的岩馆（compact）：真实汇总 → 岩馆列表 → 一处添加 */
+page {
+  background: #151714;
+}
+
+.ow-page {
+  padding: 24rpx 32rpx 48rpx;
+}
+
+.ow-card {
+  padding: 24rpx;
+}
+.ow-card + .ow-card {
+  margin-top: 20rpx;
+}
+
+/* 汇总：窄屏自然换行，不改线路汇总算法 */
+.ow-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx 24rpx;
+}
+.ow-stat {
+  flex: 1 1 160rpx;
+  min-width: 160rpx;
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+.ow-stat__n {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #F3F1E7;
+  line-height: 1.2;
+}
+.ow-stat__l {
+  font-size: 24rpx;
+  color: #969D90;
+}
+
+/* 列表行 */
+.ow-row:first-child {
+  border-top: none;
+}
+.ow-row .menu-row__t {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ow-row .menu-row__sub {
+  max-width: 240rpx;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* 唯一添加入口 */
+.ow-add {
+  margin-top: 20rpx;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+}
+.ow-add:active {
+  opacity: 0.8;
+}
+.ow-pager {
+  display: block;
+  margin-top: 16rpx;
+}
+
+/* 空态/无权限 */
+.ow-empty {
+  padding: 48rpx 16rpx;
+}
+.ow-add-btn {
+  margin-top: 28rpx;
+}

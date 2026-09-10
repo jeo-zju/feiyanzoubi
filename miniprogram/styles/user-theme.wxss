@@ -1,0 +1,1110 @@
+/* ============================================================
+ * 飞岩走壁 · 用户端视觉 v2「岩场邀请函」主题（D0/D1）
+ * 所有规则以 .ui-v2 限定：用户页根容器加 .ui-v2 后生效，
+ * 后台/排除页不加该类，保持旧蓝紫主题不变。
+ *
+ * 色板：
+ *   canvas        #151714 页面暖黑底色
+ *   surface       #20241F 重点容器、表单分组
+ *   surface-raised#2B3029 弹层、浮动操作区
+ *   ink           #F3F1E7 标题/正文/关键时间
+ *   ink-secondary #B9BDB0 辅助描述
+ *   ink-muted     #969D90 非关键元数据
+ *   line          #383E34 分组细线
+ *   accent        #D2EF72 主按钮/当前选择/少量品牌符号
+ *   on-accent     #1B2312 亮底按钮文字
+ *   success       #B0D9A6 / pending #E8C58C / danger #F1A19A
+ * 字号：54 主标题 · 44 页标题/大时间 · 36 区块标题 · 32 列表标题 · 28 正文 · 24 辅助
+ * ============================================================ */
+
+.ui-v2 {
+  color: #F3F1E7;
+}
+
+/* ---------- 基础文字 ---------- */
+.ui-v2 .muted,
+.ui-v2 .hint {
+  color: #969D90;
+}
+
+.ui-v2 .divider {
+  background: #383E34;
+}
+
+.ui-v2 .ph {
+  color: #969D90;
+}
+
+/* ---------- 按钮体系 ---------- */
+.ui-v2 .btn {
+  min-height: 96rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+
+.ui-v2 .btn.mini {
+  min-height: 64rpx;
+  padding: 0 28rpx;
+  border-radius: 14rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.ui-v2 .btn-primary {
+  background: #D2EF72;
+  color: #1B2312;
+  border: none;
+}
+
+.ui-v2 .btn-primary:active {
+  background: #C4E262;
+}
+
+.ui-v2 .btn-ghost {
+  background: #2B3029;
+  color: #F3F1E7;
+  border: 1rpx solid #383E34;
+}
+
+.ui-v2 .btn-ghost:active {
+  background: #343A32;
+}
+
+.ui-v2 .btn-warn {
+  background: rgba(232, 197, 140, 0.12);
+  color: #E8C58C;
+  border: 1rpx solid rgba(232, 197, 140, 0.32);
+}
+
+.ui-v2 .btn-danger {
+  background: rgba(241, 161, 154, 0.12);
+  color: #F1A19A;
+  border: 1rpx solid rgba(241, 161, 154, 0.32);
+}
+
+.ui-v2 .btn:active {
+  opacity: 0.92;
+}
+
+.ui-v2 .btn[disabled],
+.ui-v2 .btn--disabled {
+  opacity: 0.4;
+}
+
+.ui-v2 .btn-text {
+  color: #D2EF72;
+  font-weight: 600;
+  padding: 12rpx 20rpx;
+  border-radius: 12rpx;
+}
+
+.ui-v2 .btn-text:active {
+  background: rgba(210, 239, 114, 0.1);
+}
+
+.ui-v2 .btn-text--danger {
+  color: #F1A19A;
+}
+
+.ui-v2 .btn-text--danger:active {
+  background: rgba(241, 161, 154, 0.1);
+}
+
+.ui-v2 .icon-btn {
+  background: #20241F;
+  border: 1rpx solid #383E34;
+  color: #F3F1E7;
+}
+
+.ui-v2 .icon-btn:active {
+  background: rgba(210, 239, 114, 0.12);
+  border-color: rgba(210, 239, 114, 0.36);
+}
+
+.ui-v2 .icon-btn--warn {
+  background: rgba(232, 197, 140, 0.12);
+  border-color: rgba(232, 197, 140, 0.32);
+  color: #E8C58C;
+}
+
+.ui-v2 .icon-btn--danger {
+  background: rgba(241, 161, 154, 0.1);
+  border-color: rgba(241, 161, 154, 0.3);
+  color: #F1A19A;
+}
+
+/* ---------- 底部固定操作栏（安全区只在此处处理一次） ---------- */
+.ui-v2 .action-bar,
+.ui-v2 .social-bottom {
+  background: #151714;
+  border-top: 1rpx solid #2B3029;
+  padding: 12rpx 32rpx calc(12rpx + env(safe-area-inset-bottom));
+}
+
+/* 主按钮显式全宽，不依赖 button 默认样式形成半宽居中 */
+.ui-v2 .action-bar .btn,
+.ui-v2 .social-bottom .btn {
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.ui-v2 .action-bar .btn::after,
+.ui-v2 .social-bottom .btn::after {
+  border: none;
+}
+
+/* ---------- 表单元素 ---------- */
+.ui-v2 .input,
+.ui-v2 .textarea,
+.ui-v2 .field-select,
+.ui-v2 .searchbar {
+  background: #20241F;
+  border: 1rpx solid #383E34;
+  color: #F3F1E7;
+  border-radius: 16rpx;
+}
+
+.ui-v2 .input {
+  min-height: 96rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.ui-v2 .textarea {
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  min-height: 160rpx;
+}
+
+.ui-v2 .field-select {
+  min-height: 96rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.ui-v2 .field-select__arrow {
+  color: #969D90;
+}
+
+.ui-v2 .searchbar {
+  min-height: 88rpx;
+  padding: 0 20rpx;
+}
+
+.ui-v2 .searchbar__ic {
+  color: #969D90;
+}
+
+.ui-v2 .searchbar__input {
+  color: #F3F1E7;
+  font-size: 28rpx;
+}
+
+.ui-v2 .field-label {
+  color: #B9BDB0;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+/* ---------- 标签/徽章 ---------- */
+.ui-v2 .tag {
+  background: #20241F;
+  border: 1rpx solid #383E34;
+  color: #B9BDB0;
+  border-radius: 14rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  padding: 12rpx 24rpx;
+}
+
+/* 多选选中态：弱绿底 + 酸橙字，不与主按钮抢实心 */
+.ui-v2 .tag--on {
+  background: rgba(210, 239, 114, 0.16);
+  border-color: rgba(210, 239, 114, 0.42);
+  color: #D2EF72;
+  font-weight: 600;
+}
+
+.ui-v2 .tag--off {
+  background: #20241F;
+  border-color: #383E34;
+  color: #969D90;
+}
+
+.ui-v2 .tag-warn {
+  background: rgba(232, 197, 140, 0.12);
+  border-color: rgba(232, 197, 140, 0.3);
+  color: #E8C58C;
+}
+
+/* ---------- 卡片 ---------- */
+.ui-v2 .card {
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+  border-radius: 24rpx;
+}
+
+.ui-v2 .card-soft {
+  background: #20241F;
+  border-color: #2B3029;
+}
+
+.ui-v2 .card-hero {
+  background: #20241F;
+  border-color: #2B3029;
+}
+
+/* ---------- 列表行 ---------- */
+.ui-v2 .list-row {
+  border-top-color: #383E34;
+  padding: 26rpx 0;
+}
+
+.ui-v2 .list-row:first-child {
+  border-top: none;
+}
+
+/* ---------- 空/加载/失败状态 ---------- */
+.ui-v2 .empty-state {
+  color: #B9BDB0;
+}
+
+.ui-v2 .empty-state__title {
+  color: #F3F1E7;
+  font-weight: 600;
+}
+
+.ui-v2 .empty-state__desc {
+  color: #969D90;
+}
+
+.ui-v2 .list-status {
+  color: #969D90;
+}
+
+/* ---------- 底部弹层（selection-sheet） ---------- */
+.ui-v2 .sheet-mask {
+  background: rgba(10, 12, 9, 0.66);
+}
+
+.ui-v2 .sheet {
+  background: #2B3029;
+  border-top: 1rpx solid #383E34;
+  border-top-left-radius: 32rpx;
+  border-top-right-radius: 32rpx;
+}
+
+.ui-v2 .sheet__hd {
+  border-bottom-color: #383E34;
+  padding: 32rpx 32rpx 20rpx;
+}
+
+.ui-v2 .sheet__title {
+  color: #F3F1E7;
+  font-weight: 600;
+}
+
+.ui-v2 .sheet__close {
+  background: #20241F;
+  color: #B9BDB0;
+}
+
+.ui-v2 .sheet__search {
+  padding: 20rpx 32rpx 4rpx;
+}
+
+.ui-v2 .sheet__ft {
+  border-top-color: #383E34;
+  padding-left: 32rpx;
+  padding-right: 32rpx;
+}
+
+.ui-v2 .sheet-item {
+  padding: 28rpx 32rpx;
+  min-height: 96rpx;
+}
+
+.ui-v2 .sheet-item:active {
+  background: rgba(210, 239, 114, 0.08);
+}
+
+.ui-v2 .sheet-item__label,
+.ui-v2 .sheet-item__name {
+  color: #F3F1E7;
+  font-weight: 500;
+}
+
+.ui-v2 .sheet-item__sub {
+  color: #969D90;
+}
+
+.ui-v2 .sheet-item__check {
+  color: #D2EF72;
+  font-weight: 700;
+}
+
+.ui-v2 .sheet-item__arrow {
+  color: #969D90;
+}
+
+.ui-v2 .sheet-item__avatar {
+  background: #20241F;
+}
+
+.ui-v2 .sheet-item__ic {
+  background: rgba(210, 239, 114, 0.12);
+}
+
+.ui-v2 .sheet-item__btn {
+  color: #D2EF72;
+  background: rgba(210, 239, 114, 0.12);
+}
+
+.ui-v2 .sheet-item__btn--danger {
+  color: #F1A19A;
+  background: rgba(241, 161, 154, 0.1);
+}
+
+.ui-v2 .sheet-divider {
+  background: #383E34;
+  margin-left: 32rpx;
+  margin-right: 32rpx;
+}
+
+.ui-v2 .sheet-empty {
+  color: #969D90;
+}
+
+.ui-v2 .sheet-more {
+  color: #D2EF72;
+}
+
+.ui-v2 .sheet-link-add {
+  color: #D2EF72;
+  background: rgba(210, 239, 114, 0.08);
+  border: 1rpx dashed rgba(210, 239, 114, 0.36);
+  border-radius: 16rpx;
+}
+
+.ui-v2 .check-box {
+  background: #20241F;
+  border-color: #383E34;
+}
+
+.ui-v2 .check-box--on {
+  background: rgba(210, 239, 114, 0.24);
+  border-color: #D2EF72;
+}
+
+.ui-v2 .check-box__t {
+  color: #D2EF72;
+}
+
+/* ============================================================
+ * v2 新增版式模式
+ * ============================================================ */
+
+/* ---------- 时间签（票签） ---------- */
+.ui-v2 .ticket {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #383E34;
+}
+
+.ui-v2 .ticket__date {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #B9BDB0;
+  letter-spacing: 1rpx;
+}
+
+.ui-v2 .ticket__date .ticket__week {
+  color: #D2EF72;
+  font-weight: 600;
+}
+
+.ui-v2 .ticket__time {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  letter-spacing: 1rpx;
+  flex-shrink: 0;
+}
+
+/* ---------- 开放区块（细分隔组织，不套卡片） ---------- */
+.ui-v2 .sec {
+  margin-top: 48rpx;
+}
+
+.ui-v2 .sec__hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.ui-v2 .sec__title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.3;
+}
+
+.ui-v2 .sec__meta {
+  font-size: 24rpx;
+  color: #969D90;
+  flex-shrink: 0;
+}
+
+.ui-v2 .sec__rule {
+  height: 1rpx;
+  background: #383E34;
+  margin: 24rpx 0 0;
+}
+
+/* ---------- 岩友署名行 / person-row ---------- */
+.ui-v2 .person-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx 0;
+}
+
+.ui-v2 .person-row__avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #2B3029;
+  flex-shrink: 0;
+}
+
+.ui-v2 .person-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-v2 .person-row__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .person-row__sub {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .person-row__tail {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+/* ---------- 状态说明横幅 ---------- */
+.ui-v2 .state-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 28rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.55;
+}
+
+.ui-v2 .state-banner__ic {
+  flex-shrink: 0;
+  line-height: 1.55;
+}
+
+.ui-v2 .state-banner.is-success {
+  background: rgba(176, 217, 166, 0.12);
+  color: #B0D9A6;
+}
+
+.ui-v2 .state-banner.is-pending {
+  background: rgba(232, 197, 140, 0.12);
+  color: #E8C58C;
+}
+
+.ui-v2 .state-banner.is-danger {
+  background: rgba(241, 161, 154, 0.12);
+  color: #F1A19A;
+}
+
+.ui-v2 .state-banner.is-muted {
+  background: #20241F;
+  color: #B9BDB0;
+}
+
+/* ---------- 约爬卡片（plan-card，二轮：信息横向成组，无内部分隔线） ---------- */
+.ui-v2 .plan-card {
+  background: #20241F;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-sizing: border-box;
+}
+
+.ui-v2 .plan-card:active {
+  background: #262B24;
+}
+
+/* 顶部：日期左 / 时间右，一行对齐 */
+.ui-v2 .plan-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.ui-v2 .plan-card__date {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #B9BDB0;
+  letter-spacing: 1rpx;
+  flex-shrink: 0;
+}
+
+.ui-v2 .plan-card__date .ticket__week {
+  color: #D2EF72;
+  font-weight: 600;
+}
+
+.ui-v2 .plan-card__time {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  letter-spacing: 1rpx;
+  flex-shrink: 0;
+}
+
+/* 标题/馆名全宽，最多两行 */
+.ui-v2 .plan-card__title {
+  margin-top: 16rpx;
+  font-size: 32rpx;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #F3F1E7;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+
+.ui-v2 .plan-card__gym {
+  margin-top: 6rpx;
+  font-size: 26rpx;
+  line-height: 1.45;
+  color: #B9BDB0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+
+/* 类型 · 氛围：轻量文字行，无真实标签时不渲染 */
+.ui-v2 .plan-card__tags {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 底部人物行：左头像姓名水平，右名额/状态 */
+.ui-v2 .plan-card__person {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.ui-v2 .plan-card__avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #2B3029;
+  flex-shrink: 0;
+}
+
+.ui-v2 .plan-card__person-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-v2 .plan-card__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .plan-card__skill {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .plan-card__seats {
+  flex-shrink: 0;
+  max-width: 190rpx;
+  text-align: right;
+}
+
+.ui-v2 .plan-card__seats-main {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+}
+
+.ui-v2 .plan-card__seats-sub {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.4;
+}
+
+/* 满员/截止：仅右侧状态降为中性，整卡仍可点击查看 */
+.ui-v2 .plan-card.is-full .plan-card__seats-main,
+.ui-v2 .plan-card.is-closed .plan-card__seats-main {
+  color: #969D90;
+  font-weight: 500;
+}
+
+/* ---------- 表单三段（form-sec） ---------- */
+.ui-v2 .form-sec {
+  margin-top: 48rpx;
+}
+
+.ui-v2 .form-sec__hd {
+  display: flex;
+  align-items: baseline;
+  gap: 14rpx;
+  margin-bottom: 24rpx;
+}
+
+.ui-v2 .form-sec__num {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #D2EF72;
+  letter-spacing: 2rpx;
+}
+
+.ui-v2 .form-sec__title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.3;
+}
+
+.ui-v2 .form-sec__sub {
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  margin-bottom: 16rpx;
+}
+
+.ui-v2 .form-field {
+  margin-top: 24rpx;
+}
+
+.ui-v2 .form-field__note {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+}
+
+/* 岩馆摘要行 */
+.ui-v2 .gym-sum {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 96rpx;
+  padding: 0 24rpx;
+  border-radius: 16rpx;
+  background: #20241F;
+  border: 1rpx solid #383E34;
+  box-sizing: border-box;
+}
+
+.ui-v2 .gym-sum:active {
+  background: #262B24;
+}
+
+.ui-v2 .gym-sum__ic {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 14rpx;
+  background: rgba(210, 239, 114, 0.12);
+  color: #D2EF72;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.ui-v2 .gym-sum__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-v2 .gym-sum__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .gym-sum__sub {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+}
+
+.ui-v2 .gym-sum--empty .gym-sum__name {
+  color: #969D90;
+  font-weight: 400;
+}
+
+.ui-v2 .gym-sum__arrow {
+  color: #969D90;
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+/* 14 天日期条 */
+.ui-v2 .date-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10rpx;
+}
+
+.ui-v2 .date-cell {
+  position: relative;
+  height: 104rpx;
+  border-radius: 16rpx;
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  box-sizing: border-box;
+}
+
+.ui-v2 .date-cell:active {
+  background: #262B24;
+}
+
+.ui-v2 .date-cell__d {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.2;
+}
+
+.ui-v2 .date-cell__w {
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.2;
+}
+
+.ui-v2 .date-cell__dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #D2EF72;
+}
+
+/* 选中：浅绿底深字 */
+.ui-v2 .date-cell--on {
+  background: #D2EF72;
+  border-color: #D2EF72;
+}
+
+.ui-v2 .date-cell--on .date-cell__d,
+.ui-v2 .date-cell--on .date-cell__w {
+  color: #1B2312;
+}
+
+.ui-v2 .date-cell--on .date-cell__dot {
+  background: #1B2312;
+}
+
+/* ---------- 我的页：身份头部 + 分组菜单 ---------- */
+.ui-v2 .me-head {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 12rpx 0 4rpx;
+}
+
+.ui-v2 .me-head__avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: #2B3029;
+  flex-shrink: 0;
+}
+
+.ui-v2 .me-head__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-v2 .me-head__name {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #F3F1E7;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .me-head__meta {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .me-head__btn {
+  flex-shrink: 0;
+}
+
+/* 名片入口条（二轮：完整名片在 card-view 查看/分享/保存，页内只放入口） */
+.ui-v2 .card-entry {
+  margin-top: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 112rpx;
+  padding: 16rpx 20rpx;
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+}
+
+.ui-v2 .card-entry:active {
+  background: #262B24;
+}
+
+/* 缩略图保持 960:606 比例，约 128×81rpx，仅预览不承担阅读 */
+.ui-v2 .card-entry__thumb {
+  width: 128rpx;
+  height: 81rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #151714;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-v2 .card-entry__img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ui-v2 .card-entry__thumb-ph {
+  font-size: 22rpx;
+  color: #969D90;
+  letter-spacing: 2rpx;
+}
+
+.ui-v2 .card-entry__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-v2 .card-entry__title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .card-entry__sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-v2 .card-entry__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: #969D90;
+}
+
+/* 岩友 / 岩友圈：扁平双入口条，两等分 + 细分隔 */
+.ui-v2 .dual-row {
+  margin-top: 24rpx;
+  display: flex;
+  align-items: stretch;
+  min-height: 104rpx;
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+}
+
+.ui-v2 .dual-row__cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+}
+
+.ui-v2 .dual-row__cell:active {
+  background: rgba(210, 239, 114, 0.06);
+}
+
+.ui-v2 .dual-row__divider {
+  width: 1rpx;
+  margin: 24rpx 0;
+  background: #383E34;
+  flex-shrink: 0;
+}
+
+.ui-v2 .dual-row__t {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #F3F1E7;
+}
+
+.ui-v2 .menu-group {
+  margin-top: 40rpx;
+}
+
+.ui-v2 .menu-group__t {
+  font-size: 24rpx;
+  color: #969D90;
+  letter-spacing: 2rpx;
+  font-weight: 500;
+  padding: 0 4rpx 4rpx;
+}
+
+.ui-v2 .menu-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 96rpx;
+  padding: 20rpx 4rpx;
+  border-top: 1rpx solid #383E34;
+  box-sizing: border-box;
+}
+
+.ui-v2 .menu-row:active {
+  opacity: 0.8;
+}
+
+.ui-v2 .menu-row__t {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #F3F1E7;
+  line-height: 1.4;
+}
+
+.ui-v2 .menu-row__sub {
+  font-size: 24rpx;
+  color: #969D90;
+  flex-shrink: 0;
+}
+
+.ui-v2 .menu-row__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: #969D90;
+}
+
+.ui-v2 .page-version {
+  margin-top: 28rpx;
+  padding-bottom: 12rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #969D90;
+  letter-spacing: 1rpx;
+}
+
+/* ---------- 路线笔触（识别元素 3：稀疏折线 + 三个岩点） ---------- */
+.ui-v2 .route-mark {
+  position: relative;
+  width: 120rpx;
+  height: 88rpx;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.ui-v2 .route-mark__line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2rpx;
+  background: #383E34;
+  transform-origin: left center;
+}
+
+.ui-v2 .route-mark__dot {
+  position: absolute;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #D2EF72;
+}

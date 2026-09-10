@@ -191,7 +191,7 @@ exports.main = async (event) => {
     }
 
     const col = db.collection("RockGyms");
-    const filters = [{ status: _.nin(["deleted", "merged"]) }];
+    const filters = [{ status: _.nin(["deleted", "merged"]) }, { reviewState: _.neq("pending_review") }];
     const literal = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (city) {
       const rx = db.RegExp({ regexp: literal(normalizeCityText(city)), options: "i" });

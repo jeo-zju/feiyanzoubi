@@ -1,4 +1,5 @@
 {
-  "navigationBarTitleText": "保存名片"
+  "navigationBarTitleText": "攀岩名片",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }
-

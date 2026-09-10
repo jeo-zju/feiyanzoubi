@@ -5,13 +5,15 @@ const { startPageLoad, finishPageLoad, turnToPrevPage, turnToNextPage } = requir
 function sumLines(gyms) {
   let b = 0;
   let d = 0;
+  let l = 0;
   gyms.forEach((g) => {
     if (g && g.lines) {
       b += Number(g.lines.boulder || 0);
       d += Number(g.lines.difficulty || 0);
+      l += Number(g.lines.lead || 0);
     }
   });
-  return { boulderLines: b, diffLines: d };
+  return { boulderLines: b, diffLines: d, leadLines: l };
 }
 
 Page({
@@ -21,7 +23,9 @@ Page({
     page: 1,
     pageSize: 5,
     hasNext: false,
-    loading: false
+    loading: false,
+    // 无馆长权限与「没有岩馆」是两种状态，不能混用同一个空态
+    permissionDenied: false
   },
   async onShow() {
     await this.ensureLogin();
@@ -38,13 +42,14 @@ Page({
   onNext() {
     turnToNextPage(this, this.load);
   },
+  // 添加岩馆只有一处入口（空态按钮 / 列表末尾添加行互斥出现）
   onAdd() {
     wx.navigateTo({ url: "/pages/gym-manage/index" });
   },
   onTapGym(e) {
-    const gym = e.detail.gym;
-    if (!gym || !gym._id) return;
-    wx.navigateTo({ url: `/pages/gym-manage/index?gymId=${gym._id}` });
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/gym-manage/index?gymId=${id}` });
   },
   async load({ reset }) {
     const app = getApp();
@@ -61,18 +66,23 @@ Page({
       const total = Number(res && res.total);
       this.setData({
         gyms,
+        permissionDenied: false,
         hasNext: !!(res && res.hasNext),
         summary: {
           gymCount: Number.isFinite(total) ? total : gyms.length,
           boulderLines: Number(lines && lines.boulderLines) || 0,
-          diffLines: Number(lines && lines.diffLines) || 0
+          diffLines: Number(lines && lines.diffLines) || 0,
+          leadLines: Number(lines && lines.leadLines) || 0
         }
       });
     } catch (e) {
-      wx.showToast({ title: "加载失败", icon: "none" });
+      if (e && e.code === "FORBIDDEN") {
+        this.setData({ gyms: [], hasNext: false, permissionDenied: true });
+      } else {
+        wx.showToast({ title: "加载失败", icon: "none" });
+      }
     } finally {
       finishPageLoad(this);
     }
   }
 });
-

@@ -1,95 +1,100 @@
-<view class="page page--fl">
-  <view class="searchbar">
+<view class="page ui-v2 friend-page">
+  <!-- 搜索：键盘「搜索」触发，右侧清除图标退出搜索 -->
+  <view class="searchbar friend-search">
     <text class="searchbar__ic">🔍</text>
     <input
       class="searchbar__input"
-      placeholder="搜索昵称 / 岩友ID（6位大写）"
+      placeholder="搜索昵称 / 岩友ID"
       placeholder-class="ph"
       value="{{searchKeyword}}"
       bindinput="onKeywordInput"
       confirm-type="search"
       bindconfirm="onSearch"
     />
-    <view wx:if="{{searchKeyword}}" class="btn-text" bindtap="onClearKw">清除</view>
-    <view class="btn btn-primary mini" bindtap="onSearch">搜索</view>
+    <view wx:if="{{searchKeyword}}" class="friend-search__clear" catchtap="onClearKw">✕</view>
   </view>
 
-  <view wx:if="{{searchMode}}" class="mt-sm">
-    <view wx:if="{{searching}}" class="empty-state">正在搜索…</view>
-    <view wx:elif="{{searchResult.length===0}}" class="empty-state">没有搜索到这位岩友，换个关键词或岩友ID试试</view>
-    <block wx:else>
-      <view wx:for="{{searchResult}}" wx:key="_openid" class="card friend-row">
-        <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
-        <view class="friend-row__main">
-          <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
-          <view class="friend-row__meta muted">
-            <text>ID {{item.rockId || '— — —'}}</text>
-            <text wx:if="{{item.city}}"> · {{item.city}}</text>
-          </view>
-          <view class="friend-row__tags">
-            <view wx:for="{{item.skillBadges}}" wx:for-item="t" wx:key="*this" class="tag">{{t}}</view>
-          </view>
+  <!-- 搜索模式：替换正文列表，不叠加在岩友列表上 -->
+  <block wx:if="{{searchMode}}">
+    <view wx:if="{{searching}}" class="list-status">正在搜索…</view>
+    <view wx:elif="{{!searchResult.length}}" class="empty-state friend-empty">
+      <view class="empty-state__title">没有搜索到这位岩友</view>
+      <view class="empty-state__desc">换个昵称或岩友ID试试</view>
+    </view>
+    <view wx:else class="friend-list">
+      <view wx:for="{{searchResult}}" wx:key="_openid" class="friend-card" data-id="{{item._openid}}" bindtap="onViewCard">
+        <image class="friend-card__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <view class="friend-card__main">
+          <view class="friend-card__name">{{item.nickName || '岩友'}}</view>
+          <view wx:if="{{item.skillText}}" class="friend-card__sub">{{item.skillText}}</view>
         </view>
-        <view class="friend-row__op">
-          <view wx:if="{{item.isFriend}}" class="btn btn-ghost mini">已好友</view>
-          <view wx:elif="{{item.outgoing}}" class="btn btn-ghost mini">待对方确认</view>
-          <view wx:elif="{{item.incoming}}" class="btn btn-warn mini" bindtap="onAccept" data-id="{{item._openid}}">通过 TA</view>
-          <view wx:else class="btn btn-primary mini" bindtap="onRequest" data-id="{{item._openid}}">加好友</view>
+        <view class="friend-card__op">
+          <text wx:if="{{item.isFriend}}" class="friend-card__state">已是岩友</text>
+          <text wx:elif="{{item.outgoing}}" class="friend-card__state">待确认</text>
+          <button wx:elif="{{item.incoming}}" catchtap="onAccept" data-id="{{item._openid}}" class="btn btn-primary mini">接受</button>
+          <button wx:else catchtap="onRequest" data-id="{{item._openid}}" class="btn btn-primary mini">加好友</button>
         </view>
       </view>
-    </block>
-  </view>
-
-  <view wx:else class="mt-sm">
-    <seg-tabs tabs="{{listTabs}}" value="{{listTab}}" bind:change="onTabChange" />
-  </view>
-
-  <view wx:if="{{!searchMode && listTab==='incoming'}}" class="mt-sm">
-    <view wx:if="{{!loading && !incoming.length}}" class="empty-state">暂无待处理的申请 👀</view>
-    <view wx:for="{{incoming}}" wx:key="id" class="card friend-row">
-      <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
-      <view class="friend-row__main">
-        <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
-        <view class="friend-row__meta muted">ID {{item.rockId || '— — —'}} · {{item.createdAtText || ''}}</view>
-      </view>
-      <view class="friend-row__op">
-        <view class="btn btn-primary mini" bindtap="onAccept" data-id="{{item.fromOpenid || item.openid}}">接受</view>
-        <view class="btn btn-danger mini" bindtap="onReject" data-id="{{item.fromOpenid || item.openid}}">拒绝</view>
-      </view>
     </view>
-  </view>
+  </block>
 
-  <view wx:if="{{!searchMode && listTab==='accepted'}}" class="mt-sm">
-    <view wx:if="{{!loading && !accepted.length}}" class="empty-state">
-      还没有岩友，去约爬时间轴上主动打个招呼吧 🧗
-    </view>
-    <view wx:for="{{accepted}}" wx:key="id" class="card friend-row">
-      <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
-      <view class="friend-row__main">
-        <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
-        <view class="friend-row__meta muted">ID {{item.rockId || '— — —'}}<text wx:if="{{item.city}}"> · {{item.city}}</text></view>
-        <view class="friend-row__tags">
-          <view wx:for="{{item.skillBadges}}" wx:for-item="t" wx:key="*this" class="tag">{{t}}</view>
+  <block wx:else>
+    <view class="friend-tabs"><seg-tabs theme="v2" tabs="{{listTabs}}" value="{{listTab}}" bind:change="onTabChange" /></view>
+
+    <!-- 收到申请：接受主动作 + 拒绝次动作 -->
+    <view wx:if="{{listTab==='incoming'}}" class="friend-list">
+      <view wx:if="{{!loading && !incoming.length}}" class="empty-state friend-empty">
+        <view class="empty-state__title">暂无收到的申请</view>
+      </view>
+      <view wx:for="{{incoming}}" wx:key="id" class="friend-card" data-id="{{item.fromOpenid || item.openid}}" bindtap="onViewCard">
+        <image class="friend-card__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <view class="friend-card__main">
+          <view class="friend-card__name">{{item.nickName || '岩友'}}</view>
+          <view class="friend-card__sub">{{item.createdAtText ? item.createdAtText + ' 收到申请' : '申请加你为岩友'}}</view>
+        </view>
+        <view class="friend-card__op friend-card__op--btns">
+          <button catchtap="onAccept" data-id="{{item.fromOpenid || item.openid}}" class="btn btn-primary mini">接受</button>
+          <button catchtap="onReject" data-id="{{item.fromOpenid || item.openid}}" class="btn btn-ghost mini">拒绝</button>
         </view>
       </view>
-      <view class="friend-row__op">
-        <view class="btn btn-ghost mini" bindtap="onViewCard" data-id="{{item.openid || item._openid}}">名片</view>
-        <view class="btn btn-danger mini" bindtap="onRemove" data-id="{{item.openid || item._openid}}">删除</view>
-      </view>
+      <view wx:if="{{loading && !incoming.length}}" class="list-status">加载中…</view>
     </view>
-  </view>
 
-  <view wx:if="{{!searchMode && listTab==='outgoing'}}" class="mt-sm">
-    <view wx:if="{{!loading && !outgoing.length}}" class="empty-state">暂无已发出的申请</view>
-    <view wx:for="{{outgoing}}" wx:key="id" class="card friend-row">
-      <image class="friend-row__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
-      <view class="friend-row__main">
-        <view class="friend-row__name">{{item.nickName || '岩友'}}</view>
-        <view class="friend-row__meta muted">ID {{item.rockId || '— — —'}}</view>
+    <!-- 我的岩友：整行进名片，删除收进行内「更多」 -->
+    <view wx:if="{{listTab==='accepted'}}" class="friend-list">
+      <view wx:if="{{!loading && !accepted.length}}" class="empty-state friend-empty">
+        <view class="empty-state__title">还没有岩友</view>
+        <button class="btn-text" bindtap="goHome">去找搭子</button>
       </view>
-      <view class="friend-row__op">
-        <view class="btn btn-ghost mini">待确认</view>
+      <view wx:for="{{accepted}}" wx:key="id" class="friend-card" data-id="{{item.openid || item._openid}}" bindtap="onViewCard">
+        <image class="friend-card__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <view class="friend-card__main">
+          <view class="friend-card__name">{{item.nickName || '岩友'}}</view>
+          <view wx:if="{{item.skillText}}" class="friend-card__sub">{{item.skillText}}</view>
+        </view>
+        <view class="friend-card__op">
+          <view class="icon-btn icon-btn--sm" catchtap="onMore" data-id="{{item.openid || item._openid}}">⋯</view>
+        </view>
       </view>
+      <view wx:if="{{loading && !accepted.length}}" class="list-status">加载中…</view>
     </view>
-  </view>
+
+    <!-- 已发申请 -->
+    <view wx:if="{{listTab==='outgoing'}}" class="friend-list">
+      <view wx:if="{{!loading && !outgoing.length}}" class="empty-state friend-empty">
+        <view class="empty-state__title">暂无已发出的申请</view>
+      </view>
+      <view wx:for="{{outgoing}}" wx:key="id" class="friend-card" data-id="{{item.openid || item._openid}}" bindtap="onViewCard">
+        <image class="friend-card__avatar" src="{{item.avatarUrl || defaultAvatar}}" mode="aspectFill"></image>
+        <view class="friend-card__main">
+          <view class="friend-card__name">{{item.nickName || '岩友'}}</view>
+          <view wx:if="{{item.skillText}}" class="friend-card__sub">{{item.skillText}}</view>
+        </view>
+        <view class="friend-card__op">
+          <text class="friend-card__state">待确认</text>
+        </view>
+      </view>
+      <view wx:if="{{loading && !outgoing.length}}" class="list-status">加载中…</view>
+    </view>
+  </block>
 </view>

@@ -1,67 +1,99 @@
-/* 岩友圈列表页：卡片/按钮/标签/图标按钮均使用全局体系，本文件只保留列表布局 */
-.page--circle-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
+/* 岩友圈列表（compact）：原生页名 + 一处创建 → 圈行；申请统一进详情 */
+page {
+  background: #151714;
 }
 
-.topbar {
+.cl-page {
+  padding: 12rpx 32rpx 48rpx;
+}
+
+.cl-topbar {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 80rpx;
+}
+
+.cl-empty {
+  padding-top: 96rpx;
+}
+
+/* 圈行：圈标色仅作用于小圆点 */
+.cl-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  min-height: 88rpx;
+  gap: 18rpx;
+  padding: 26rpx 0;
+  border-top: 1rpx solid #383E34;
+}
+
+.cl-row:active {
+  opacity: 0.85;
+}
+
+.cl-row__dot {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.list-stage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.circle-row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 24rpx;
-}
-
-.circle-row__color {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 16rpx;
-  flex-shrink: 0;
-}
-
-.circle-row__main {
+.cl-row__main {
   flex: 1;
   min-width: 0;
 }
 
-.circle-row__title {
-  font-size: 32rpx;
-  font-weight: 800;
-  color: #fff;
-}
-
-.circle-row__meta {
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.55);
-  margin-top: 6rpx;
-}
-
-.circle-row__desc {
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.45);
-  margin-top: 6rpx;
+.cl-row__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.45;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.circle-row__side {
+.cl-row__meta {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+}
+
+.cl-row__desc {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+
+.cl-row__tail {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.cl-state {
+  font-size: 24rpx;
+  color: #969D90;
+  white-space: nowrap;
+}
+
+.cl-state--on {
+  color: #D2EF72;
+}
+
+.cl-state--pending {
+  color: #E8C58C;
+}
+
+.cl-row__arrow {
+  font-size: 32rpx;
+  color: #969D90;
+  line-height: 1;
 }

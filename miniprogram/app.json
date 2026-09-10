@@ -47,9 +47,9 @@
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
   "tabBar": {
-    "color": "#9AA0B3",
-    "selectedColor": "#F2C14E",
-    "backgroundColor": "#0B0D15",
+    "color": "#969D90",
+    "selectedColor": "#D2EF72",
+    "backgroundColor": "#151714",
     "borderStyle": "black",
     "list": [
       {

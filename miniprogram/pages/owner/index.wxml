@@ -1,41 +1,56 @@
-<view class="page">
-  <view class="card card-hero">
-    <view class="card-bd">
-      <view class="section-kicker">馆长</view>
-      <view class="section-title-lg">我的岩馆</view>
-      <view class="section-desc">你管理 {{summary.gymCount}} 家岩馆，下面是当前全部线路概览。</view>
-      <view class="stat-grid mt">
-        <view class="panel stat-card">
-          <view class="stat-number stat-number-warn">{{summary.boulderLines}}</view>
-          <view class="stat-label">抱石线路</view>
-        </view>
-        <view class="panel stat-card">
-          <view class="stat-number">{{summary.diffLines}}</view>
-          <view class="stat-label">难度线路</view>
-        </view>
+<view class="page ui-v2 ow-page">
+  <!-- 真实汇总（无权限时不展示） -->
+  <view wx:if="{{!permissionDenied}}" class="card ow-card">
+    <view class="ow-stats">
+      <view class="ow-stat">
+        <text class="ow-stat__n">{{summary.gymCount}}</text>
+        <text class="ow-stat__l">家岩馆</text>
+      </view>
+      <view class="ow-stat">
+        <text class="ow-stat__n">{{summary.boulderLines}}</text>
+        <text class="ow-stat__l">条抱石线路</text>
+      </view>
+      <view class="ow-stat">
+        <text class="ow-stat__n">{{summary.diffLines}}</text>
+        <text class="ow-stat__l">条难度线路</text>
+      </view>
+      <view class="ow-stat">
+        <text class="ow-stat__n">{{summary.leadLines}}</text>
+        <text class="ow-stat__l">条先锋线路</text>
       </view>
     </view>
   </view>
 
-  <view class="card mt">
-    <view class="card-hd row">
-      <view>岩馆列表</view>
-      <view class="icon-btn" bindtap="onAdd">+</view>
+  <!-- 岩馆列表：每馆 名称/城市/管理入口，添加动作只有一处 -->
+  <view class="card ow-card">
+    <view wx:if="{{permissionDenied}}" class="empty-state ow-empty">
+      <view class="empty-state__title">暂无馆长权限</view>
+      <view class="empty-state__desc">馆长工具面向岩馆管理员开放；提交的岩馆通过审核后可在此管理</view>
     </view>
-    <view class="card-bd">
-      <gym-card wx:for="{{gyms}}" wx:key="_id" gym="{{item}}" bind:tap="onTapGym" />
-      <view wx:if="{{!gyms.length && !loading}}" class="empty-state">
-        <view class="empty-state__title">暂无岩馆</view>
-        <view class="empty-state__desc">点击右上角 + 添加你的第一家岩馆</view>
+
+    <block wx:elif="{{gyms.length}}">
+      <view wx:for="{{gyms}}" wx:key="_id" class="menu-row ow-row" data-id="{{item._id}}" bindtap="onTapGym">
+        <text class="menu-row__t">{{item.name || '未命名岩馆'}}</text>
+        <text class="menu-row__sub">{{item.city || '未填写城市'}}</text>
+        <text class="menu-row__arrow">›</text>
       </view>
+      <view class="sheet-link-add ow-add" bindtap="onAdd">＋ 添加岩馆</view>
       <paginator
-        wx:if="{{gyms.length}}"
+        wx:if="{{hasNext || page > 1}}"
+        class="ow-pager"
         page="{{page}}"
         hasNext="{{hasNext}}"
         bind:prev="onPrev"
         bind:next="onNext"
       />
+    </block>
+
+    <view wx:elif="{{loading}}" class="list-status ow-empty">加载中…</view>
+
+    <view wx:else class="empty-state ow-empty">
+      <view class="empty-state__title">还没有岩馆</view>
+      <view class="empty-state__desc">添加岩馆并通过审核后，可管理周期与线路</view>
+      <view class="btn btn-primary ow-add-btn" bindtap="onAdd">添加岩馆</view>
     </view>
   </view>
 </view>
-

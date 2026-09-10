@@ -1,4 +1,4 @@
-<view class="seg">
+<view class="seg {{theme==='v2'?'seg--v2':''}} {{theme==='v2' && compact?'seg--compact':''}}">
   <view
     class="seg-item {{value===item.key?'seg-item--active':''}}"
     wx:for="{{tabs}}"
@@ -9,4 +9,3 @@
     {{item.label}}
   </view>
 </view>
-

@@ -231,10 +231,14 @@ Page({
         }
       };
       const cycleMappings = buildInitialMappings(preview);
+      const conflictTotal = (((preview || {}).cyclePlan || {}).conflictGroups || []).filter(
+        (item) => item && item.sourceCycleId
+      ).length;
       this.setData({
         preview,
         cycleMappings,
         mappingSummaryText: this.buildMappingSummaryText(cycleMappings),
+        mappingRemaining: Math.max(0, conflictTotal - cycleMappings.filter((item) => safeText(item.targetCycleId)).length),
         canSubmit: computeCanSubmit(preview, cycleMappings)
       });
     } catch (e) {

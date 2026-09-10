@@ -95,12 +95,40 @@ Page({
     leadIdx: 0,
     cityIdx: 0,
     titleIdx: 0,
-    mbtiIdx: 0
+    mbtiIdx: 0,
+    optionalOpen: false,
+    contactOpen: false,
+    optionalSummary: "未填写",
+    contactSummary: "未填写"
   },
 
   onShow() {
     this.loadUser();
   },
+
+  toggleOptional() { this.setData({ optionalOpen: !this.data.optionalOpen }); },
+  toggleContact() { this.setData({ contactOpen: !this.data.contactOpen }); },
+
+  // 折叠行头部摘要：有值显示简短事实，无值显示「未填写」
+  buildSummaries(d) {
+    const nick = safeText(d.form && d.form.nickName);
+    const dn = safeText(d.displayName);
+    const parts = [];
+    if (dn && dn !== nick) parts.push("名片名 " + dn);
+    if (safeText(d.title)) parts.push(safeText(d.title));
+    if (safeText(d.mbti)) parts.push(safeText(d.mbti));
+    if (safeText(d.heightCm)) parts.push("身高 " + safeText(d.heightCm));
+    if (safeText(d.armspanCm)) parts.push("臂展 " + safeText(d.armspanCm));
+    if (safeText(d.slogan)) parts.push("名片一句话");
+    const cparts = [];
+    if (safeText(d.wechatId)) cparts.push("微信·" + (d.showWechat ? "展示" : "隐藏"));
+    if (safeText(d.xhsId)) cparts.push("小红书·" + (d.showXhs ? "展示" : "隐藏"));
+    return {
+      optionalSummary: parts.length ? parts.join(" · ") : "未填写",
+      contactSummary: cparts.length ? cparts.join(" · ") : "未填写"
+    };
+  },
+  refreshSummaries() { this.setData(this.buildSummaries(this.data)); },
 
   async loadUser() {
     try {
@@ -145,8 +173,11 @@ Page({
         leadIdx: Math.max(0, indexOf(ROPE_LEVELS, safeText(cs.lead || ""))),
         cityIdx: Math.max(0, indexOf(CITIES, safeText(city || ""))),
         titleIdx: Math.max(0, indexOf(TITLE_OPTIONS, title)),
-        mbtiIdx: Math.max(0, indexOf(MBTI_OPTIONS, mbti))
+        mbtiIdx: Math.max(0, indexOf(MBTI_OPTIONS, mbti)),
+        // 已有联络资料时默认展开，便于看到当前可见范围；选填资料保持折叠看摘要
+        contactOpen: !!(wechatId || xhsId)
       });
+      this.refreshSummaries();
     } catch (e) {
       wx.showToast({ title: "登录失败", icon: "none" });
     }
@@ -154,25 +185,29 @@ Page({
 
   onNickNameInput(e) {
     this.setData({ "form.nickName": e && e.detail ? e.detail.value : "" });
+    this.refreshSummaries();
   },
   onDisplayNameInput(e) {
     this.setData({ displayName: e && e.detail ? e.detail.value : "" });
+    this.refreshSummaries();
   },
 
   // issue #13: 名片一句话编辑
   onSloganInput(e) {
     this.setData({ slogan: (e && e.detail && e.detail.value || "").slice(0, 20) });
+    this.refreshSummaries();
   },
   onRandomSlogan() {
     const idx = Math.floor(Math.random() * SLOGAN_POOL.length);
     const emoji = SLOGAN_EMOJIS[Math.floor(Math.random() * SLOGAN_EMOJIS.length)];
     this.setData({ slogan: `${emoji} ${SLOGAN_POOL[idx]}` });
+    this.refreshSummaries();
   },
   // issue #31: 微信号/小红书号（默认不展示，需主动开启）
-  onWechatInput(e) { this.setData({ wechatId: (e && e.detail && e.detail.value || "").slice(0, 30) }); },
-  onToggleShowWechat(e) { this.setData({ showWechat: !!(e && e.detail && e.detail.value) }); },
-  onXhsInput(e) { this.setData({ xhsId: (e && e.detail && e.detail.value || "").slice(0, 30) }); },
-  onToggleShowXhs(e) { this.setData({ showXhs: !!(e && e.detail && e.detail.value) }); },
+  onWechatInput(e) { this.setData({ wechatId: (e && e.detail && e.detail.value || "").slice(0, 30) }); this.refreshSummaries(); },
+  onToggleShowWechat(e) { this.setData({ showWechat: !!(e && e.detail && e.detail.value) }); this.refreshSummaries(); },
+  onXhsInput(e) { this.setData({ xhsId: (e && e.detail && e.detail.value || "").slice(0, 30) }); this.refreshSummaries(); },
+  onToggleShowXhs(e) { this.setData({ showXhs: !!(e && e.detail && e.detail.value) }); this.refreshSummaries(); },
   // issue #13: 手填的新话写入黑话临时库（user_added 标记，默认不展示给其他用户）
   async submitSloganToPool(text) {
     try {
@@ -246,16 +281,20 @@ Page({
   onTitleChange(e) {
     const idx = Number((e && e.detail && e.detail.value) || 0);
     this.setData({ titleIdx: idx, title: TITLE_OPTIONS[idx] || "" });
+    this.refreshSummaries();
   },
   onMbtiChange(e) {
     const idx = Number((e && e.detail && e.detail.value) || 0);
     this.setData({ mbtiIdx: idx, mbti: MBTI_OPTIONS[idx] || "" });
+    this.refreshSummaries();
   },
   onHeightInput(e) {
     this.setData({ heightCm: (e && e.detail && e.detail.value || "").replace(/\D/g, "").slice(0, 3) });
+    this.refreshSummaries();
   },
   onArmspanInput(e) {
     this.setData({ armspanCm: (e && e.detail && e.detail.value || "").replace(/\D/g, "").slice(0, 3) });
+    this.refreshSummaries();
   },
 
   async onSave() {

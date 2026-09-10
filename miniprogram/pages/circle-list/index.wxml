@@ -1,32 +1,32 @@
-<view class="page page--circle-list">
-  <view class="topbar">
-    <view class="page-title flex">{{title}}</view>
-    <view class="icon-btn" bindtap="onCreate">＋</view>
+<view class="page ui-v2 cl-page">
+  <!-- 唯一创建操作：有列表时位于页头；空态时收进空态槽，不重复出现 -->
+  <view wx:if="{{list.length || loading}}" class="cl-topbar">
+    <view class="icon-btn icon-btn--sm" bindtap="onCreate">＋</view>
   </view>
 
-  <view class="list-stage">
-    <view wx:if="{{loading && list.length===0}}" class="empty-state">加载中…</view>
-    <view wx:elif="{{list.length===0}}" class="empty-state">暂无可展示的岩友圈</view>
-    <block wx:else>
-      <view class="card circle-row" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="onTapCard">
-        <view class="circle-row__color" style="background:{{item.avatarColor || '#5D5A88'}};"></view>
-        <view class="circle-row__main">
-          <view class="circle-row__title">{{item.name}}</view>
-          <view class="circle-row__meta">
-            <text>{{item.memberCount || 0}} 人</text>
-            <text wx:if="{{item.gymIds && item.gymIds.length>0}}"> · {{item.gymIds.length}} 馆</text>
-            <text wx:if="{{item.city}}"> · {{item.city}}</text>
-          </view>
-          <view wx:if="{{item.description}}" class="circle-row__desc">{{item.description}}</view>
-        </view>
-        <view class="circle-row__side">
-          <block wx:if="{{membershipMap[item._id]}}">
-            <view wx:if="{{membershipMap[item._id].status==='accepted'}}" class="tag">已在</view>
-            <view wx:elif="{{membershipMap[item._id].status==='pending'}}" class="tag tag-warn">待审批</view>
-          </block>
-          <view wx:else class="btn btn-primary mini" catchtap="onTapApply" data-id="{{item._id}}">申请</view>
-        </view>
-      </view>
+  <view wx:if="{{loading && !list.length}}" class="list-status">加载中…</view>
+  <view wx:elif="{{!list.length}}" class="empty-state cl-empty">
+    <block wx:if="{{mode==='mine'}}">
+      <view class="empty-state__title">还没有加入岩友圈</view>
+      <button class="btn-text" bindtap="onCreate">创建岩友圈</button>
     </block>
+    <view wx:else class="empty-state__title">暂无可加入的岩友圈</view>
+  </view>
+
+  <view wx:else class="cl-list">
+    <view class="cl-row" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="onTapCard">
+      <view class="cl-row__dot" style="background:{{item.avatarColor || '#8A8F80'}};"></view>
+      <view class="cl-row__main">
+        <view class="cl-row__name">{{item.name}}</view>
+        <view class="cl-row__meta">{{item.memberCount || 0}} 人<text wx:if="{{item.city}}"> · {{item.city}}</text></view>
+        <view wx:if="{{item.description}}" class="cl-row__desc">{{item.description}}</view>
+      </view>
+      <view class="cl-row__tail">
+        <text wx:if="{{membershipMap[item._id] && membershipMap[item._id].status==='accepted'}}" class="cl-state cl-state--on">已加入</text>
+        <text wx:elif="{{membershipMap[item._id] && membershipMap[item._id].status==='pending'}}" class="cl-state cl-state--pending">申请中</text>
+        <text wx:else class="cl-state">未加入</text>
+        <text class="cl-row__arrow">›</text>
+      </view>
+    </view>
   </view>
 </view>

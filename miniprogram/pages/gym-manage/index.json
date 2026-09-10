@@ -2,6 +2,7 @@
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index"
   },
-  "navigationBarTitleText": "岩馆管理"
+  "navigationBarTitleText": "岩馆管理",
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }
-

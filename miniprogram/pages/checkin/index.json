@@ -1,7 +1,9 @@
 {
+  "navigationBarTitleText": "记录攀爬",
   "usingComponents": {
     "seg-tabs": "../../components/segmentedTabs/index",
     "date-cal": "../../components/dateCalendarPicker/index"
-  }
+  },
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }
-

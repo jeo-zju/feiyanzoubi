@@ -1,5 +1,6 @@
 {
-  "disableScroll": true,
   "navigationBarTitleText": "岩友圈",
-  "usingComponents": {}
+  "usingComponents": {},
+  "navigationBarBackgroundColor": "#151714",
+  "navigationBarTextStyle": "white"
 }

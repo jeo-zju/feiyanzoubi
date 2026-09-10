@@ -1,6 +1,10 @@
-/* 找搭子页：卡片/按钮/选择器/弹层均使用全局体系，本文件只保留页面特有布局 */
+/* 找搭子页（v2 二轮修订）：四层进入活动；主题样式见 styles/user-theme.wxss */
+page {
+  background: #151714;
+}
+
 .discover-page {
-  padding: 28rpx 24rpx 200rpx;
+  padding: 16rpx 32rpx calc(150rpx + env(safe-area-inset-bottom));
 }
 
 /* scroll-view 作为弹层主体时，高度约束交给 scroll-view 自身滚动 */
@@ -9,123 +13,196 @@
   min-height: 0;
 }
 
-.discover-heading {
+/* A 顶部：城市贴左、通知贴右 */
+.discover-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
 }
 
-.eyebrow {
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.6);
-  letter-spacing: 2rpx;
+/* 城市入口：弹性占满左侧，与右入口垂直居中对齐；长城市名在左侧省略 */
+.city-entry {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+  /* 热区 */
+  min-height: 88rpx;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.city-arrow {
-  color: #c5baff;
+.city-entry__name {
   font-size: 32rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.city-entry__arrow {
+  font-size: 26rpx;
+  color: #B9BDB0;
   font-weight: 400;
+  flex-shrink: 0;
 }
 
+/* 日历视图入口：固定 160rpx 热区、文字右对齐，中性浅灰无底色无描边 */
+.calendar-entry {
+  flex: 0 0 160rpx;
+  width: 160rpx;
+  margin: 0;
+  padding: 0;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.calendar-entry:active .calendar-entry__label {
+  opacity: 0.7;
+}
+
+.calendar-entry__label {
+  font-size: 26rpx;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #B9BDB0;
+}
+
+/* B 单行短标题：40rpx，320px 允许自然换行 */
+.hero-title {
+  margin-top: 4rpx;
+  font-size: 40rpx;
+  line-height: 1.25;
+  font-weight: 700;
+  color: #F3F1E7;
+}
+
+.hero-dot {
+  color: #D2EF72;
+}
+
+/* C 日期快捷行：compact，与标题间距 16rpx */
 .date-tabs {
-  margin: 28rpx 0 20rpx;
+  margin: 16rpx 0 20rpx;
 }
 
+/* D 筛选工具行：左弹性岩馆、右固定筛选 */
 .filter-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
 }
 
-.filter-field {
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  min-height: 88rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  background: #20241F;
+  border: 1rpx solid #2B3029;
+  border-radius: 16rpx;
+}
+
+.filter-chip:active {
+  background: #262B24;
+}
+
+.filter-chip--gym {
   flex: 1;
   min-width: 0;
 }
 
-.availability {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.6);
-  margin: 18rpx 0;
+.filter-chip--filter {
+  flex: 0 0 144rpx;
+  width: 144rpx;
+  justify-content: center;
 }
 
-.plan-card {
-  margin-bottom: 24rpx;
-}
-
-.plan-card__date {
-  font-size: 24rpx;
-  color: #c5baff;
-  font-weight: 600;
-}
-
-.plan-title {
-  margin-top: 14rpx;
-}
-
-.plan-card__gym {
-  margin-top: 8rpx;
+.filter-chip__label {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 28rpx;
-  color: rgba(231, 233, 243, 0.78);
+  font-weight: 500;
+  color: #F3F1E7;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.host-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin: 24rpx 0;
+.filter-chip--gym .filter-chip__label {
+  flex: 1;
 }
 
-.host-avatar {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+.filter-chip--filter .filter-chip__arrow {
   flex-shrink: 0;
 }
 
-.host-name {
-  font-size: 28rpx;
-  font-weight: 700;
-}
-
-.host-level {
-  margin-top: 6rpx;
+.filter-chip__arrow {
   font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.6);
+  color: #969D90;
+  flex-shrink: 0;
 }
 
-.plan-tags {
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.6);
-  line-height: 1.7;
+.filter-chip__count {
+  color: #D2EF72;
+  font-weight: 600;
 }
 
-.plan-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  flex-wrap: wrap;
-  margin-top: 22rpx;
-  padding-top: 20rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
-  font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.6);
-}
-
-.plan-cta {
-  color: #c5baff;
-  font-weight: 700;
+/* 列表 */
+.discover-list {
+  margin-top: 20rpx;
 }
 
 .list-status {
-  padding: 28rpx 0;
-  text-align: center;
+  margin-top: 24rpx;
+}
+
+/* 空态 */
+.discover-empty {
+  padding-top: 88rpx;
+}
+
+.discover-empty__mark {
+  margin: 0 auto 36rpx;
+}
+
+/* 筛选弹层 */
+.filter-group__t {
+  padding: 8rpx 32rpx 4rpx;
   font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.6);
+  font-weight: 500;
+  color: #969D90;
+  letter-spacing: 2rpx;
+}
+
+.filter-switch-row {
+  margin-top: 8rpx;
+  border-top: 1rpx solid #383E34;
+}
+
+.filter-sheet__ft {
+  display: flex;
+  gap: 16rpx;
+  padding-top: 20rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+}
+
+.filter-sheet__btn {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.filter-sheet__btn::after {
+  border: none;
 }

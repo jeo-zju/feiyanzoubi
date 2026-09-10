@@ -1,87 +1,238 @@
-/* 页面特有布局：视口滚动结构、周期/线路列表、合并历史卡片 */
-.viewport-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+/* 岩馆管理（compact）：资料/周期/线路 三段，页面自然滚动，不裁表单 */
+page {
+  background: #151714;
 }
 
-.viewport-scroll {
-  flex: 1;
-  min-height: 0;
-  margin-top: 18rpx;
+.gm-page {
+  padding: 24rpx 32rpx 48rpx;
 }
 
-.rows {
-  margin-top: 18rpx;
+.gm-tabs {
+  display: block;
 }
 
-.route-row {
+.gm-card {
+  margin-top: 20rpx;
+  padding: 28rpx 24rpx 32rpx;
+}
+
+.gm-field {
+  margin-top: 20rpx;
+}
+.gm-field:first-child {
+  margin-top: 0;
+}
+.gm-field .input,
+.gm-field .field-select {
+  margin-top: 10rpx;
+}
+
+.gm-field-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14rpx;
-  padding: 12rpx 0;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  gap: 16rpx;
 }
 
-.route-row:first-child {
-  border-top: none;
+.gm-date {
+  justify-content: space-between;
 }
 
-.route-grade {
-  font-weight: 800;
+.gm-quickrow {
+  display: flex;
+  gap: 28rpx;
+  margin-top: 12rpx;
+  padding-left: 8rpx;
 }
 
-.route-input {
-  width: 180rpx;
+/* 模式标签 */
+.gm-tagrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+/* 唯一保存动作 */
+.gm-submit {
+  margin-top: 32rpx;
+}
+.gm-dirty {
+  display: block;
+  margin-top: 12rpx;
   text-align: center;
+  font-size: 24rpx;
+  color: #E8C58C;
 }
 
-.hist-item {
+/* 折叠区块 */
+.gm-collapse {
+  margin-top: 24rpx;
+  border-top: 1rpx solid #383E34;
+}
+.gm-collapse__hd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14rpx 0;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+  min-height: 88rpx;
+  padding: 16rpx 0;
+}
+.gm-collapse__hd:active {
+  opacity: 0.8;
+}
+.gm-collapse__t {
+  font-size: 28rpx;
+  color: #B9BDB0;
+}
+.gm-collapse__arrow {
+  font-size: 28rpx;
+  color: #969D90;
+  transition: transform 0.15s ease;
+}
+.gm-collapse__arrow.is-open {
+  transform: rotate(180deg);
+}
+.gm-collapse__bd {
+  padding: 4rpx 0 12rpx;
 }
 
-.hist-item:first-child {
-  border-top: none;
+/* 审核/风险说明：每段只出现一次 */
+.gm-hint {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #969D90;
+  margin: 16rpx 0;
+}
+.gm-hint--banner {
+  display: block;
+  margin: 0 0 8rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 14rpx;
+  background: rgba(232, 197, 140, 0.1);
+  color: #E8C58C;
 }
 
-.hist-name {
-  font-weight: 800;
+/* 合并历史 */
+.gm-merge {
+  padding: 16rpx 18rpx;
+  margin-top: 12rpx;
+  border-radius: 14rpx;
+  background: #20241F;
+  border: 1rpx solid #383E34;
 }
-
-.hist-sub {
+.gm-merge__name {
+  font-size: 28rpx;
+  color: #F3F1E7;
+}
+.gm-merge__sub {
+  display: block;
   margin-top: 6rpx;
   font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
 }
 
-.hist-right {
+/* 危险操作 */
+.gm-danger {
+  margin-top: 24rpx;
+  border-top: 1rpx solid #383E34;
+}
+.gm-danger__t {
+  color: #F1A19A;
+}
+.gm-danger-btn {
+  margin-top: 12rpx;
+}
+.ui-v2 .gm-danger-btn--warn {
+  color: #F1A19A;
+  border-color: rgba(241, 161, 154, 0.4);
+}
+
+/* 历史周期行 */
+.gm-hist {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 16rpx;
+  padding: 18rpx 0;
+  border-top: 1rpx solid #383E34;
+}
+.gm-hist:first-child {
+  border-top: none;
+}
+.gm-hist:active {
+  opacity: 0.8;
+}
+.gm-hist__main {
+  flex: 1;
+  min-width: 0;
+}
+.gm-hist__name {
+  display: block;
+  font-size: 28rpx;
+  color: #F3F1E7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.gm-hist__sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.gm-hist__del {
+  flex-shrink: 0;
 }
 
-.danger-zone {
-  margin-top: 10rpx;
+/* 线路等级表 */
+.gm-subtabs {
+  display: block;
+  margin-top: 20rpx;
 }
-
-.merge-history {
+.gm-rows {
   margin-top: 8rpx;
-  margin-bottom: 18rpx;
+}
+.gm-route {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  min-height: 88rpx;
+  padding: 10rpx 0;
+  border-top: 1rpx solid #383E34;
+}
+.gm-route:first-child {
+  border-top: none;
+}
+.gm-route__grade {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+}
+.gm-route__input {
+  width: 200rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+.gm-addgrade {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+.gm-addgrade .input {
+  flex: 1;
+  min-width: 0;
+}
+.gm-addgrade__btn {
+  flex-shrink: 0;
+  padding: 0 8rpx;
 }
 
-.merge-item {
-  margin-top: 10rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1rpx solid rgba(255, 255, 255, 0.06);
-}
-
-.merge-name {
-  font-weight: 800;
+.gm-empty {
+  padding: 40rpx 16rpx;
 }

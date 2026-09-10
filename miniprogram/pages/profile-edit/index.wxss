@@ -1,90 +1,206 @@
-/* 编辑资料页：输入框/选择器/按钮均使用全局 .input/.field-select/.btn 体系，本文件只保留表单布局 */
-
-.inline-row {
-  display: flex;
-  gap: 14rpx;
-  align-items: flex-start;
+/* 编辑资料页（compact）：头像昵称 → 城市水平 → 选填折叠 → 联络折叠 → 固定保存 */
+page {
+  background: #151714;
 }
 
-.inline-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
+.profile-page {
+  padding: 20rpx 32rpx calc(150rpx + env(safe-area-inset-bottom));
 }
 
-.inline-label {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: rgba(231, 233, 243, 0.68);
-  padding-left: 4rpx;
-}
-
-.head-row {
+/* 头像 + 昵称 */
+.pf-head {
   display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
-}
-
-.avatar-wrap {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 12rpx;
-  flex: none;
+  gap: 24rpx;
+  padding: 8rpx 0 24rpx;
 }
 
-.compact-avatar {
-  width: 96rpx;
-  height: 96rpx;
+.pf-avatar {
+  position: relative;
+  width: 128rpx;
+  height: 128rpx;
+  padding: 0;
+  margin: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2rpx solid rgba(143, 123, 255, 0.28);
-}
-
-.head-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  min-width: 0;
-}
-
-.save-btn {
-  width: 100%;
-}
-
-.slogan-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.slogan-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.contact-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.contact-row .input {
-  flex: 1;
-  min-width: 0;
-}
-
-.contact-switch {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
+  background: transparent;
+  line-height: 1;
   flex-shrink: 0;
 }
 
-.contact-switch__label {
+.pf-avatar::after {
+  border: none;
+}
+
+.pf-avatar__img {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 50%;
+  background: #2B3029;
+  display: block;
+}
+
+.pf-avatar__badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #D2EF72;
+  color: #1B2312;
+  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid #151714;
+  box-sizing: border-box;
+}
+
+.pf-head__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-head__main .field-label {
+  margin-bottom: 12rpx;
+}
+
+/* 卡片分组 */
+.pf-card {
+  padding: 24rpx;
+  margin-top: 24rpx;
+  box-sizing: border-box;
+}
+
+.pf-field {
+  margin-top: 20rpx;
+}
+
+.pf-field:first-child {
+  margin-top: 0;
+}
+
+.pf-field .field-label {
+  margin-bottom: 12rpx;
+}
+
+/* 三个等级 picker 等宽，窄屏自然收缩不截断名称 */
+.pf-levels {
+  display: flex;
+  gap: 12rpx;
+}
+
+.pf-levels__item {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-levels__k {
   font-size: 24rpx;
-  color: rgba(231, 233, 243, 0.5);
+  color: #969D90;
+  flex-shrink: 0;
+  margin-right: 8rpx;
+}
+
+/* 折叠行 */
+.pf-collapse {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 56rpx;
+}
+
+.pf-collapse:active {
+  opacity: 0.8;
+}
+
+.pf-collapse__t {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  flex-shrink: 0;
+}
+
+.pf-collapse__summary {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: 24rpx;
+  color: #969D90;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-collapse__arrow {
+  font-size: 32rpx;
+  color: #969D90;
+  flex-shrink: 0;
+}
+
+.pf-collapse__bd {
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx solid #383E34;
+}
+
+/* 双列字段：放不下时由内容自然增高（保持同列不缩字） */
+.pf-grid {
+  display: flex;
+  gap: 16rpx;
+}
+
+.pf-grid .pf-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 一句话 + 换一句 */
+.pf-slogan {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.pf-slogan__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-slogan__btn {
+  flex-shrink: 0;
+}
+
+.pf-slogan__btn::after {
+  border: none;
+}
+
+/* 联系方式行：输入弹性，开关状态不挤压 */
+.pf-contact {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.pf-contact__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-contact__switch {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.pf-contact__state {
+  font-size: 24rpx;
+  color: #969D90;
+}
+
+.pf-contact__switch switch {
+  transform: scale(0.85);
+  transform-origin: right center;
+  margin: 0;
 }

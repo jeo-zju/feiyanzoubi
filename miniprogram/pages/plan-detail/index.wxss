@@ -1,1 +1,401 @@
-/* 约爬详情页：social-* 系列样式已全部移入 app.wxss 全局，本页无特有样式 */
+/* 约爬详情页（v2 二轮紧凑版）：赴约信息优先、开放排版、按需弹层。主题见 styles/user-theme.wxss */
+page {
+  background: #151714;
+}
+
+/* 非 Tab 页：底部占位按固定操作栏实际高度（96 按钮 + 上下间距 + 安全区） */
+.detail-page {
+  padding: 16rpx 32rpx calc(150rpx + env(safe-area-inset-bottom));
+}
+
+/* ---------- 时间签：日期左 / 时间右，一行 ---------- */
+.detail-ticket {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding-top: 8rpx;
+}
+
+.detail-ticket__date {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #B9BDB0;
+  letter-spacing: 1rpx;
+  line-height: 1.5;
+}
+
+.detail-ticket__date .ticket__week {
+  color: #D2EF72;
+  font-weight: 600;
+}
+
+.detail-ticket__time {
+  flex-shrink: 0;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  letter-spacing: 1rpx;
+  line-height: 1.3;
+}
+
+/* ---------- 标题 / 馆名 / 标签 / 规则 ---------- */
+.detail-title {
+  margin-top: 14rpx;
+  font-size: 40rpx;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #F3F1E7;
+  overflow-wrap: break-word;
+}
+
+.detail-title--clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.detail-expand {
+  margin-top: 6rpx;
+  padding: 8rpx 0;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #D2EF72;
+}
+
+.detail-gym {
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #B9BDB0;
+  overflow-wrap: break-word;
+}
+
+.detail-tags {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #969D90;
+}
+
+.detail-rule {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #969D90;
+}
+
+/* ---------- 发起人：唯一完整资料行 ---------- */
+.owner-row {
+  margin-top: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 16rpx 0;
+}
+
+.owner-row__avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #2B3029;
+  flex-shrink: 0;
+}
+
+.owner-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.owner-row__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.owner-row__badge {
+  margin-left: 12rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(210, 239, 114, 0.12);
+  color: #D2EF72;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.owner-row__skill {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.owner-row__more {
+  flex-shrink: 0;
+  padding: 12rpx 8rpx 12rpx 20rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #D2EF72;
+}
+
+/* ---------- 活动说明：有才显示，默认三行 ---------- */
+.detail-note {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  line-height: 1.65;
+  color: #F3F1E7;
+  overflow-wrap: break-word;
+}
+
+.detail-note--clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* ---------- 集合与联络：已确认/发起人直接展开（轻块，不用大面板） ---------- */
+.detail-meet {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #383E34;
+}
+
+.detail-meet__t {
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+}
+
+.detail-meet__line {
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #F3F1E7;
+  overflow-wrap: break-word;
+}
+
+.detail-meet__line--contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.detail-meet__contact {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.detail-meet__copy {
+  flex-shrink: 0;
+}
+
+.detail-meet__empty {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #969D90;
+}
+
+/* ---------- 成员摘要：人数 + 最多三头像 + 查看 ---------- */
+.member-sum {
+  margin-top: 24rpx;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #383E34;
+  min-height: 96rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.member-sum__label {
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #B9BDB0;
+}
+
+.member-sum__count {
+  flex-shrink: 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+}
+
+.member-sum__avatars {
+  display: flex;
+  align-items: center;
+  margin-left: 4rpx;
+}
+
+.member-sum__avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  border: 2rpx solid #151714;
+  background: #2B3029;
+}
+
+.member-sum__avatar + .member-sum__avatar {
+  margin-left: -14rpx;
+}
+
+.member-sum__more {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #969D90;
+}
+
+/* ---------- 待确认：发起人的待办突出入口 ---------- */
+.pending-entry {
+  margin-top: 16rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  background: rgba(232, 197, 140, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.pending-entry__t {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #E8C58C;
+  line-height: 1.4;
+}
+
+.pending-entry__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: #E8C58C;
+}
+
+/* ---------- 未确认访客：集合信息一行提示 ---------- */
+.meet-locked {
+  margin-top: 24rpx;
+  padding: 24rpx 0;
+  border-top: 1rpx solid #383E34;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.meet-locked__t {
+  font-size: 28rpx;
+  color: #B9BDB0;
+}
+
+.meet-locked__s {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #969D90;
+}
+
+/* ---------- 底栏紧凑状态条（已确认 / 待确认 / 不可报名） ---------- */
+.detail-statusbar {
+  width: 100%;
+  min-height: 96rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.detail-statusbar__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-statusbar__t {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.4;
+}
+
+.detail-statusbar__s {
+  margin-top: 2rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+}
+
+/* 状态条内的次级取消按钮：不占满宽 */
+.ui-v2 .social-bottom .detail-statusbar .btn.detail-statusbar__btn {
+  width: auto;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* ---------- 弹层：名单行 ---------- */
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.roster-row__avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #20241F;
+  flex-shrink: 0;
+}
+
+.roster-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.roster-row__btns {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+/* ---------- 弹层：更多操作（分享是真 button open-type=share，重置按钮默认样式） ---------- */
+.more-item {
+  width: 100%;
+  margin: 0;
+  padding: 28rpx 32rpx;
+  min-height: 96rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  background: none;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.more-item::after {
+  border: none;
+}
+
+.more-item:active {
+  background: rgba(210, 239, 114, 0.08);
+}
+
+.more-item--danger {
+  color: #F1A19A;
+}

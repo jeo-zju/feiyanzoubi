@@ -1,67 +1,52 @@
-<view class="page page--result">
-  <view class="card card-hero card-pad">
-    <view class="section-title">合并完成</view>
-    <view class="section-desc">已将「{{payload.sourceGymName}}」合并到「{{payload.targetGymName}}」。</view>
-  </view>
-
-  <view class="card mt">
-    <view class="card-hd">迁移摘要</view>
-    <view class="card-bd">
-      <view class="hint pre-line">{{movedSummaryText}}</view>
+<view class="page ui-v2 mr-page">
+  <!-- 结果状态：源馆 → 目标馆 -->
+  <view class="card mr-card">
+    <view class="mr-status">
+      <text class="tag tag--on mr-status-tag">已完成</text>
     </view>
-  </view>
-
-  <view class="card mt">
-    <view class="card-hd">周期映射</view>
-    <view class="card-bd">
-      <view class="hint pre-line">{{mappingSummaryText}}</view>
-    </view>
-  </view>
-
-  <view class="card mt" wx:if="{{mergeHistory.length}}">
-    <view class="card-hd">目标馆合并历史</view>
-    <view class="card-bd">
-      <view wx:for="{{mergeHistory}}" wx:key="sourceGymId" class="history-item">
-        <view class="history-name">{{item.sourceGymName}}</view>
-        <view class="hint">{{item.mergedAtText}} 合并到当前馆</view>
-        <view class="hint">映射周期 {{item.cycleMappingCount}} 个，合并周期 {{item.mappedCycleCount}} 个</view>
+    <view class="mr-flow">
+      <view class="mr-flow__side">
+        <text class="field-label">源岩馆（已停用）</text>
+        <view class="mr-flow__name">{{payload.sourceGymName || '未命名岩馆'}}</view>
+      </view>
+      <view class="mr-flow__arrow">→</view>
+      <view class="mr-flow__side">
+        <text class="field-label">目标岩馆</text>
+        <view class="mr-flow__name">{{payload.targetGymName || '未命名岩馆'}}</view>
       </view>
     </view>
   </view>
 
-  <view class="card mt" wx:if="{{targetGym}}">
-    <view class="card-hd">目标馆核对</view>
-    <view class="card-bd">
-      <view class="list-row">
-        <view class="hint">名称</view>
-        <view class="detail-value">{{targetGym.name}}</view>
+  <!-- 迁移摘要：只展示真实返回的项目 -->
+  <view class="card mr-card">
+    <view class="mr-sec-t">迁移摘要</view>
+    <view wx:if="{{movedRows.length}}">
+      <view wx:for="{{movedRows}}" wx:key="key" class="mr-row">
+        <text class="mr-row__k">{{item.label}}</text>
+        <text class="mr-row__v">{{item.value}}</text>
       </view>
-      <view class="list-row">
-        <view class="hint">城市</view>
-        <view class="detail-value">{{targetGym.city || '未设置'}}</view>
-      </view>
-      <view class="list-row">
-        <view class="hint">地址</view>
-        <view class="detail-value">{{targetGym.address || '未设置'}}</view>
-      </view>
-      <view class="list-row">
-        <view class="hint">支持模式</view>
-        <view class="detail-value">{{modesText}}</view>
-      </view>
-      <view class="list-row">
-        <view class="hint">当前周期</view>
-        <view class="detail-value">{{currentCycleText}}</view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-state__title">本次没有迁移数据</view>
+    </view>
+  </view>
+
+  <!-- 映射明细：按需展开 -->
+  <view wx:if="{{mappings.length}}" class="card mr-card">
+    <view class="mr-collapse__hd" bindtap="onToggleMappings">
+      <text class="mr-collapse__t">周期映射明细（{{mappings.length}}）</text>
+      <text class="mr-collapse__arrow {{mappingsOpen ? 'is-open' : ''}}">⌄</text>
+    </view>
+    <view wx:if="{{mappingsOpen}}" class="mr-collapse__bd">
+      <view wx:for="{{mappings}}" wx:key="sourceCycleId" class="mr-map">
+        <view class="mr-map__name">{{item.sourceCycleName}}</view>
+        <view class="mr-map__to">→ {{item.targetCycleName}}</view>
       </view>
     </view>
   </view>
 
   <view class="action-bar">
-    <view class="action-bar__row">
-      <view class="btn btn-primary" bindtap="onOpenTargetGym">进入目标岩馆</view>
-    </view>
-    <view class="action-bar__row mt-sm">
-      <view class="btn btn-ghost" bindtap="onMergeAgain">继续合并到该馆</view>
-      <view class="btn btn-ghost" bindtap="onBackOwner">返回我的岩馆</view>
-    </view>
+    <view class="btn btn-primary" bindtap="onOpenTargetGym">进入目标岩馆</view>
+    <view wx:if="{{canGoBack}}" class="btn btn-ghost mr-back" bindtap="onBack">返回</view>
   </view>
 </view>

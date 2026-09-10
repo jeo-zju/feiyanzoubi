@@ -62,10 +62,35 @@ Page({
           isMine = createdBy === myOpenid || owner === myOpenid;
         }
       }
-      this.setData({ card, isMine });
+      this.setData({ card, isMine, loadError: false });
       await this.render();
     } catch (e) {
+      this.setData({ loadError: true, card: null });
       wx.showToast({ title: "加载失败", icon: "none" });
+    }
+  },
+
+  // 短屏预览可缩小，但大图始终按 1080x720 真实导出尺寸查看，不压缩卡面
+  async onPreviewLarge() {
+    if (!this.data.card) return;
+    try {
+      await this.render();
+      const tempPath = await new Promise((resolve) => {
+        wx.canvasToTempFilePath({
+          canvasId: "cardCanvas",
+          destWidth: this.data.canvasW,
+          destHeight: this.data.canvasH,
+          success: (r) => resolve(r && r.tempFilePath ? r.tempFilePath : ""),
+          fail: () => resolve("")
+        }, this);
+      });
+      if (!tempPath) {
+        wx.showToast({ title: "图片生成失败", icon: "none" });
+        return;
+      }
+      wx.previewImage({ urls: [tempPath], current: tempPath });
+    } catch (e) {
+      wx.showToast({ title: "打开失败", icon: "none" });
     }
   },
 
@@ -73,7 +98,7 @@ Page({
     const self = this;
     wx.showActionSheet({
       itemList: ["删除这张名片"],
-      itemColor: "#C65A5A",
+      itemColor: "#F1A19A",
       success(r) {
         if (!r || r.tapIndex !== 0) return;
         self.onConfirmRemove();
@@ -114,7 +139,7 @@ Page({
         title,
         content,
         confirmText: "删除",
-        confirmColor: "#C65A5A",
+        confirmColor: "#F1A19A",
         success(res) { resolve(!!(res && res.confirm)); },
         fail() { resolve(false); }
       });

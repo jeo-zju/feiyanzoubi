@@ -24,11 +24,11 @@ function fmtTs(ts) {
 Page({
   data: {
     defaultAvatar: DEFAULT_AVATAR,
-    listTab: "incoming",
+    listTab: "accepted",
     listTabs: [
-      { key: "incoming", label: "待处理" },
       { key: "accepted", label: "我的岩友" },
-      { key: "outgoing", label: "已发出" }
+      { key: "incoming", label: "收到申请" },
+      { key: "outgoing", label: "已发申请" }
     ],
     loading: false,
     searchKeyword: "",
@@ -64,18 +64,18 @@ Page({
         return Object.assign({}, u, profile, extra || {});
       };
       const accepted = await resolveCloudAvatars(
-        ((r && r.accepted) || []).map((u) => toRow(u, { skillBadges: skillBadgesFrom(u.user || u) })),
+        ((r && r.accepted) || []).map((u) => toRow(u, { skillText: skillBadgesFrom(u.user || u).join(" · ") })),
         "avatarUrl"
       );
       const incoming = await resolveCloudAvatars(
         ((r && r.incoming) || []).map((u) => toRow(u, {
-          skillBadges: skillBadgesFrom(u.user || u),
+          skillText: skillBadgesFrom(u.user || u).join(" · "),
           createdAtText: fmtTs(u.createdAt)
         })),
         "avatarUrl"
       );
       const outgoing = await resolveCloudAvatars(
-        ((r && r.outgoing) || []).map((u) => toRow(u, { skillBadges: skillBadgesFrom(u.user || u) })),
+        ((r && r.outgoing) || []).map((u) => toRow(u, { skillText: skillBadgesFrom(u.user || u).join(" · ") })),
         "avatarUrl"
       );
       this.setData({ incoming, accepted, outgoing });
@@ -118,7 +118,7 @@ Page({
             ...u,
             openid: uid,
             _openid: uid,
-            skillBadges: skillBadgesFrom(u),
+            skillText: skillBadgesFrom(u).join(" · "),
             isFriend: friends.has(uid),
             outgoing: outgoings.has(uid),
             incoming: incomings.has(uid)
@@ -157,7 +157,7 @@ Page({
     try {
       await friendshipApi.accept({ fromOpenid: id });
       try { cache.invalidate(cache.CACHE_KEYS.FRIEND_COMBINED); } catch (_) {}
-      wx.showToast({ title: "已成为岩友 🧗", icon: "success" });
+      wx.showToast({ title: "已成为岩友", icon: "success" });
       this.loadList();
     } catch (e) {
       wx.showToast({ title: e && e.message ? e.message : "操作失败", icon: "none" });
@@ -185,7 +185,7 @@ Page({
       title: "删除这位岩友？",
       content: "删除后双方将从彼此的岩友列表中移除",
       confirmText: "删除",
-      confirmColor: "#f28b94",
+      confirmColor: "#F1A19A",
       success: async (r) => {
         if (!r.confirm) return;
         try {
@@ -198,6 +198,22 @@ Page({
         }
       }
     });
+  },
+
+  onMore(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.showActionSheet({
+      itemList: ["删除岩友"],
+      itemColor: "#F1A19A",
+      success: (r) => {
+        if (r.tapIndex === 0) this.onRemove(e);
+      }
+    });
+  },
+
+  goHome() {
+    wx.switchTab({ url: "/pages/home/index" });
   },
 
   onViewCard(e) {

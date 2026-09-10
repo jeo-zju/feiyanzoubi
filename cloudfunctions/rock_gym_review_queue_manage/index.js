@@ -314,46 +314,61 @@ async function reviewQueueItem(event, openid) {
 
   const reviewType = safeText(doc.reviewType) || "gym_mode_review";
   const now = Date.now();
+
+  // gym_cycle_submission：先应用周期再更新审核状态（保持现有流程，失败不更新审核）
   if (reviewType === "gym_cycle_submission") {
     if (decision === "approved") {
       await applyCycleSubmissionReview(doc, now);
     }
-    const patch = {
-      reviewState: decision,
-      reviewNote: note,
-      reviewedAt: now,
-      reviewedByOpenid: openid,
-      updatedAt: now
-    };
-    await ref.update({ data: patch });
-    return {
-      id,
-      decision,
-      gymId: safeText(doc.gymId),
-      reviewType
-    };
+    await ref.update({
+      data: {
+        reviewState: decision,
+        reviewNote: note,
+        reviewedAt: now,
+        reviewedByOpenid: openid,
+        updatedAt: now
+      }
+    });
+    return { id, decision, gymId: safeText(doc.gymId), reviewType };
   }
 
+  // entity_review / duplicate_match_review：只更新审核状态，不自动建馆/合并（需人工操作）
+  if (reviewType === "entity_review" || reviewType === "duplicate_match_review") {
+    await ref.update({
+      data: {
+        reviewState: decision,
+        reviewNote: note,
+        reviewedAt: now,
+        reviewedByOpenid: openid,
+        updatedAt: now
+      }
+    });
+    return { id, decision, gymId: safeText(doc.gymId), reviewType };
+  }
+
+  // gym_mode_review / field_change_review：审核状态与馆更新原子化（事务）
   const finalSupportedModes =
     decision === "approved" ? uniqueModes((event && event.supportedModes) || doc.finalSupportedModes || doc.supportedModes) : [];
   if (decision === "approved" && !finalSupportedModes.length) {
     throw Object.assign(new Error("通过审核时至少选择一种模式"), { code: "BAD_REQUEST" });
   }
-  const patch = {
+  const gymId = safeText(doc.gymId);
+
+  const queuePatch = {
     reviewState: decision,
     reviewNote: note,
     reviewedAt: now,
     reviewedByOpenid: openid,
     updatedAt: now
   };
-  if (decision === "approved") patch.finalSupportedModes = finalSupportedModes;
+  if (decision === "approved") queuePatch.finalSupportedModes = finalSupportedModes;
 
-  await ref.update({ data: patch });
-
-  const gymId = safeText(doc.gymId);
-  if (decision === "approved" && gymId) {
-    try {
-      await db.collection("RockGyms").doc(gymId).update({
+  // 使用事务保证审核队列与馆表一致；任一失败都回滚
+  const tx = await db.startTransaction();
+  try {
+    await tx.collection("RockGymReviewQueue").doc(id).update({ data: queuePatch });
+    if (decision === "approved" && gymId) {
+      await tx.collection("RockGyms").doc(gymId).update({
         data: {
           supportedModes: finalSupportedModes,
           supportedModesSource: "manual_review",
@@ -362,15 +377,18 @@ async function reviewQueueItem(event, openid) {
           updated_at: db.serverDate()
         }
       });
-    } catch (e) {}
+    }
+    await tx.commit();
+  } catch (e) {
+    try {
+      await tx.rollback();
+    } catch (rbErr) {
+      // rollback 失败不掩盖原始错误
+    }
+    throw e;
   }
 
-  return {
-    id,
-    decision,
-    gymId,
-    finalSupportedModes
-  };
+  return { id, decision, gymId, finalSupportedModes, reviewType };
 }
 
 exports.main = async (event) => {

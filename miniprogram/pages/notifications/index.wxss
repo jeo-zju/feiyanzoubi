@@ -1,1 +1,86 @@
-/* 约爬通知页：social-* 系列样式已全部移入 app.wxss 全局，本页无特有样式 */
+/* 约爬通知页（compact）：原生标题已显示页名，正文只留工具行与消息列表 */
+page {
+  background: #151714;
+}
+
+.notice-page {
+  padding: 12rpx 32rpx 36rpx;
+}
+
+/* 工具行：全部已读右对齐，仅有未读时渲染 */
+.notice-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notice-top__read {
+  padding: 16rpx 8rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #D2EF72;
+}
+
+.notice-top__read:active {
+  opacity: 0.7;
+}
+
+/* 消息行：未读点 + 标题/馆名时间 + 整行箭头，行高自然增长 */
+.notice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 28rpx 0;
+  border-top: 1rpx solid #383E34;
+}
+
+.notice-row:active {
+  opacity: 0.82;
+}
+
+.notice-row__dot-slot {
+  flex-shrink: 0;
+  width: 20rpx;
+  padding-top: 12rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.notice-row__dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #D2EF72;
+}
+
+.notice-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-row__title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #F3F1E7;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.notice-row__sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #969D90;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.notice-row__arrow {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: #969D90;
+  line-height: 1.4;
+}
+
+.notice-empty {
+  padding-top: 96rpx;
+  font-size: 28rpx;
+}

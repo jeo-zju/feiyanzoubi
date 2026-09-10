@@ -7,7 +7,7 @@ const { DEFAULT_AVATAR } = require("../../utils/constants");
 const { resolveCloudAvatars } = require("../../utils/avatar");
 
 const WEEK_NAMES = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-const COLOR_COUNT = 8;
+const CITY_PRESETS = ["杭州", "上海", "北京", "深圳", "广州", "成都", "南京", "武汉"];
 
 function pad2(n) { return n < 10 ? `0${n}` : String(n); }
 function parseYMD(ymd) {
@@ -24,19 +24,18 @@ function hmToMinutes(hm) {
   if (!m) return 0;
   return Number(m[1]) * 60 + Number(m[2]);
 }
+function toGymOptions(gymList) {
+  const src = Array.isArray(gymList) ? gymList : [];
+  return src.map((g) => ({
+    _id: String(g && g._id ? g._id : ""),
+    name: safeText(g && (g.name || g.gymName)) || "未命名岩馆"
+  })).filter((g) => g._id);
+}
 
 const START_HOUR = 10;
 const END_HOUR = 22;
-const TOTAL_HOURS = END_HOUR - START_HOUR;
 const PX_PER_HOUR = 120; // rpx，每个 tick 高度 = PX_PER_HOUR，和 WXSS 的 120rpx 保持一致
-
-function colorForUser(uid, idx) {
-  let h = idx != null ? idx : 0;
-  if (uid) {
-    for (let i = 0; i < uid.length; i++) h = (h * 131 + uid.charCodeAt(i)) >>> 0;
-  }
-  return h % COLOR_COUNT;
-}
+const COL_WIDTH = 200;
 
 Page({
   data: {
@@ -44,24 +43,33 @@ Page({
     dateLabel: "",
     weekLabel: "",
     city: "",
+    circleId: "",
     gymId: "",
     gymLabel: "全部岩馆",
     visibility: "public",
-    visibilityLabel: "公开日历",
-    publicityPillLabel: "公开日历 ✓",
+    visibilityTabs: [
+      { key: "public", label: "公开日历" },
+      { key: "friends", label: "岩友" },
+      { key: "circle", label: "岩友圈" }
+    ],
+    cityOptions: CITY_PRESETS.map((name) => ({ name, custom: false }))
+      .concat([{ name: "自定义城市…", custom: true }]),
+    cityPickerVisible: false,
+    gymPickerVisible: false,
+    gymOptions: [],
+    gymKeyword: "",
+    _gymPickerState: { page: 0, hasMore: false, loading: false },
     userCount: 0,
     userList: [],
     plans: [],
-    selectedPlan: null,
-    defaultAvatar: DEFAULT_AVATAR,
-    hourTicks: [],
-    tlWidth: 0,
+    colList: [],
     colsWidth: 0,
-    colWidth: 200,
+    colWidth: COL_WIDTH,
+    hourTicks: [],
     friendIds: [],
-    // issue #35: 弹窗里不直接展示名片，点击弹窗内头像才弹出二级名片 sheet
-    memberCardVisible: false,
-    memberCard: null
+    defaultAvatar: DEFAULT_AVATAR,
+    // 点时间块/头像只出识别摘要，报名/退出/移除统一进 plan-detail
+    selectedPlan: null
   },
 
   onLoad(options) {
@@ -71,7 +79,9 @@ Page({
     })();
     const city = decodeURIComponent(safeText(options && options.city));
     const gymId = safeText(options && options.gymId);
-    const visibility = safeText(options && options.visibility) || "public";
+    const visibility = ["public", "friends", "circle"].indexOf(safeText(options && options.visibility)) >= 0
+      ? safeText(options && options.visibility)
+      : "public";
     const d = parseYMD(date);
     const dateLabel = d ? `${d.getMonth() + 1}月${d.getDate()}日` : date;
     const weekLabel = WEEK_NAMES[weekdayOf(date)] || "";
@@ -83,16 +93,13 @@ Page({
     this.setData({
       date,
       dateLabel,
-      circleId: safeText(options && options.circleId),
       weekLabel,
       city,
+      circleId: safeText(options && options.circleId),
       gymId,
       gymLabel: gymId ? "选中岩馆" : "全部岩馆",
       visibility,
-      visibilityLabel: visibility === "friends" ? "我的岩友" : "公开日历",
-      publicityPillLabel: visibility === "friends" ? "我的岩友 ✓" : "公开日历 ✓",
-      hourTicks,
-      tlWidth: 90 + 6 * 200
+      hourTicks
     });
   },
 
@@ -109,6 +116,8 @@ Page({
     this.loadTimeline();
   },
 
+  noop() {},
+
   async loadFriends() {
     try {
       const r = await friendshipApi.list({ pageSize: 100 });
@@ -119,8 +128,7 @@ Page({
     } catch (e) {}
   },
 
-  // #35: cloud:// 头像统一走 utils/avatar：转临时 https URL；转换失败的一律置空，
-  // 由 wxml `avatarUrl || defaultAvatar` 兜底，杜绝 cloud:// 进 <image> 报 500
+  // cloud:// 头像统一走 utils/avatar：转临时 https URL；失败置空走默认头像
   async resolveAvatars(list) {
     return resolveCloudAvatars(list, "avatarUrl");
   },
@@ -136,15 +144,20 @@ Page({
       if (this.data.gymId) params.filterGymId = this.data.gymId;
       const res = await calendarApi.queryTimeline(params);
       const rawPlans = (res && res.plans) || [];
-      const userList = (res && res.userList) || [];
+      const userList = ((res && res.userList) || []).map((u) => ({
+        _openid: u._openid,
+        nickName: u.nickName || "",
+        avatarUrl: u.avatarUrl || "",
+        displayName: u.displayName || "",
+        title: u.title || "",
+        rockId: u.rockId || "",
+        city: u.city || ""
+      }));
       const friendSet = new Set(this.data.friendIds || []);
       const app = getApp();
       const myUid = (app && app.globalData && app.globalData.openid) || "";
       const userColMap = {};
       userList.forEach((u, i) => { userColMap[u._openid] = i; });
-
-      const uidColors = {};
-      userList.forEach((u) => { uidColors[u._openid] = colorForUser(u._openid, userColMap[u._openid]); });
 
       const colBars = {};
       userList.forEach((u) => { colBars[u._openid] = []; });
@@ -161,23 +174,19 @@ Page({
         const hMin = Math.max(30, clampedEnd - (START_HOUR * 60 + startOffset));
         const hPx = Math.max(80, Math.round((hMin / 60) * PX_PER_HOUR));
         const rangeText = `${p.startTime}-${p.endTime}`;
-        const colorIdx = uidColors[uid] != null ? uidColors[uid] : colorForUser(uid, null);
         const snap = p.userSnapshot || {};
-        // issue #35: 云函数已按 owner id 查 RockUsers 做 hydration（ownerInfo），
-        // 实时资料优先、计划快照兜底——解决「自己能看到头像、他人看不到」
+        // 云函数已按 owner id 查 RockUsers 做 hydration：实时资料优先、计划快照兜底
         const oi = p.ownerInfo || {};
+        const rawPlanId = String(p._id || "");
         const plan = {
-          id: p._id || `${uid}_${p.date}_${p.startTime}_${p.endTime}`,
-          rawPlanId: String(p._id || ""),
+          id: rawPlanId || `${uid}_${p.date}_${p.startTime}_${p.endTime}`,
+          rawPlanId,
           uid,
           date: p.date,
           displayName: oi.displayName || snap.displayName || snap.nickName || "",
           nickName: oi.nickName || snap.nickName || "",
           avatarUrl: oi.avatarUrl || snap.avatarUrl || "",
           title: oi.title || snap.title || "",
-          rockId: oi.rockId || snap.rockId || "",
-          city: oi.city || "",
-          climbSkills: oi.climbSkills || null,
           rangeText,
           gymName,
           outdoorName: p.outdoorName || "",
@@ -187,271 +196,211 @@ Page({
           skillText: (p.skillTags || []).join("、"),
           topPx,
           hPx,
-          colorIdx,
           isFriend: friendSet.has(uid) || (p.visibility === "friends"),
           isMe: uid === myUid,
-          joinedCount: Number(p.joinedCount || 1),
-          meJoined: !!p.meJoined
+          joinedCount: Number(p.joinedCount || 1)
         };
         visiblePlans.push(plan);
         if (userColMap[uid] == null) {
-          userColMap[uid] = Object.keys(userColMap).length;
+          userColMap[uid] = userList.length;
           colBars[uid] = [];
-          const newUser = {
+          userList.push({
             _openid: uid,
             nickName: plan.nickName,
             avatarUrl: plan.avatarUrl,
             displayName: plan.displayName,
             title: plan.title,
-            rockId: plan.rockId,
-            city: plan.city
-          };
-          userList.push(newUser);
+            rockId: plan.rockId || "",
+            city: plan.city || ""
+          });
         }
+        // 短时段（<104rpx）不硬塞馆名，点击摘要看完整区间
         colBars[uid].push({
           id: plan.id,
           topPx: plan.topPx,
           hPx: plan.hPx,
           rangeText: plan.rangeText,
           gymName: plan.gymName || plan.outdoorName,
-          colorIdx: plan.colorIdx,
-          rawPlanId: p._id
+          showGym: hPx >= 104
         });
       });
 
-      const colList = Object.keys(colBars).map((uid) => {
-        const i = userColMap[uid];
-        const bars = (colBars[uid] || []).sort((a, b) => a.topPx - b.topPx);
-        return { uid, colIdx: i, bars };
-      }).sort((a, b) => a.colIdx - b.colIdx);
-
-      const colCount = Math.max(5, colList.length);
-      const colWidth = 200;
-      const colsWidth = colCount * colWidth;
-      const tlWidth = 92 + colsWidth;
-
-      // #35: 头像可能是 cloud:// 云文件 ID（<image> 无法直接显示，只剩圆圈），统一转临时 URL
       const resolvedUsers = await this.resolveAvatars(userList);
       const resolvedPlans = await this.resolveAvatars(visiblePlans);
 
+      const colList = resolvedUsers.map((u, i) => ({
+        uid: u._openid,
+        colIdx: i,
+        avatarUrl: u.avatarUrl || "",
+        displayName: u.displayName || "",
+        nickName: u.nickName || "",
+        bars: (colBars[u._openid] || []).slice().sort((a, b) => a.topPx - b.topPx)
+      }));
+
       this.setData({
         plans: resolvedPlans,
-        planMap: resolvedPlans.reduce((m, p) => { m[p.id] = p; return m; }, {}),
         userList: resolvedUsers,
         userCount: resolvedUsers.length,
         colList,
-        colWidth,
-        colsWidth,
-        tlWidth
+        colsWidth: colList.length * COL_WIDTH
       });
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
     }
   },
 
-  onGymFilterChange(e) {
-    const idx = Number(e.detail.value);
-    if (idx === 0) {
-      this.setData({ gymId: "", gymLabel: "全部岩馆" }, () => this.loadTimeline());
-    } else if (idx === 1) {
-      wx.navigateTo({ url: "/pages/home/index" });
-    }
-  },
-
   onVisibilityChange(e) {
-    const next = e.detail.value === "friends" ? "friends" : "public";
-    if (next === this.data.visibility) return;
+    const next = safeText(e && e.detail && e.detail.value);
+    if (!next || next === this.data.visibility) return;
     this.setData({ visibility: next }, () => this.loadTimeline());
   },
 
-  // #35: 点头像/点时间块都要打开弹窗并加载报名者；统一入口避免两处逻辑不一致
-  openPlanModal(plan) {
-    if (!plan) return;
-    this.setData({ selectedPlan: plan, joinList: [], joinOwner: null, joinLoading: true });
-    if (plan.rawPlanId) this.loadSelectedPlanJoiners(plan.rawPlanId);
+  // ---------- 城市筛选 ----------
+  onTapCity() {
+    this.setData({ cityPickerVisible: true });
   },
-
-  onTapAvatar(e) {
-    const uid = e.currentTarget.dataset.uid;
-    if (!uid) return;
-    // #35: 点头像之前只 setData 不加载报名者，弹窗底部永远「加载中…」
-    const plan = (this.data.plans || []).find((p) => p.uid === uid);
-    this.openPlanModal(plan);
+  onCloseCityPicker() {
+    this.setData({ cityPickerVisible: false });
   },
-
-  onTapPublish() {
-    const params = [`date=${this.data.date}`];
-    if (safeText(this.data.city)) params.push(`city=${encodeURIComponent(safeText(this.data.city))}`);
-    if (this.data.gymId) params.push(`gymId=${this.data.gymId}`);
-    wx.navigateTo({ url: `/pages/calendar-publish/index?${params.join("&")}` });
-  },
-
-  onClosePlan() {
-    this.setData({ selectedPlan: null, joinList: [], joinOwner: null, joinLoading: false, memberCardVisible: false, memberCard: null });
-  },
-
-  // issue #35: 弹窗内不直接展示名片；点击发起者头像弹出二级名片 sheet
-  onTapPlanAvatar() {
-    const p = this.data.selectedPlan;
-    if (!p) return;
-    this.setData({
-      memberCard: {
-        avatarUrl: p.avatarUrl || "",
-        displayName: p.displayName || p.nickName || "",
-        nickName: p.nickName || "",
-        title: p.title || "",
-        rockId: p.rockId || "",
-        city: p.city || "",
-        role: "owner"
-      },
-      memberCardVisible: true
-    });
-  },
-
-  // issue #35: 点击报名列表里的头像（发起者行/报名者行）弹出对应名片 sheet
-  onTapJoinerAvatar(e) {
+  onPickCity(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
-    let target = null;
-    let role = "joiner";
-    if (ds.role === "owner") {
-      target = this.data.joinOwner;
-      role = "owner";
-    } else {
-      const idx = Number(ds.idx);
-      target = (this.data.joinList || [])[idx];
+    if (ds.custom) {
+      this.setData({ cityPickerVisible: false });
+      const self = this;
+      wx.showModal({
+        title: "输入城市",
+        editable: true,
+        placeholderText: "如：苏州",
+        success(r) {
+          if (r.confirm && safeText(r.content)) {
+            self.applyCity(safeText(r.content));
+          }
+        }
+      });
+      return;
     }
-    if (!target) return;
+    const city = safeText(ds.city);
+    if (!city) return;
+    this.applyCity(city);
+  },
+  applyCity(city) {
+    if (city === this.data.city) {
+      this.setData({ cityPickerVisible: false });
+      return;
+    }
     this.setData({
-      memberCard: {
-        avatarUrl: target.avatarUrl || "",
-        displayName: target.displayName || target.nickName || "",
-        nickName: target.nickName || "",
-        title: target.title || "",
-        rockId: target.rockId || "",
-        city: target.city || "",
-        role
-      },
-      memberCardVisible: true
+      city,
+      cityPickerVisible: false,
+      gymId: "",
+      gymLabel: "全部岩馆",
+      gymOptions: [],
+      gymKeyword: "",
+      _gymPickerState: { page: 0, hasMore: false, loading: false }
     });
+    this.loadTimeline();
   },
 
-  closeMemberCard() {
-    this.setData({ memberCardVisible: false, memberCard: null });
+  // ---------- 岩馆筛选（搜索 + 分页，与日历页同一交互） ----------
+  async onTapGymFilter() {
+    this.setData({
+      gymKeyword: "",
+      gymOptions: [],
+      gymPickerVisible: true,
+      "_gymPickerState.page": 0,
+      "_gymPickerState.hasMore": false,
+      "_gymPickerState.loading": true
+    });
+    await this.loadGymPicker(true);
   },
-
-  async loadSelectedPlanJoiners(planId) {
-    if (!planId) { this.setData({ joinLoading: false }); return; }
-    this.setData({ joinLoading: true });
+  onCloseGymPicker() {
+    if (this._gymKeywordTimer) {
+      clearTimeout(this._gymKeywordTimer);
+      this._gymKeywordTimer = null;
+    }
+    this.setData({ gymPickerVisible: false });
+  },
+  onGymKeywordInput(e) {
+    const keyword = safeText(e && e.detail && e.detail.value);
+    this.setData({ gymKeyword: keyword, gymOptions: [], "_gymPickerState.loading": true });
+    if (this._gymKeywordTimer) clearTimeout(this._gymKeywordTimer);
+    const self = this;
+    this._gymKeywordTimer = setTimeout(() => {
+      self._gymKeywordTimer = null;
+      self.loadGymPicker(true);
+    }, 300);
+  },
+  onGymPickerScrollLower() {
+    const st = this.data._gymPickerState || {};
+    if (st.loading || !st.hasMore) return;
+    this.loadGymPicker(false);
+  },
+  async loadGymPicker(reset) {
+    const st = this.data._gymPickerState || { page: 0, hasMore: false, loading: false };
+    if (!reset && (st.loading || !st.hasMore)) return;
+    const keyword = safeText(this.data.gymKeyword);
+    const page = reset ? 1 : Math.max(1, Number(st.page || 0) + 1);
+    this._gymPickerToken = (this._gymPickerToken || 0) + 1;
+    const token = this._gymPickerToken;
+    this.setData({ "_gymPickerState.loading": true });
     try {
-      const r = await calendarApi.getJoiners(planId);
-      const ownerInfo = (r && r.ownerInfo) || null;
-      const joiners = (r && r.joiners) || [];
-      const joined = !!(r && r.joined);
-      // #35: 发起者/报名者头像同样可能是 cloud:// fileID，批量转临时 URL
-      const resolvedAll = await this.resolveAvatars([ownerInfo].concat(joiners).filter(Boolean));
-      const ownerResolved = ownerInfo ? (resolvedAll[0] || ownerInfo) : null;
-      const joinersResolved = ownerInfo ? resolvedAll.slice(1) : resolvedAll;
+      const res = await gymApi.list(
+        { city: safeText(this.data.city), keyword, page, pageSize: 20 },
+        { loading: false }
+      );
+      if (token !== this._gymPickerToken) return;
+      const options = toGymOptions((res && res.gyms) || []);
+      const merged = reset ? options : (this.data.gymOptions || []).concat(options);
       this.setData({
-        joinOwner: ownerResolved,
-        joinList: joinersResolved,
-        joinCount: Number(r && r.joinedCount ? r.joinedCount : (ownerResolved ? 1 : 0) + joinersResolved.length),
-        selectedPlanJoined: joined,
-        joinLoading: false
+        gymOptions: merged,
+        "_gymPickerState.page": page,
+        "_gymPickerState.hasMore": !!(res && res.hasNext),
+        "_gymPickerState.loading": false
       });
     } catch (e) {
-      this.setData({ joinList: [], joinOwner: null, joinLoading: false });
+      if (token !== this._gymPickerToken) return;
+      this.setData({ "_gymPickerState.loading": false });
     }
   },
-
-  noop() {},
-
-  onTapBar(e) {
+  onPickGym(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
-    const rid = ds.rawplanid;
-    const uid = ds.uid;
-    const map = this.data.planMap || {};
-    let found = null;
-    if (rid) {
-      found = Object.values(map).find((p) => p.id === rid || p.rawPlanId === rid);
-    }
-    if (!found && uid) {
-      found = Object.values(map).find((p) => p.uid === uid);
-    }
-    if(found && (found.rawPlanId || found.id)) wx.navigateTo({url:"/pages/plan-detail/index?planId="+encodeURIComponent(found.rawPlanId || found.id)});
-  },
-
-  async onTapAddFriend() {
-    const p = this.data.selectedPlan;
-    if (!p || !p.uid) return;
-    try {
-      const r = await friendshipApi.request({ toOpenid: p.uid });
-      const status = (r && r.status) || "ok";
-      wx.showToast({ title: friendshipApi.mapRequestStatusToToast(status), icon: "none" });
-      this.loadFriends();
-      this.setData({ selectedPlan: null });
-    } catch (e) {
-      wx.showToast({ title: e && e.message ? e.message : "操作失败", icon: "none" });
-    }
-  },
-
-  async onTapCancelMine() {
-    const p = this.data.selectedPlan;
-    if (!p || !p.id) return;
-    const self = this;
-    wx.showModal({
-      title: "取消这次计划？",
-      content: "取消后岩友们在时间轴上就看不到了",
-      confirmText: "取消计划",
-      confirmColor: "#f28b94",
-      success: async (r) => {
-        if (!r.confirm) return;
-        try {
-          await calendarApi.publish({ action: "cancel", planId: p.rawPlanId || (p.id.startsWith("plan_") ? "" : p.id) });
-          wx.showToast({ title: "已取消", icon: "success" });
-          self.setData({ selectedPlan: null });
-          self.loadTimeline();
-        } catch (e) {
-          wx.showToast({ title: e && e.message ? e.message : "取消失败", icon: "none" });
-        }
-      }
+    const id = safeText(ds.id);
+    const name = id ? safeText(ds.name) || "选中岩馆" : "全部岩馆";
+    this.setData({
+      gymId: id,
+      gymLabel: name,
+      gymPickerVisible: false
     });
+    this.loadTimeline();
   },
 
-  async onTapJoin() {
+  // ---------- 时间块摘要：只识别，不复制报名管理 ----------
+  openPlanSheet(plan) {
+    if (!plan) return;
+    this.setData({ selectedPlan: plan });
+  },
+  onClosePlan() {
+    this.setData({ selectedPlan: null });
+  },
+  onTapBar(e) {
+    const id = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || "";
+    const found = (this.data.plans || []).find((p) => p.id === id);
+    this.openPlanSheet(found);
+  },
+  onTapAvatar(e) {
+    const uid = (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.uid) || "";
+    if (!uid) return;
+    const found = (this.data.plans || []).find((p) => p.uid === uid);
+    this.openPlanSheet(found);
+  },
+  onViewPlan() {
     const p = this.data.selectedPlan;
-    if (!p || !p.rawPlanId) return;
-    const already = this.data.selectedPlanJoined || p.meJoined;
-    try {
-      if (already) await calendarApi.unjoinPlan(p.rawPlanId); else await calendarApi.joinPlan(p.rawPlanId);
-      wx.showToast({ title: already ? "已取消报名" : "报名成功", icon: "success" });
-      this.loadSelectedPlanJoiners(p.rawPlanId);
-      this.loadTimeline();
-    } catch (e) {
-      wx.showToast({ title: e && e.message ? e.message : "操作失败", icon: "none" });
+    if (!p) return;
+    // rawPlanId 即计划记录 _id；timeline 返回的均为当前用户可见计划，
+    // plan-detail 按同一可见性规则校验（旧单向关注数据可能返回无权限文案，属预期兜底）
+    if (!p.rawPlanId) {
+      wx.showToast({ title: "该约爬信息过旧，无法打开", icon: "none" });
+      return;
     }
-  },
-
-  async onTapRemoveJoiner(e) {
-    const p = this.data.selectedPlan;
-    if (!p || !p.rawPlanId) return;
-    const target = safeText(e && e.currentTarget && e.currentTarget.dataset.uid);
-    if (!target) return;
-    const self = this;
-    wx.showModal({
-      title: "移除这名报名者？",
-      confirmText: "移除",
-      confirmColor: "#f28b94",
-      success: async (r) => {
-        if (!r.confirm) return;
-        try {
-          await calendarApi.removeJoiner(p.rawPlanId, target);
-          wx.showToast({ title: "已移除", icon: "success" });
-          self.loadSelectedPlanJoiners(p.rawPlanId);
-          self.loadTimeline();
-        } catch (e) {
-          wx.showToast({ title: e && e.message ? e.message : "移除失败", icon: "none" });
-        }
-      }
-    });
+    wx.navigateTo({ url: `/pages/plan-detail/index?planId=${encodeURIComponent(p.rawPlanId)}` });
   }
 });

@@ -1,6 +1,8 @@
 const cloud = require("wx-server-sdk");
 const lifecycle = require("./lifecycle");
 const community = require("./community");
+const schedule = require("./schedule");
+const { ownerOf } = require("./access");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -15,8 +17,8 @@ function ok(data, tid) {
   return { ok: true, data, traceId: tid };
 }
 
-function fail(code, message, tid) {
-  return { ok: false, error: { code, message }, traceId: tid };
+function fail(code, message, tid, extra) {
+  return { ok: false, error: Object.assign({ code, message }, extra || {}), traceId: tid };
 }
 
 function safeText(v) {
@@ -236,6 +238,8 @@ exports.main = async (event) => {
     const maxDate = addDays(today, 13);
 
     if (action === "create" || action === "update") {
+      // 回填维护窗口期冻结发起/改期（旧客户端同样受约束）
+      await schedule.assertWritesEnabled(db);
       const mode = safeText(payload.mode) === "outdoor" ? "outdoor" : "gym";
       const gymId = mode === "gym" ? safeText(payload.gymId) : "";
       const outdoorName = mode === "outdoor" ? safeText(payload.outdoorName) : "";
@@ -247,11 +251,15 @@ exports.main = async (event) => {
       const note = safeText(payload.note).slice(0,1000);
       const capacity = Number(payload.capacity || 4);
       if (!Number.isInteger(capacity) || capacity < 2 || capacity > 12) return fail("BAD_REQUEST","总人数需为 2–12 人（包含发起人）",tid);
-      const startAt = Date.parse(payload.date + "T" + payload.startTime + ":00+08:00");
-      const endAt = Date.parse(payload.date + "T" + payload.endTime + ":00+08:00");
+      // 时段（上午/下午/晚上，可多选）：白名单去重持久化；startTime/endTime/startAt/endAt
+      // 一律在通过基础格式校验后由服务端按时段派生（见下方 candidate），不信任客户端上送值
+      const timeSlots = Array.isArray(payload.timeSlots)
+        ? [...new Set(payload.timeSlots.map(safeText).filter(k => ["morning","afternoon","evening"].includes(k)))]
+        : [];
       const socialFields = {
         schemaVersion:2, title:safeText(payload.title).slice(0,40), capacity,
-        joinMode:payload.joinMode === "approval" ? "approval" : "direct", startAt, endAt, joinDeadline:startAt,
+        joinMode:payload.joinMode === "approval" ? "approval" : "direct",
+        timeSlots,
         atmosphereTags:Array.isArray(payload.atmosphereTags) ? payload.atmosphereTags.map(safeText).filter(Boolean).slice(0,3) : [],
         meetingPoint:safeText(payload.meetingPoint).slice(0,100), contact:safeText(payload.contact).slice(0,100)
       };
@@ -273,6 +281,18 @@ exports.main = async (event) => {
       if (durationMin < 30) return fail("BAD_REQUEST", "时间段至少 30 分钟", tid);
       if (durationMin > 12 * 60) return fail("BAD_REQUEST", "单次计划不超过 12 小时", tid);
       if (Date.parse(`${date}T${startTime}:00+08:00`) <= now) return fail("DATE_PAST", "请选择尚未开始的时间", tid);
+
+      // startAt/endAt/joinDeadline 一律由服务端按时段派生：
+      // 新请求（带 timeSlots）忽略客户端上送的 startTime/endTime，防止伪造时间绕过同时段互斥；
+      // 旧客户端/旧数据走显式兼容分支，按真实起止区间比较（不做时段舍入）。
+      const candidate = timeSlots.length
+        ? schedule.normalizeNewSlots(date, timeSlots)
+        : schedule.legacyCandidate(date, startTime, endTime);
+      Object.assign(socialFields, {
+        startAt: candidate.startAt,
+        endAt: candidate.endAt,
+        joinDeadline: candidate.startAt
+      });
 
       let gym = null;
       let gymSnapshot = null;
@@ -315,9 +335,9 @@ exports.main = async (event) => {
           mode,
           outdoorName,
           date,
-          startTime,
-          endTime,
-          durationMin,
+          startTime: candidate.startTime,
+          endTime: candidate.endTime,
+          durationMin: candidate.durationMin,
           visibility,
           circleIds,
           note,
@@ -332,14 +352,18 @@ exports.main = async (event) => {
         };
         const requestId=safeText(event.requestId);
         if(!/^[A-Za-z0-9_-]{8,100}$/.test(requestId)) return fail("REQUEST_ID_REQUIRED","请更新小程序后发布",tid);
-        const planId="p_"+require("crypto").createHash("sha256").update(openid+"|"+requestId).digest("hex").slice(0,32);
+        const createPlanId="p_"+require("crypto").createHash("sha256").update(openid+"|"+requestId).digest("hex").slice(0,32);
         const fingerprint=JSON.stringify(payload);
-        await db.runTransaction(async tx=>{
-          const ref=tx.collection("RockCalendarPlans").doc(planId), previous=await lifecycle.optionalDoc(ref);
+        // 事务内：计划文档 + 发起人当天日程占用一起提交；并发同段竞争同一条 RockUserScheduleDays，
+        // 事务冲突时整段重读重判（有限重试），保证同一用户同一时段只成一个约爬。
+        await schedule.withRetries(() => db.runTransaction(async tx=>{
+          const ref=tx.collection("RockCalendarPlans").doc(createPlanId), previous=await lifecycle.optionalDoc(ref);
           if(previous){if(previous.requestFingerprint!==fingerprint)throw Object.assign(new Error("本次发布内容已改变，请重新打开发布页"),{code:"REQUEST_CONFLICT"});return;}
+          const dayInfos=await schedule.occupy(tx,{openid,planId:createPlanId,status:"host",candidate,now,conflictOptions:{includePlanId:true}});
           await ref.set({data:{...data,requestFingerprint:fingerprint}});
-        });
-        return ok({ planId }, tid);
+          await schedule.commitDayWrites(dayInfos);
+        }));
+        return ok({ planId: createPlanId }, tid);
       }
 
       if (action === "update") {
@@ -359,9 +383,9 @@ exports.main = async (event) => {
           mode,
           outdoorName,
           date,
-          startTime,
-          endTime,
-          durationMin,
+          startTime: candidate.startTime,
+          endTime: candidate.endTime,
+          durationMin: candidate.durationMin,
           visibility,
           circleIds,
           note,
@@ -370,27 +394,49 @@ exports.main = async (event) => {
           updatedAt: now,
           updated_at: db.serverDate()
         };
+        // 报名行在事务外读取，事务内与当前计划文档合并出规范成员索引（发起人始终在内）。
         const members = await lifecycle.rows(db,"RockCalendarJoins",{planId});
-        const audience = [...new Set(members.filter(j=>lifecycle.confirmed(j)||j.status === "pending").map(j=>j.openid))];
-        await db.runTransaction(async tx => {
+        await schedule.withRetries(() => db.runTransaction(async tx => {
           const ref=tx.collection("RockCalendarPlans").doc(planId);
           const current=(await ref.get()).data;
           if(!current || current.status !== "active") throw Object.assign(new Error("该约爬已取消"),{code:"INVALID_STATE"});
           if(payload.version != null && Number(payload.version) !== Number(current.version || 0)) throw Object.assign(new Error("约爬已更新，请重新打开编辑"),{code:"PLAN_CHANGED"});
-          const confirmedCount=current.joinSchemaVersion===2 ? current.confirmedCount : 1+new Set(members.filter(lifecycle.confirmed).map(j=>j.openid)).size;
-          const recipientIds=Array.isArray(current.participantIds)?current.participantIds:audience;
+          const confirmedCount=current.joinSchemaVersion===2 ? current.confirmedCount : 1+new Set(members.filter(lifecycle.confirmed).map(j=>j.openid||j._openid||j.uid)).size;
+          // 参与者索引 = 发起人 + 有效 pending/confirmed 成员；旧计划缺索引时按报名行推导，
+          // 不再让“无人报名的旧计划编辑后发起人从索引消失”。
+          const recipientIds=lifecycle.memberIndex(current, members);
+          const ownerId=ownerOf(current);
+          const nonOwnerMembers=recipientIds.filter(id => id && id !== ownerId);
           if(capacity < confirmedCount) throw Object.assign(new Error("人数不能少于已确认人数"),{code:"CAPACITY_TOO_SMALL"});
-          if(recipientIds.length && (visibility !== current.visibility || JSON.stringify(circleIds) !== JSON.stringify(current.circleIds || []))) throw Object.assign(new Error("已有岩友报名，暂不能修改可见范围"),{code:"VISIBILITY_LOCKED"});
+          // 可见范围锁定只看非发起人成员：新计划 participantIds 含发起人（长度为 1），
+          // 仅发起人时可自由改范围；有待确认/已确认成员时才锁定。
+          if(nonOwnerMembers.length && (visibility !== current.visibility || JSON.stringify(circleIds) !== JSON.stringify(current.circleIds || []))) throw Object.assign(new Error("已有岩友报名，暂不能修改可见范围"),{code:"VISIBILITY_LOCKED"});
+          // 改期锁：日期/时段是否变化（新数据比 timeSlots，旧数据比起止钟点）
+          const oldPlanCandidate=schedule.candidateFromPlan(current);
+          const oldSlots=schedule.SLOT_KEYS.filter(k=>(current.timeSlots||[]).indexOf(k)>=0);
+          const timeChanged=current.date!==candidate.date ||
+            ((oldSlots.length||candidate.slots.length)
+              ? JSON.stringify(oldSlots)!==JSON.stringify(candidate.slots)
+              : (current.startTime!==candidate.startTime||current.endTime!==candidate.endTime));
+          // 存在其他有效成员（待确认/已确认）时禁止改时间：他们的日程已被预留
+          if(timeChanged && nonOwnerMembers.length) throw Object.assign(new Error("已有岩友报名或待审批，暂不能修改时间"),{code:"PLAN_TIME_LOCKED"});
+          let dayInfos=null;
+          if(timeChanged){
+            // 仅发起人：同一事务内原子释放旧日期占用、建立新日期占用，排除自身当前局查冲突
+            dayInfos=await schedule.replaceHost(tx,{openid,planId,candidate,oldDates:Object.keys(oldPlanCandidate.byDate),now,conflictOptions:{includePlanId:true}});
+          }
           const version=Number(current.version || 0)+1;
-          await ref.update({data:{...data,version,confirmedCount,joinSchemaVersion:2,participantIds:recipientIds,isFull:capacity<=confirmedCount}});
-          if(recipientIds.length) await tx.collection("RockPlanEvents").doc(planId+"_"+version).set({data:{planId,audience:recipientIds,actor:openid,title:"约爬信息有更新，请查看时间和集合位置",gymName:(gymSnapshot||{}).name||"攀岩馆",createdAt:now}});
-        });
+          await ref.update({data:{...data,version,confirmedCount,joinSchemaVersion:2,participantIds:recipientIds,isFull:!!capacity && confirmedCount>=capacity}});
+          if(dayInfos) await schedule.commitDayWrites(dayInfos);
+          if(nonOwnerMembers.length) await tx.collection("RockPlanEvents").doc(planId+"_"+version).set({data:{planId,audience:recipientIds,actor:openid,title:"约爬信息有更新，请查看时间和集合位置",gymName:(gymSnapshot||{}).name||"攀岩馆",createdAt:now}});
+        }));
         return ok({ planId }, tid);
       }
     }
 
     return fail("BAD_ACTION", `不支持的 action: ${action}`, tid);
   } catch (e) {
-    return fail(e.code || "PUBLISH_FAILED", e && e.message ? e.message : "提交失败", tid);
+    const extra = e && e.code === "SCHEDULE_CONFLICT" && e.conflict ? { conflict: e.conflict } : null;
+    return fail(e.code || "PUBLISH_FAILED", e && e.message ? e.message : "提交失败", tid, extra);
   }
 };
