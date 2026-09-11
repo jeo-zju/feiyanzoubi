@@ -25,6 +25,7 @@
     "pages/backstage-health/index",
     "pages/backstage-review-detail/index",
     "pages/backstage-sync/index",
+    "pages/backstage-demo/index",
     "pages/backstage-user-detail/index",
     "pages/user-admin/index",
     "pages/circle-list/index",

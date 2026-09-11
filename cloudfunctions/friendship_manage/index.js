@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -126,6 +127,8 @@ exports.main = async (event) => {
       const toOpenid = safeText(event && event.toOpenid);
       if (!toOpenid) return fail("BAD_REQUEST", "缺少 toOpenid", tid);
       if (toOpenid === openid) return fail("BAD_REQUEST", "不能添加自己", tid);
+      // 模拟身份不可建立任何社交关系：入口与拉黑同语气，客户端不出现 demo 专属错误
+      if (guard.isDemoId(toOpenid)) return fail("BLOCKED", "当前无法添加这位岩友", tid);
       const exist = await col
         .where(
           _.or([
@@ -161,6 +164,8 @@ exports.main = async (event) => {
     if (action === "accept") {
       const fromOpenid = safeText(event && event.fromOpenid);
       if (!fromOpenid) return fail("BAD_REQUEST", "缺少 fromOpenid", tid);
+      // 模拟身份不发起好友申请：任何挂名请求一律视为不存在
+      if (guard.isDemoId(fromOpenid)) return fail("NOT_FOUND", "申请不存在", tid);
       const exist = await col.where(_.and([{ fromOpenid }, { toOpenid: openid }, { status: "pending" }])).limit(1).get();
       const doc = exist && exist.data && exist.data[0] ? exist.data[0] : null;
       if (!doc) return fail("NOT_FOUND", "申请不存在", tid);
@@ -203,7 +208,11 @@ exports.main = async (event) => {
       try {
         const nickRes = await db
           .collection("RockUsers")
-          .where({ nickName: db.RegExp({ regexp: keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), options: "i" }) })
+          // 模拟用户永不进入好友搜索结果（accountType 缺省的真实用户不受 neq 影响）
+          .where(_.and([
+            { nickName: db.RegExp({ regexp: keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), options: "i" }) },
+            { accountType: _.neq("demo") }
+          ]))
           .limit(30)
           .get();
         users = (nickRes && nickRes.data) || [];
@@ -211,7 +220,7 @@ exports.main = async (event) => {
       const results = users
         .filter((u) => {
           const uid = u.openid || u._openid || u.uid || "";
-          return uid && uid !== openid;
+          return uid && uid !== openid && u.accountType !== "demo" && !guard.isDemoId(uid);
         })
         .map((u) => {
           const uid = u.openid || u._openid || u.uid || "";
@@ -231,7 +240,7 @@ exports.main = async (event) => {
           for (let i = 0; i < list.length; i++) {
             const u = list[i];
             const uid = u.openid || u._openid || u.uid || "";
-            if (!uid || uid === openid) continue;
+            if (!uid || uid === openid || u.accountType === "demo" || guard.isDemoId(uid)) continue;
             // 岩友 ID 同时兼容两种派生：文档里存的官方 rockId（名片/个人页展示，FNV）与旧列表行 shortId
             const storedRockId = String(u.rockId || "").toUpperCase();
             const derivedRockId = u.rockId || shortId(uid);

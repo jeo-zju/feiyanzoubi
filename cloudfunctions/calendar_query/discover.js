@@ -1,4 +1,5 @@
 // Discovery is deliberately a compact public projection. Never return raw plan documents.
+const guard = require("./demo-guard");
 function publicPlan(p) {
   const endAt=Number(p.endAt) || Date.parse(`${p.date}T${p.endTime}:00+08:00`);
   return {
@@ -28,7 +29,10 @@ async function discover({db,cloud,event,openid}) {
   const today=now.slice(0,10), hm=now.slice(11,16);
   const start=String(event.startDate || today), end=String(event.endDate || new Date(Date.now()+8*3600000+13*86400000).toISOString().slice(0,10));
   if(!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || end<start || Date.parse(end)-Date.parse(start)>13*86400000) throw new Error("日期范围应在 14 天内");
+  // 演示数据全局开关：关闭后发现页查询层即排除（缺字段的普通计划不受 neq 影响）
+  const showDemo=await guard.demoShowAll(db);
   const parts=[{status:"active",visibility:"public"},{date:_.gte(start)},{date:_.lte(end)},_.or([{date:_.gt(today)},{date:today,endTime:_.gt(hm)}])];
+  if(!showDemo) parts.push({dataOrigin:_.neq(guard.DATA_ORIGIN_DEMO)});
   const city=String(event.city || "").trim().replace(/市$/,"");
   if(city) parts.push(_.or([{cityKey:city},{"gymSnapshot.city":_.in([city,city+"市"])}]));
   if(event.gymId) parts.push({gymId:String(event.gymId)});
@@ -85,7 +89,9 @@ async function discover({db,cloud,event,openid}) {
     if(s<maxSeg) { hasMore=true; nextCursor=JSON.stringify([String(s+1),"","",""]); }
     else { hasMore=false; nextCursor=""; }
   }
-  const list=raw.map(publicPlan);
+  // 双保险：即使存在漏标 dataOrigin 但发起人为 demo_ 前缀的异常文档，隐藏开关下也不外泄
+  const visible=showDemo ? raw : raw.filter(p=>!guard.isDemoPlan(p));
+  const list=visible.map(publicPlan);
   const ids=[...new Set(list.map(p=>p.ownerId).filter(Boolean))];
   const users={};
   if(ids.length) {

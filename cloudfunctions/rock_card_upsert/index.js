@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -110,6 +111,8 @@ exports.main = async (event) => {
   try {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
+    // 模拟身份不得建名片；必须在 ensureUser 之前拦截，避免产生任何 RockUsers 行
+    await guard.assertRealActor(openid);
     const userDoc = await ensureUser(openid);
     const userAvatarUrl = userDoc && userDoc.avatarUrl ? String(userDoc.avatarUrl) : "";
 

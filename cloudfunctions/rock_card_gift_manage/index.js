@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -115,6 +116,8 @@ exports.main = async (event) => {
       const toOpenid = safeText(event && event.toOpenid);
       if (!cardId) return fail("BAD_REQUEST", "缺少 cardId", tid);
       if (!toOpenid) return fail("BAD_REQUEST", "缺少 toOpenid", tid);
+      // 模拟身份不收名片：真实用户不能向 demo 直送
+      if (guard.isDemoId(toOpenid)) return fail("BAD_REQUEST", "当前无法完成该操作", tid);
 
       const cardRes = await cardsCol.doc(cardId).get();
       const card = cardRes && cardRes.data ? cardRes.data : null;

@@ -1,0 +1,150 @@
+<view class="page viewport-page">
+  <view class="card card-hero">
+    <view class="card-bd">
+      <view class="section-title-lg">演示数据</view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="viewport-scroll">
+    <!-- 素材与模拟身份池 -->
+    <view class="card mt">
+      <view class="card-hd">素材与身份池</view>
+      <view class="card-bd">
+        <view class="stat-grid">
+          <view class="panel stat-card">
+            <view class="stat-number">{{assets.total || 0}}</view>
+            <view class="stat-label">素材</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{assets.demoUsers || 0}}</view>
+            <view class="stat-label">模拟身份</view>
+          </view>
+        </view>
+        <view class="row mt">
+          <view class="btn btn-ghost flex" bindtap="onProvision">对账/重建身份</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 生成参数 -->
+    <view class="card mt">
+      <view class="card-hd">生成参数（未来 14 天满员约爬）</view>
+      <view class="card-bd">
+        <view class="field-block">
+          <view class="field-label">城市</view>
+          <picker mode="selector" range="{{cityOptions}}" value="{{cityIndex}}" bindchange="onCityChange">
+            <view class="field-select"><text class="field-select__value">{{cityOptions[cityIndex]}}</text><text class="field-select__arrow">▾</text></view>
+          </picker>
+        </view>
+        <view class="field-block mt">
+          <view class="field-label">密度</view>
+          <view class="seg">
+            <view
+              wx:for="{{densityOptions}}"
+              wx:key="key"
+              class="seg-item {{densityIndex === index ? 'seg-item-on' : ''}}"
+              data-index="{{index}}"
+              bindtap="onDensityTap"
+            >{{item.label}}</view>
+          </view>
+        </view>
+        <view class="row mt">
+          <view class="btn btn-primary flex {{previewLoading ? 'btn-disabled' : ''}}" bindtap="onPreview">{{previewLoading ? '预览中' : '预览'}}</view>
+          <view class="btn btn-ghost mini ml {{generating ? 'btn-disabled' : ''}}" bindtap="onDrill">小批演练3场</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 预览结果 -->
+    <view wx:if="{{preview}}" class="card mt">
+      <view class="card-hd">预览结果</view>
+      <view class="card-bd">
+        <view class="stat-grid">
+          <view class="panel stat-card">
+            <view class="stat-number">{{preview.target}}</view>
+            <view class="stat-label">目标场次</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{preview.existing}}</view>
+            <view class="stat-label">窗口已有</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number stat-number-warn">{{preview.toCreate}}</view>
+            <view class="stat-label">将创建</view>
+          </view>
+        </view>
+        <view class="stat-grid mt-sm">
+          <view class="panel stat-card">
+            <view class="stat-number">{{preview.gymCount}}</view>
+            <view class="stat-label">可用岩馆</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{preview.poolUsed}}</view>
+            <view class="stat-label">用到身份</view>
+          </view>
+          <view class="panel stat-card">
+            <view class="stat-number">{{preview.shortage}}</view>
+            <view class="stat-label">缺额</view>
+          </view>
+        </view>
+        <view class="section-tip mt">窗口 {{preview.window.start}} ~ {{preview.window.end}}</view>
+        <view wx:if="{{preview.shortage > 0}}" class="tag tag-warn mt">用户池不足，已减量 {{preview.shortage}} 场</view>
+        <view wx:if="{{preview.gymCount === 0}}" class="tag tag-warn mt">该城市没有可发布的岩馆</view>
+
+        <view wx:for="{{preview.items}}" wx:key="key" class="list-row preview-row">
+          <view>
+            <view class="section-title">{{item.date}} · {{item.slotsText}}</view>
+            <view class="section-tip">{{item.gymName}} · {{item.capacityText}}</view>
+          </view>
+        </view>
+
+        <view class="row mt">
+          <view class="btn btn-warn flex {{generating ? 'btn-disabled' : ''}}" bindtap="onGenerate">{{generating ? '提交中' : '确认生成（满员真实报名）'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 当前批次进度 -->
+    <view wx:if="{{activeRunId}}" class="card mt">
+      <view class="card-hd">批次进行中</view>
+      <view class="card-bd">
+        <view class="progress">
+          <view class="progress-bar" style="width: {{progressPct}}%"></view>
+        </view>
+        <view class="section-tip mt">{{progressPct}}% · {{activeRunId}}</view>
+      </view>
+    </view>
+
+    <!-- 最近批次 -->
+    <view class="card mt">
+      <view class="card-hd">最近批次</view>
+      <view class="card-bd">
+        <view wx:if="{{runs.length === 0}}" class="section-tip">暂无批次记录</view>
+        <view wx:for="{{runs}}" wx:key="runId" class="panel run-panel">
+          <view class="row">
+            <view class="section-title">{{item.city}} · {{item.density === 'low' ? '低' : item.density === 'medium' ? '中' : '高'}}密度</view>
+            <view class="tag {{item.status === 'cleaned' ? 'tag-warn' : ''}}">{{item.statusText}}</view>
+          </view>
+          <view class="section-tip mt-sm">{{item.progressText}} 场 · 窗口 {{item.window.start}} ~ {{item.window.end}}</view>
+          <view wx:if="{{item.failed > 0}}" class="tag tag-warn mt-sm">失败 {{item.failed}} 场</view>
+          <view wx:if="{{item.cleanupAnomalies.length > 0}}" class="tag tag-warn mt-sm">清理异常 {{item.cleanupAnomalies.length}} 条</view>
+          <view class="row mt-sm">
+            <view wx:if="{{item.canContinue}}" class="btn btn-ghost mini" data-id="{{item.runId}}" bindtap="onContinue">继续生成</view>
+            <view wx:if="{{item.canCleanup}}" class="btn btn-warn mini ml" data-id="{{item.runId}}" bindtap="onCleanup">清理本批</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 全域隐藏 -->
+    <view class="card mt">
+      <view class="card-hd">应急控制</view>
+      <view class="card-bd">
+        <view class="section-tip">一键隐藏全部演示约爬：发现、日历、分享旧链接均不再展示，真实用户无法进入。</view>
+        <view class="row mt">
+          <view class="btn btn-warn flex" bindtap="onHideAll">隐藏全部演示约爬</view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

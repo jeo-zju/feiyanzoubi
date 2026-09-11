@@ -1,0 +1,9 @@
+{
+  "name": "demo_data_manage",
+  "version": "1.0.0",
+  "description": "演示用户与满员约爬：素材对账、可复现生成、任务续跑、隐藏与精确清理（仅管理员）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -231,10 +232,13 @@ exports.main = async (event) => {
       if (gymId) baseWhere.push({ gymId });
       if (city) baseWhere.push({ "gymSnapshot.city": _.in([city, city.replace(/市$/, ""), city.replace(/市$/, "") + "市"]) });
       if (safeText(event.circleId)) baseWhere.push({ circleIds: safeText(event.circleId) });
+      // 演示数据全局开关：关闭后不计入日历角标/统计
+      const showDemoCal = await guard.demoShowAll(db);
+      if (!showDemoCal) baseWhere.push({ dataOrigin: _.neq(guard.DATA_ORIGIN_DEMO) });
       const where = _.and(baseWhere);
 
       const raw = await col.where(where).limit(1000).get();
-      const plans = (raw && raw.data) || [];
+      const plans = ((raw && raw.data) || []).filter((p) => showDemoCal || !guard.isDemoPlan(p));
 
       const agg = {};
       plans.forEach((p) => {
@@ -266,6 +270,9 @@ exports.main = async (event) => {
       if (city) baseWhere.push({ "gymSnapshot.city": _.in([city, city.replace(/市$/, ""), city.replace(/市$/, "") + "市"]) });
       if (safeText(event.circleId)) baseWhere.push({ circleIds: safeText(event.circleId) });
       if (filterGymId) baseWhere.push({ gymId: filterGymId });
+      // 演示数据全局开关：关闭后当日时间线不返回演示局
+      const showDemoTl = await guard.demoShowAll(db);
+      if (!showDemoTl) baseWhere.push({ dataOrigin: _.neq(guard.DATA_ORIGIN_DEMO) });
       if (onlyFriends) {
         const allowed = new Set(friendIds || []);
         allowed.add(openid);
@@ -278,7 +285,7 @@ exports.main = async (event) => {
       const where = _.and(baseWhere);
 
       const raw = await col.where(where).limit(200).orderBy("startTime", "asc").get();
-      let plans = ((raw && raw.data) || []).map(require("./discover").legacyPlan);
+      let plans = ((raw && raw.data) || []).filter((p) => showDemoTl || !guard.isDemoPlan(p)).map(require("./discover").legacyPlan);
 
       // issue #35: 批量 hydration 发起者资料（头像/岩友号/称呼），RockUsers 实时数据优先、
       // 计划快照兜底；结果挂到 plan.ownerInfo 供前端弹窗/名片直接使用

@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -68,6 +69,8 @@ exports.main = async (event) => {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
     if (!openid) return fail("UNAUTHORIZED", "用户未登录", tid);
+    // 模拟身份不得提交难度/打分——纵深防御
+    await guard.assertRealActor(openid);
 
     const gymId = safeText(event && event.gymId);
     const score = toValidScore(event && event.score);

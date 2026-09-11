@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -70,6 +71,8 @@ exports.main = async (event) => {
   try {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
+    // 模拟身份不得挂墙/写入岩馆内容——纵深防御
+    await guard.assertRealActor(openid);
 
     const action = safeText(event && event.action) || "get";
     const gymId = safeText(event && event.gymId);

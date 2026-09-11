@@ -7,9 +7,12 @@
     "upload": "node scripts/upload.js",
     "preview": "node scripts/preview.js",
     "functions": "node scripts/upload-functions.js",
-    "db:create": "node scripts/create-collection.js"
+    "db:create": "node scripts/create-collection.js",
+    "demo:import": "node scripts/demo-assets-import.js"
   },
   "dependencies": {
-    "miniprogram-ci": "^2.1.31"
+    "exif-parser": "^0.1.12",
+    "jimp": "^0.16.1",
+    "miniprogram-ci": "^2.6.31"
   }
 }

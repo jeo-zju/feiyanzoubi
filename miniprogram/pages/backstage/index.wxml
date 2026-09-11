@@ -13,6 +13,10 @@
           <view class="section-title">批量同步</view>
           <view class="btn btn-ghost mini">进入</view>
         </view>
+        <view class="list-row" bindtap="goDemo">
+          <view class="section-title">演示数据</view>
+          <view class="btn btn-ghost mini">进入</view>
+        </view>
         <view class="list-row" bindtap="goAuthDebug">
           <view class="section-title">权限自检</view>
           <view class="btn btn-ghost mini">查看</view>

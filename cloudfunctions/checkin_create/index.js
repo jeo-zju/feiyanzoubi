@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -161,6 +162,8 @@ exports.main = async (event) => {
     const action = safeText(event && event.action) || "create";
 
     if (!openid) return fail("AUTH_REQUIRED", "请登录后操作", tid);
+    // 模拟身份（demo_ 合成 openid）不得打卡/写入任何内容——纵深防御
+    await guard.assertRealActor(openid);
     if (action === "revert_last") {
       const submissionId = safeText(event && event.submissionId);
       if (!submissionId) return fail("BATCH_REQUIRED", "旧版打卡无法精确撤销，请更新后重新提交", tid);

@@ -502,4 +502,308 @@ test("R5 decorate and mergeListById enforce full/closed contract and paging dedu
   assert.deepEqual(merged.map(x=>x._id),[1,2,3],"cross-page duplicates collapse by _id");
 });
 
+// ============ D2: demo identity server-side isolation ============
+// 守卫模块经 harness 的 Node require 加载，测试里用同一缓存实例重置展示开关缓存
+const guardReset = name => require(path.join(root,"cloudfunctions",name,"demo-guard.js")).resetShowCache();
+const demoPlanBase = {
+  _id:"demop", openid:"demo_0001", _openid:"demo_0001", uid:"demo_0001",
+  dataOrigin:"demo", datasetId:"demo-core-v1", runId:"r1",
+  status:"active", visibility:"public", date:future, startTime:"18:00", endTime:"22:00",
+  joinMode:"direct", schemaVersion:2, joinSchemaVersion:2,
+  capacity:2, confirmedCount:2, isFull:true, participantIds:["demo_0001","demo_0002"],
+  gymSnapshot:{name:"测试岩馆",city:"测试城"}, userSnapshot:{nickName:"模拟甲"}
+};
+const demoJoinRow = {_id:"dj1", planId:"demop", openid:"demo_0002", status:"confirmed", date:future, userSnapshot:{nickName:"模拟乙"}};
+
+test("D2 full demo plan: real join gets ordinary PLAN_FULL and zero writes", async () => {
+  const s=database({RockUsers:[{openid:"viewer",nickName:"真实岩友"}],RockCalendarPlans:[demoPlanBase],RockCalendarJoins:[demoJoinRow]});
+  const main=load("calendar_plan_publish",s,"viewer");
+  const r=await main({action:"join_plan",planId:"demop"});
+  assert.equal(r.ok,false);assert.equal(r.error.code,"PLAN_FULL","demo full plan surfaces the ordinary full error");
+  assert.equal(s.writes.length,0,"no join/plan/schedule write may be created");
+});
+test("D2 tampered demo plan (free capacity) still rejects every join/approve", async () => {
+  const tampered={...demoPlanBase,capacity:99,confirmedCount:1,isFull:false,participantIds:["demo_0001"]};
+  const s=database({RockUsers:[{openid:"viewer",nickName:"真实岩友"}],RockCalendarPlans:[tampered],RockCalendarJoins:[]});
+  const main=load("calendar_plan_publish",s,"viewer");
+  const r=await main({action:"join_plan",planId:"demop"});
+  assert.equal(r.ok,false);assert.equal(r.error.code,"PLAN_FULL","in-transaction demo gate beats tampered counters");
+  assert.equal(s.writes.length,0);
+});
+test("D2 demo plan detail hides social entries via canRelate=false", async () => {
+  const s=database({RockCalendarPlans:[demoPlanBase],RockCalendarJoins:[demoJoinRow]});
+  const r=await load("calendar_plan_publish",s,"viewer")({action:"detail",planId:"demop"});
+  assert.equal(r.ok,true,JSON.stringify(r));
+  assert.equal(r.data.ownerInfo.canRelate,false,"host is not friend-addable");
+  assert.equal(r.data.joiners.length,1);
+  assert.equal(r.data.joiners[0].canRelate,false,"joiners are not friend-addable");
+  assert.equal(r.data.meetingPoint,"","contact info stays hidden");
+});
+test("D2 showAll=false makes demo plans disappear behind old links", async () => {
+  guardReset("calendar_plan_publish");
+  const s=database({RockAppConfig:[{_id:"demo",showAll:false}],RockCalendarPlans:[demoPlanBase],RockCalendarJoins:[demoJoinRow]});
+  const main=load("calendar_plan_publish",s,"viewer");
+  for(const action of ["detail","get_joiners","join_plan"]) {
+    const r=await main({action,planId:"demop"});
+    assert.equal(r.ok,false,action);assert.equal(r.error.code,"NOT_FOUND",action+" reads as deleted");
+  }
+  assert.equal(s.writes.length,0);
+  guardReset("calendar_plan_publish");
+});
+test("D2 discover/calendar exclude demo plans only while hidden", async () => {
+  const realPlan={_id:"realp",openid:"hostU",status:"active",visibility:"public",date:future,startTime:"19:00",endTime:"21:00",confirmedCount:1};
+  guardReset("calendar_query");
+  const hidden=database({RockAppConfig:[{_id:"demo",showAll:false}],RockCalendarPlans:[demoPlanBase,realPlan]});
+  const hd=await load("calendar_query",hidden,"viewer")({mode:"discover"});
+  assert.deepEqual(hd.data.list.map(p=>p._id),["realp"],"hidden demo plan absent from discover");
+  const cal=await load("calendar_query",hidden,"viewer")({mode:"calendar"});
+  assert.equal(cal.data.dateAgg.find(d=>d.date===future).total,1,"calendar aggregation counts real plans only");
+  guardReset("calendar_query");
+  const shown=database({RockCalendarPlans:[demoPlanBase,realPlan]});
+  const sd=await load("calendar_query",shown,"viewer")({mode:"discover"});
+  assert.deepEqual(sd.data.list.map(p=>p._id).sort(),["demop","realp"],"default (no config) keeps demo plans visible");
+});
+test("D2 friendship: demo targets cannot be requested/accepted and never appear in search", async () => {
+  const s1=database({RockFriendships:[]});
+  const req=await load("friendship_manage",s1,"viewer")({action:"request",toOpenid:"demo_0002"});
+  assert.equal(req.ok,false);assert.equal(req.error.code,"BLOCKED");
+  assert.equal(s1.writes.length,0,"no friendship row created");
+  const s2=database({RockFriendships:[]});
+  const acc=await load("friendship_manage",s2,"viewer")({action:"accept",fromOpenid:"demo_0002"});
+  assert.equal(acc.ok,false);assert.equal(acc.error.code,"NOT_FOUND");
+  assert.equal(s2.writes.length,0);
+  const s3=database({RockUsers:[
+    {_id:"u1",openid:"real1",nickName:"岩甲"},
+    {_id:"u2",openid:"demo_0002",accountType:"demo",nickName:"岩乙"}
+  ]});
+  const sr=await load("friendship_manage",s3,"viewer")({action:"search",keyword:"岩"});
+  assert.deepEqual(sr.data.users.map(u=>u.openid),["real1"],"demo users excluded from search");
+});
+test("D2 direct card gift to a demo identity is refused", async () => {
+  const s=database({RockCards:[{_id:"c1",createdByOpenid:"viewer",ownerOpenid:"",status:"draft"}]});
+  const r=await load("rock_card_gift_manage",s,"viewer")({action:"create_direct",cardId:"c1",toOpenid:"demo_0002"});
+  assert.equal(r.ok,false);assert.equal(r.error.code,"BAD_REQUEST");
+  assert.equal(s.writes.length,0);
+});
+test("D2 circle approve/reject/remove refuse demo targets", async () => {
+  const s=database({RockCircles:[{_id:"c1",adminOpenid:"viewer"}],RockCircleMembers:[]});
+  const r=await load("circle_manage",s,"viewer")({action:"approve",circleId:"c1",openid:"demo_0003"});
+  assert.equal(r.ok,false);assert.equal(r.error.code,"BAD_REQUEST");
+  assert.equal(s.writes.length,0);
+});
+test("D2 admin user list and totals exclude demo identities", async () => {
+  const s=database({RockUsers:[
+    {_id:"x1",openid:"real1",nickName:"岩甲",updatedAt:300},
+    {_id:"x2",openid:"real2",nickName:"岩丙",updatedAt:200},
+    {_id:"x3",openid:"demo_0001",accountType:"demo",nickName:"模拟甲",updatedAt:400}
+  ]});
+  const r=await load("admin_manage",s,"42098a0769e3423400183ddf36230f95")({action:"listUsers",page:1,pageSize:20});
+  assert.equal(r.ok,true,JSON.stringify(r));
+  assert.equal(r.data.total,2,"total counts real users only");
+  assert.deepEqual(Array.from(r.data.items,u=>u.openid).sort(),["real1","real2"]);
+  const role=await load("admin_manage",s,"42098a0769e3423400183ddf36230f95")({action:"updateUserRole",userId:"x3",role:"admin"});
+  assert.equal(role.ok,false);assert.equal(role.error.code,"FORBIDDEN","demo user cannot receive roles");
+});
+test("D2 synthetic demo_ openid cannot drive any write entry", async () => {
+  const s=database({RockCalendarPlans:[{_id:"realp",openid:"host",_openid:"host",status:"active",visibility:"public",date:future,startTime:"19:00",endTime:"21:00"}]});
+  const r=await load("calendar_plan_publish",s,"demo_0009")({action:"unjoin_plan",planId:"realp"});
+  assert.equal(r.ok,false);assert.equal(r.error.code,"FORBIDDEN");
+  assert.equal(s.writes.length,0);
+});
+
+// ============ D3: demo plan generator + atomic full-plan transaction ============
+const demoGen = require(path.join(root,"cloudfunctions","demo_data_manage","generator.js"));
+const demoProfileMod = require(path.join(root,"cloudfunctions","demo_data_manage","profile.js"));
+
+test("D3 pure generator: reproducible, constrained, deficit based", () => {
+  const mkPool = n => { const out=[]; for(let i=1;i<=n;i++){const pr=demoProfileMod.buildDemoProfile(i,{assetSha:"s"+i});out.push({openid:"demo_"+String(i).padStart(4,"0"),nickName:pr.nickName,demoProfile:pr.demoProfile});} return out; };
+  const gyms=[1,2,3,4,5,6].map(i=>({gymId:"g"+i,name:"岩馆"+i,city:"杭州",supportedModes:i%4===0?["difficulty","lead"]:["boulder","difficulty","toprope"]}));
+  const nowMs=Date.parse("2025-06-16T12:00:00+08:00");
+  const args={seed:"abc",city:"杭州",pool:mkPool(30),gyms,existing:0,density:"medium",nowMs};
+  const r=demoGen.generatePlanItems(args);
+  assert.equal(r.items.length,24,"medium density fills 24");
+  const perDay=new Set(), perWeek=new Map(), gymSlot=new Set();
+  r.items.forEach(it=>{
+    const all=[it.hostOpenid].concat(it.memberOpenids);
+    assert.equal(all.length,it.capacity);assert.equal(new Set(all).size,all.length,"members distinct");
+    assert.ok(it.capacity>=2&&it.capacity<=6);
+    assert.ok(it.skillTags.some(t=>["boulder","lead","toprope","auto"].includes(t)),"core skill tag present");
+    all.forEach(u=>{
+      assert.ok(!perDay.has(u+"|"+it.date),"max 1 plan/day per user");perDay.add(u+"|"+it.date);
+      const k=u+"|"+Math.floor(it.offset/7);perWeek.set(k,(perWeek.get(k)||0)+1);
+    });
+    it.timeSlots.forEach(s=>{assert.ok(!gymSlot.has(it.gymId+"|"+it.date+"|"+s),"gym/slot unique");gymSlot.add(it.gymId+"|"+it.date+"|"+s);});
+  });
+  [...perWeek.values()].forEach(n=>assert.ok(n<=3,"max 3 plans/week per user"));
+  const r2=demoGen.generatePlanItems(args);
+  assert.deepEqual(r2.items,r.items,"same seed/input → same plan");
+  const r3=demoGen.generatePlanItems({...args,existing:20});
+  assert.equal(r3.items.length,4,"deficit mode tops up to target, never appends");
+  const r4=demoGen.generatePlanItems({...args,city:"小城",pool:mkPool(6),gyms:gyms.slice(0,2),density:"high"});
+  assert.ok(r4.items.length<40&&r4.shortage>0,"small pool reduces volume and reports shortage");
+});
+
+test("D3 end-to-end: full plans atomically carry joins and schedule occupancy", async () => {
+  const mkDemoUsers=[];
+  for(let i=1;i<=24;i++){
+    const pr=demoProfileMod.buildDemoProfile(i,{assetSha:"a".repeat(8)+i});
+    mkDemoUsers.push({_id:"du"+i,openid:"demo_"+String(i).padStart(4,"0"),accountType:"demo",datasetId:"demo-core-v1",
+      nickName:pr.nickName,displayName:pr.nickName,avatarUrl:"cloud://env/demo/"+i+".jpg",
+      demoProfile:pr.demoProfile,demoCity:"",demoAllocated:false});
+  }
+  const gyms=[1,2,3,4].map(i=>({_id:"gym"+i,name:"杭州岩馆"+i,city:"杭州",address:"路"+i,supportedModes:["boulder","difficulty","toprope"]}));
+  const seed={RockUsers:mkDemoUsers,RockGyms:gyms,RockCalendarPlans:[],RockCalendarJoins:[],RockUserScheduleDays:[],RockDemoRuns:[]};
+  const s=database(seed);
+  const admin="42098a0769e3423400183ddf36230f95";
+  const call=load("demo_data_manage",s,admin,{ALLOW_DEMO_DATA:"true"});
+
+  const preview=await call({action:"preview",city:"杭州",density:"low",seed:"e2e1"});
+  assert.equal(preview.ok,true,JSON.stringify(preview));
+  assert.equal(preview.data.toCreate,12,JSON.stringify(preview.data.reasons));
+  assert.ok(preview.data.shortage===0);
+
+  const gen=await call({action:"generate",city:"杭州",density:"low",seed:"e2e1",idempotencyKey:"k1"});
+  assert.equal(gen.ok,true,JSON.stringify(gen));
+  assert.equal(gen.data.status,"running","first call processes one batch only");
+  assert.equal(gen.data.created,6);
+
+  let summary=gen.data;
+  for(let guard=0;guard<10&&summary.status!=="done";guard++){
+    const c=await call({action:"generate_continue",runId:summary.runId});
+    assert.equal(c.ok,true,JSON.stringify(c));summary=c.data;
+  }
+  assert.equal(summary.status,"done");assert.equal(summary.created,12);assert.equal(summary.failed,0);
+
+  const plans=s.data().RockCalendarPlans;
+  assert.equal(plans.length,12);
+  const joins=s.data().RockCalendarJoins;
+  plans.forEach(p=>{
+    assert.equal(p.dataOrigin,"demo");assert.equal(p.participationPolicy,"read_only_demo");
+    assert.equal(p.isFull,true);assert.equal(p.confirmedCount,p.capacity);
+    assert.equal(p.participantIds.length,p.capacity,"fullness backed by real participants");
+    assert.ok(p.joinDeadline>Date.now());
+    const mine=joins.filter(j=>j.planId===p._id);
+    assert.equal(mine.length,p.capacity-1,"one confirmed join row per non-host participant");
+    mine.forEach(j=>{
+      assert.ok(["joined","confirmed"].includes(j.status));
+      assert.ok(p.participantIds.includes(j.openid));
+      assert.equal(j._openid,j.openid);assert.equal(j.planOwnerOpenid,p.openid);
+    });
+    // 确定性 joinId
+    mine.forEach(j=>{const expect="j_"+require("crypto").createHash("sha256").update(p._id+"|"+j.openid).digest("hex").slice(0,32);assert.equal(j._id,expect);});
+  });
+  // 日程占用：全体成员（含发起人）每人每局一条，引用计划均存在
+  const days=s.data().RockUserScheduleDays;
+  let entryCount=0;
+  const planIds=new Set(plans.map(p=>p._id));
+  days.forEach(d=>{
+    (d.entries||[]).forEach(e=>{entryCount++;assert.ok(planIds.has(e.planId),"occupancy references a real demo plan");});
+  });
+  const expectEntries=plans.reduce((n,p)=>n+p.capacity,0);
+  assert.equal(entryCount,expectEntries,"host+members each occupy exactly one entry");
+  // 用掉的模拟用户已稳定领取到该城市
+  const claimed=s.data().RockUsers.filter(u=>u.demoAllocated===true);
+  assert.ok(claimed.length>=6);claimed.forEach(u=>assert.equal(u.demoCity,"杭州"));
+
+  // 幂等：同 idempotencyKey 重放不产生第二份数据
+  const again=await call({action:"generate",city:"杭州",density:"low",seed:"e2e1",idempotencyKey:"k1"});
+  assert.equal(again.ok,true);assert.equal(again.data.runId,summary.runId);
+  assert.equal(s.data().RockCalendarPlans.length,12,"replay creates no extra plans");
+
+  // 权限与环境开关
+  const s2=database(seed);
+  const blocked=await load("demo_data_manage",s2,"someone",{ALLOW_DEMO_DATA:"true"})({action:"preview",city:"杭州"});
+  assert.equal(blocked.ok,false);assert.equal(blocked.error.code,"FORBIDDEN");
+  const disabled=await load("demo_data_manage",s2,admin,{})({action:"preview",city:"杭州"});
+  assert.equal(disabled.ok,false);assert.equal(disabled.error.code,"DISABLED");
+
+  // 无环境变量时，RockAppConfig/demo.featureEnabled=true 可作为运维开关；false/缺省仍关闭
+  const s3=database(Object.assign({},seed,{RockAppConfig:[{_id:"demo",featureEnabled:true}]}));
+  const viaConfig=await load("demo_data_manage",s3,admin,{})({action:"assets_status"});
+  assert.equal(viaConfig.ok,true,"config switch enables feature without env var");
+  const s4=database(Object.assign({},seed,{RockAppConfig:[{_id:"demo",featureEnabled:false}]}));
+  const viaConfigOff=await load("demo_data_manage",s4,admin,{})({action:"assets_status"});
+  assert.equal(viaConfigOff.error.code,"DISABLED");
+});
+
+test("D3 join write failure rolls back plan and all occupancies (no fake fullness)", async () => {
+  const mk=[];
+  for(let i=1;i<=12;i++){const pr=demoProfileMod.buildDemoProfile(i,{assetSha:"b".repeat(8)+i});mk.push({_id:"ru"+i,openid:"demo_"+String(i).padStart(4,"0"),accountType:"demo",nickName:pr.nickName,demoProfile:pr.demoProfile,demoCity:"",demoAllocated:false});}
+  const gyms=[{_id:"gym1",name:"馆",city:"杭州",supportedModes:["boulder","difficulty"]}];
+  const s=database({RockUsers:mk,RockGyms:gyms,RockCalendarPlans:[],RockCalendarJoins:[],RockUserScheduleDays:[],RockDemoRuns:[]});
+  s.fail("RockCalendarJoins");
+  const admin="42098a0769e3423400183ddf36230f95";
+  const call=load("demo_data_manage",s,admin,{ALLOW_DEMO_DATA:"true"});
+  const gen=await call({action:"generate",city:"杭州",density:"low",seed:"e2efail",idempotencyKey:"kfail"});
+  assert.equal(gen.ok,true);
+  assert.ok(gen.data.failed>=1);assert.equal(gen.data.created,0);
+  assert.equal(s.data().RockCalendarPlans.length,0,"no plan survives aborted transaction");
+  assert.equal(s.data().RockCalendarJoins.length,0);
+  assert.equal(s.data().RockUserScheduleDays.length,0,"no orphan occupancy survives aborted transaction");
+});
+
+test("D4 hide flips global config; cleanup removes exactly the run's demo data", async () => {
+  const mk=[];
+  for(let i=1;i<=24;i++){const pr=demoProfileMod.buildDemoProfile(i,{assetSha:"c".repeat(8)+i});mk.push({_id:"cu"+i,openid:"demo_"+String(i).padStart(4,"0"),accountType:"demo",nickName:pr.nickName,demoProfile:pr.demoProfile,demoCity:"",demoAllocated:false});}
+  const gyms=[1,2,3,4].map(i=>({_id:"gym"+i,name:"杭州岩馆"+i,city:"杭州",supportedModes:["boulder","difficulty","toprope"]}));
+  const realPlan={_id:"realplan",openid:"realhost",dataOrigin:"real",datasetId:"other",cityKey:"杭州",
+    date:new Date(Date.now()+86400000).toISOString().slice(0,10),status:"active",participantIds:["realhost"],capacity:1,confirmedCount:1,
+    startAt:Date.now()+86400000,endAt:Date.now()+86500000,dateKey:""};
+  const s=database({RockUsers:mk,RockGyms:gyms,RockCalendarPlans:[realPlan],RockCalendarJoins:[],RockUserScheduleDays:[],RockDemoRuns:[],RockAppConfig:[]});
+  const admin="42098a0769e3423400183ddf36230f95";
+  const call=load("demo_data_manage",s,admin,{ALLOW_DEMO_DATA:"true"});
+
+  const hide=await call({action:"hide"});
+  assert.equal(hide.ok,true);assert.equal(hide.data.showAll,false);
+  assert.equal(s.data().RockAppConfig[0]._id,"demo");assert.equal(s.data().RockAppConfig[0].showAll,false);
+  const show=await call({action:"show_all"});
+  assert.equal(show.data.showAll,true);assert.equal(s.data().RockAppConfig.length,1,"config upsert keeps single doc");
+  await call({action:"hide"});
+
+  let g=await call({action:"generate",city:"杭州",density:"low",seed:"d4clean",idempotencyKey:"kd4"});
+  for(let i=0;i<10&&g.data.status!=="done";i++){g=await call({action:"generate_continue",runId:g.data.runId});}
+  assert.equal(g.data.status,"done");
+  const demoCount=s.data().RockCalendarPlans.filter(p=>p.dataOrigin==="demo").length;
+  assert.equal(demoCount,12);
+  const totalEntries=s.data().RockUserScheduleDays.reduce((n,d)=>n+d.entries.length,0);
+
+  const needConfirm=await call({action:"cleanup",runId:g.data.runId});
+  assert.equal(needConfirm.ok,false);assert.equal(needConfirm.error.code,"CONFIRM_REQUIRED");
+
+  const c=await call({action:"cleanup",runId:g.data.runId,confirm:true});
+  assert.equal(c.ok,true,JSON.stringify(c));
+  assert.equal(c.data.status,"cleaned");
+  assert.equal(c.data.cleanupStats.plansRemoved,12);
+  assert.ok(c.data.cleanupAnomalies.length===0,JSON.stringify(c.data.cleanupAnomalies));
+  assert.equal(s.data().RockCalendarPlans.length,1,"real plan untouched");
+  assert.equal(s.data().RockCalendarPlans[0]._id,"realplan");
+  assert.equal(s.data().RockCalendarJoins.length,0);
+  assert.equal(s.data().RockUserScheduleDays.reduce((n,d)=>n+d.entries.length,0),0,"all demo occupancy released");
+  assert.equal(c.data.cleanupStats.occupancyReleased,totalEntries);
+
+  // 幂等重清：无新增删除、无异常
+  const again=await call({action:"cleanup",runId:g.data.runId,confirm:true});
+  assert.equal(again.data.status,"cleaned");
+  assert.equal(again.data.cleanupStats.plansRemoved,12);
+  assert.equal(s.data().RockCalendarPlans.length,1);
+  // 已清理任务的续跑不得复活任何计划
+  const cont=await call({action:"generate_continue",runId:g.data.runId});
+  assert.equal(cont.data.status,"cleaned");
+  assert.equal(s.data().RockCalendarPlans.length,1);
+});
+
+test("D4 cleanup scope-guard refuses non-demo plan ids", async () => {
+  const runApi=require(path.join(root,"cloudfunctions","demo_data_manage","run.js"));
+  const realPlan={_id:"stranger",dataOrigin:"real",datasetId:"other",participantIds:["h"],capacity:1,
+    date:new Date(Date.now()+86400000).toISOString().slice(0,10),status:"active"};
+  const s=database({RockCalendarPlans:[realPlan],RockCalendarJoins:[],RockUserScheduleDays:[],
+    RockDemoRuns:[{_id:"r1",status:"done",datasetId:"demo-core-v1",cityKey:"杭州",items:[1,2],planIds:["stranger","missing"]}]});
+  const api=runApi.createRunApi({db:s.db,cloud:{}});
+  const r=await api.cleanup({runId:"r1",confirm:true},{openid:"admin"});
+  assert.equal(r.status,"cleaned");
+  assert.equal(s.data().RockCalendarPlans.length,1,"non-demo plan never deleted");
+  assert.equal(r.cleanupAnomalies.some(a=>a.planId==="stranger"&&a.kind==="SCOPE_GUARD"),true);
+  assert.equal(r.cleanupStats.missingPlans,1);
+});
+
 (async()=>{let failures=0;for(const [name,fn] of checks){try{await fn();console.log("PASS "+name);}catch(e){failures++;console.error("FAIL "+name+"\n"+e.stack);}}console.log(`${checks.length-failures}/${checks.length} passed`);process.exitCode=failures?1:0;})();

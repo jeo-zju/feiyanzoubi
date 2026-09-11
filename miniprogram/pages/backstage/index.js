@@ -34,6 +34,9 @@ Page({
   goSync() {
     wx.navigateTo({ url: "/pages/backstage-sync/index" });
   },
+  goDemo() {
+    wx.navigateTo({ url: "/pages/backstage-demo/index" });
+  },
   goHealth() {
     wx.navigateTo({ url: "/pages/backstage-health/index" });
   }

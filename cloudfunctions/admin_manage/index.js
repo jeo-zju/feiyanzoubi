@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -254,14 +255,19 @@ async function listUsers(event, tid) {
   const keyword = normalizeKeyword(event && event.keyword);
   const start = (page - 1) * pageSize;
 
-  const countRes = await db.collection("RockUsers").count();
+  // 对外用户总数只统计真实用户（accountType 缺省即真实）；
+  // scanTotal 含模拟用户，仅用于全表分批遍历的终止边界，避免漏掉尾部真实用户
+  const realWhere = { accountType: _.neq("demo") };
+  const countRes = await db.collection("RockUsers").where(realWhere).count();
   const total = Number((countRes && countRes.total) || 0);
+  const scanTotalRes = await db.collection("RockUsers").count();
+  const scanTotal = Number((scanTotalRes && scanTotalRes.total) || total);
 
   let skip = 0;
   let filteredTotal = 0;
   const picked = [];
 
-  while (skip < total) {
+  while (skip < scanTotal) {
     const batchRes = await db
       .collection("RockUsers")
       .orderBy("updatedAt", "desc")
@@ -272,6 +278,8 @@ async function listUsers(event, tid) {
     if (!rows.length) break;
 
     rows.forEach((doc) => {
+      // 模拟用户不进后台用户列表与统计
+      if (doc.accountType === "demo" || guard.isDemoId(doc.openid || doc._openid || doc.uid)) return;
       if (!matchRole(doc, roleFilter) || !matchKeyword(doc, keyword)) return;
       filteredTotal += 1;
       if (filteredTotal > start && picked.length < pageSize + 1) {
@@ -300,6 +308,13 @@ async function listUsers(event, tid) {
 async function updateUserRole(event, tid) {
   const userId = String((event && (event.userId || event.id)) || "").trim();
   if (!userId) return fail("BAD_REQUEST", "缺少用户 ID", tid);
+
+  // 模拟身份不可授予任何角色
+  const beforeRes = await db.collection("RockUsers").doc(userId).get().catch(() => null);
+  const before = beforeRes && beforeRes.data ? beforeRes.data : null;
+  if (before && (before.accountType === "demo" || guard.isDemoId(before.openid || before._openid || before.uid))) {
+    return fail("FORBIDDEN", "该用户不可操作", tid);
+  }
 
   const role = normalizeRole(event && event.role);
   const patch = {

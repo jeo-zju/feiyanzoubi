@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -271,6 +272,8 @@ exports.main = async (event) => {
   try {
     const wxctx = cloud.getWXContext();
     const openid = wxctx.OPENID;
+    // 模拟身份不得认领岩馆/写运营数据——纵深防御
+    await guard.assertRealActor(openid);
     const now = Date.now();
     const admin = await isAdmin(openid);
     const userDoc = admin ? null : await getUserByOpenid(openid);

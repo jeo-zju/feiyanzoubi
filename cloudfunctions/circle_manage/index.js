@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const guard = require("./demo-guard");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -570,6 +571,8 @@ exports.main = async (event) => {
       const circleId = safeText(event && event.circleId);
       const targetOpenid = safeText(event && event.openid);
       if (!circleId || !targetOpenid) return fail("BAD_REQUEST", "缺少参数", tid);
+      // 模拟身份不加入圈子：挂名的审批/移除目标一律拒绝
+      if (guard.isDemoId(targetOpenid)) return fail("BAD_REQUEST", "参数无效", tid);
       const cRes = await db.collection("RockCircles").doc(circleId).get();
       const circle = cRes && cRes.data ? cRes.data : null;
       if (!circle) return fail("NOT_FOUND", "圈不存在", tid);
@@ -593,6 +596,8 @@ exports.main = async (event) => {
       const circleId = safeText(event && event.circleId);
       const targetOpenid = safeText(event && event.openid);
       if (!circleId || !targetOpenid) return fail("BAD_REQUEST", "缺少参数", tid);
+      // 模拟身份不加入圈子：挂名的审批/移除目标一律拒绝
+      if (guard.isDemoId(targetOpenid)) return fail("BAD_REQUEST", "参数无效", tid);
       const cRes = await db.collection("RockCircles").doc(circleId).get();
       const circle = cRes && cRes.data ? cRes.data : null;
       if (!circle) return fail("NOT_FOUND", "圈不存在", tid);
@@ -615,6 +620,8 @@ exports.main = async (event) => {
       const circleId = safeText(event && event.circleId);
       const targetOpenid = safeText(event && event.openid);
       if (!circleId || !targetOpenid) return fail("BAD_REQUEST", "缺少参数", tid);
+      // 模拟身份不加入圈子：挂名的审批/移除目标一律拒绝
+      if (guard.isDemoId(targetOpenid)) return fail("BAD_REQUEST", "参数无效", tid);
       const cRes = await db.collection("RockCircles").doc(circleId).get();
       const circle = cRes && cRes.data ? cRes.data : null;
       if (!circle) return fail("NOT_FOUND", "圈不存在", tid);

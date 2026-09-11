@@ -109,9 +109,9 @@
             <view class="sheet-item__name">{{item.displayName}}</view>
           </view>
           <button wx:if="{{detail.isOwner && !ended && plan.status==='active'}}" class="btn-text btn-text--danger" data-id="{{item.openid}}" bindtap="remove">移除</button>
-          <button wx:elif="{{ended}}" class="btn-text" data-id="{{item.openid}}" bindtap="addFriend">加岩友</button>
+          <button wx:elif="{{ended && item.canRelate !== false}}" class="btn-text" data-id="{{item.openid}}" bindtap="addFriend">加岩友</button>
         </view>
-        <view wx:if="{{ended && !detail.isOwner}}" class="sheet-item roster-row">
+        <view wx:if="{{ended && !detail.isOwner && detail.ownerInfo.canRelate !== false}}" class="sheet-item roster-row">
           <image class="roster-row__avatar" src="{{detail.ownerInfo.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
           <view class="roster-row__main">
             <view class="sheet-item__name">{{detail.ownerInfo.displayName}}</view>

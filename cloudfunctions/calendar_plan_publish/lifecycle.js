@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { ownerOf, canViewPlan, endAt } = require("./access");
 const schedule = require("./schedule");
+const guard = require("./demo-guard");
 const idFor = (planId, openid) => "j_" + crypto.createHash("sha256").update(planId + "|" + openid).digest("hex").slice(0, 32);
 const confirmed = row => row && ["joined", "confirmed"].includes(row.status);
 function joinTime(row) {
@@ -113,6 +114,8 @@ async function manage({db,cloud,openid,event}) {
   const ref=db.collection("RockCalendarPlans").doc(planId);
   const plan=await optionalDoc(ref);
   if (!plan) throw error("NOT_FOUND", "约爬不存在或已删除");
+  // 演示局一键隐藏开关：对真实用户与“旧链接”统一呈现“已删除”，与真实约爬删除后的反馈一致
+  if (guard.isDemoPlan(plan) && !(await guard.demoShowAll(db))) throw error("NOT_FOUND", "约爬不存在或已删除");
   const owner=ownerOf(plan), isOwner=owner===openid;
   if (action !== "unjoin_plan" && !await canViewPlan(db,plan,openid)) throw error("FORBIDDEN", "你暂时无法查看这场约爬");
   const joins=await rows(db,"RockCalendarJoins",{planId});
@@ -132,11 +135,14 @@ async function manage({db,cloud,openid,event}) {
     }
     const member = j => ({...(userMap[j.openid] || profile({...j.userSnapshot,openid:j.openid})), joinId:j._id, joinedAt:j.createdAt || 0});
     const resolved=await avatars(cloud,[userMap[owner] || profile({...plan.userSnapshot,openid:owner}),...accepted.map(member),...pending.map(member)]);
-    const ownerInfo={...resolved[0],isOwner:true};
+    // canRelate=false：客户端不展示“加岩友/私信”等不可用入口；模拟身份不建立任何社交关系
+    const withRelate = (u) => ({...u, canRelate: !guard.isDemoId(u.openid)});
+    const ownerInfo={...withRelate(resolved[0]),isOwner:true};
     const isBlocked = openid && !isOwner ? await blocked(db,openid,owner) : false;
     const contactAllowed=(isOwner || confirmed(mine)) && !isBlocked;
     return {
-      planId, plan:summary(plan,count), isOwner, ownerInfo, joiners:resolved.slice(1,accepted.length+1), pending:resolved.slice(accepted.length+1),
+      planId, plan:summary(plan,count), isOwner, ownerInfo,
+      joiners:resolved.slice(1,accepted.length+1).map(withRelate), pending:resolved.slice(accepted.length+1).map(withRelate),
       joined: isOwner || confirmed(mine), joinedCount:count,
       myStatus:isOwner ? "host" : (mine && (confirmed(mine) ? "confirmed" : mine.status)) || "none",
       meetingPoint:contactAllowed ? plan.meetingPoint || "" : "",
@@ -144,11 +150,15 @@ async function manage({db,cloud,openid,event}) {
     };
   }
   if (!openid) throw error("AUTH_REQUIRED", "请登录后操作");
+  // 模拟身份（demo_ 合成 openid，不可能来自真实微信登录态）不得发起任何写入——纵深防御
+  await guard.assertRealActor(openid);
   // 回填维护窗口期冻结所有报名/审批/退出类写入（旧客户端同样受约束）；只读 detail/get_joiners 已提前返回
   await schedule.assertWritesEnabled(db);
   if (["cancel","remove_joiner","approve_joiner","reject_joiner"].includes(action) && !isOwner) throw error("FORBIDDEN", "仅发起人可操作");
   const target=["remove_joiner","approve_joiner","reject_joiner"].includes(action) ? String(event.targetOpenid || "") : openid;
   if (action !== "cancel" && (!target || target === owner)) throw error("BAD_REQUEST", "不能对发起人执行此操作");
+  // 模拟身份不存在可被审批/移除的申请
+  if (target !== openid && guard.isDemoId(target)) throw error("INVALID_STATE", "该申请已处理或取消");
   const denied = ["join_plan","approve_joiner"].includes(action) ? await blocked(db,target,owner) : false;
   if(denied) throw error("BLOCKED", "当前无法报名该约爬");
   if (["join_plan","approve_joiner"].includes(action) && (plan.status !== "active" || endAt(plan) <= Date.now())) throw error("PLAN_ENDED", "约爬已结束或取消");
@@ -162,6 +172,8 @@ async function manage({db,cloud,openid,event}) {
     const current=await optionalDoc(planRef);
     if(!current) throw error("NOT_FOUND","约爬不存在");
     if(current.visibility !== plan.visibility || JSON.stringify(current.circleIds) !== JSON.stringify(plan.circleIds)) throw error("PLAN_CHANGED","约爬已更新，请刷新后重试");
+    // 演示局只读硬门槛：即使容量被篡改/成员被清理，真实用户也只能得到普通“名额已满”，绝不产生写入
+    if((action==="join_plan"||action==="approve_joiner") && guard.isDemoPlan(current)) throw error("PLAN_FULL","名额已满，看看其他约爬吧");
     // 当前局时间区间（新数据按 timeSlots 派生；旧数据按真实起止钟点）——日程占用的唯一依据
     const schedCandidate=schedule.candidateFromPlan(current);
     const currentCount=current.joinSchemaVersion === 2 ? current.confirmedCount : count;

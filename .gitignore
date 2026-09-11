@@ -7,4 +7,7 @@ node_modules/
 deploy-tools/config.env
 *.key
 deploy-tools/preview-qrcode.jpg
+deploy-tools/preview-*.jpg
+deploy-tools/*.log
+deploy-tools/demo-assets/
 .gh-config/
